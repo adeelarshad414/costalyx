@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, type OnModuleDestroy } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, type OnModuleDestroy } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import type { CloudProvider } from '../cost-model/cost-record.types';
@@ -14,8 +14,10 @@ import type {
   AccountReference,
   AuditLogEntry,
   CloudCredentialReference,
+  CreateViewInput,
   PageQuery,
   Paginated,
+  SavedView,
   UserRecord
 } from './governance.types';
 
@@ -301,6 +303,69 @@ export class PostgresGovernanceRepository implements GovernanceRepository, OnMod
     };
   }
 
+  async listViews(query: PageQuery, role: Role): Promise<Paginated<SavedView>> {
+    const offset = (query.page - 1) * query.pageSize;
+    const result = await this.pool.query(
+      `SELECT id, org_id, name, filter_json, owner_id, shared_role_scope
+       FROM views
+       WHERE $3 = 'admin' OR $3 = ANY(shared_role_scope)
+       ORDER BY created_at ASC, id ASC
+       LIMIT $1 OFFSET $2`,
+      [query.pageSize, offset, role]
+    );
+    const total = await this.pool.query(
+      `SELECT COUNT(id)::int AS total
+       FROM views
+       WHERE $1 = 'admin' OR $1 = ANY(shared_role_scope)`,
+      [role]
+    );
+    return {
+      data: result.rows.map((row) => mapView(row as PgRow)),
+      meta: { total: Number((total.rows[0] as PgRow | undefined)?.total ?? 0), page: query.page, pageSize: query.pageSize }
+    };
+  }
+
+  async createView(input: CreateViewInput, actor: AuthenticatedUser, idempotencyKey: string): Promise<SavedView> {
+    return this.withTransaction((client) =>
+      this.withIdempotency(client, idempotencyKey, async () => {
+        const saved = await client.query(
+          `INSERT INTO views (id, org_id, name, filter_json, owner_id, shared_role_scope, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING id, org_id, name, filter_json, owner_id, shared_role_scope`,
+          [
+            randomUUID(),
+            stableId('org:default'),
+            input.name,
+            JSON.stringify(input.filterJson),
+            stableId(`actor:${actor.subject}`),
+            [...new Set(input.sharedRoleScope ?? [actor.role])],
+            new Date().toISOString()
+          ]
+        );
+        const view = mapView(saved.rows[0] as PgRow);
+        await this.appendAudit(client, actor, 'view_created', 'view', view.id);
+        return view;
+      })
+    );
+  }
+
+  async getViewForRole(id: string, role: Role): Promise<SavedView> {
+    const result = await this.pool.query(
+      `SELECT id, org_id, name, filter_json, owner_id, shared_role_scope
+       FROM views
+       WHERE id = $1`,
+      [id]
+    );
+    if (!result.rows[0]) {
+      throw new NotFoundException(`View ${id} was not found.`);
+    }
+    const view = mapView(result.rows[0] as PgRow);
+    if (role !== 'admin' && !view.sharedRoleScope.includes(role)) {
+      throw new ForbiddenException(`View ${id} is not shared with ${role}.`);
+    }
+    return view;
+  }
+
   private async withTransaction<T>(operation: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
     try {
@@ -469,6 +534,31 @@ function mapAuditLogEntry(row: PgRow): AuditLogEntry {
     hash: String(row.hash),
     createdAt: toIso(row.created_at)
   };
+}
+
+function mapView(row: PgRow): SavedView {
+  return {
+    id: String(row.id),
+    orgId: String(row.org_id),
+    name: String(row.name),
+    filterJson: toObject(row.filter_json),
+    ownerId: String(row.owner_id),
+    sharedRoleScope: toStringArray(row.shared_role_scope) as Role[]
+  };
+}
+
+function toObject(value: unknown): Record<string, unknown> {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  }
+  return {};
 }
 
 function toStringArray(value: unknown): string[] {

@@ -19,6 +19,7 @@ import { CreateAccountDto, CreateAccountGroupDto, PatchAccountGroupDto } from '.
 import { CreateCloudCredentialDto, RotateCloudCredentialDto } from './dto/cloud-credential.dto';
 import { PageQueryDto } from './dto/page-query.dto';
 import { CreateRoleDto, CreateUserDto } from './dto/user.dto';
+import { CreateViewDto } from './dto/view.dto';
 import { GovernanceService } from './governance.service';
 
 interface AuthenticatedRequest {
@@ -142,6 +143,22 @@ export class GovernanceController {
   @RequiredRole('admin')
   listAuditLog(@Query() query: PageQueryDto) {
     return this.governance.listAuditLog(query);
+  }
+
+  @Get('views')
+  @RequiredRole('viewer')
+  listViews(@Query() query: PageQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.governance.listViews(query, request.user);
+  }
+
+  @Post('views')
+  @RequiredRole('analyst')
+  createView(
+    @Body() body: CreateViewDto,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey: string | undefined
+  ) {
+    return this.governance.createView(body, request.user, requireIdempotencyKey(idempotencyKey));
   }
 }
 

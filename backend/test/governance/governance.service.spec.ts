@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { GovernanceService } from '../../src/governance/governance.service';
 import { InMemoryGovernanceRepository } from '../../src/governance/in-memory-governance.repository';
 import type { AuthenticatedUser } from '../../src/security/token-verifier';
@@ -122,6 +122,28 @@ describe('GovernanceService', () => {
         hash: expect.any(String),
         prevHash: expect.any(String)
       })
+    );
+  });
+
+  it('creates role-shared views and applies their filters to scoped queries', async () => {
+    const view = await service.createView(
+      {
+        name: 'AWS Viewer Scope',
+        filterJson: { provider: 'aws', ignored: 'nope' },
+        sharedRoleScope: ['viewer']
+      },
+      actor,
+      'view-create-key'
+    );
+
+    expect((await service.listViews({ page: 1, pageSize: 25 }, { subject: 'viewer-user', role: 'viewer' })).data[0]).toEqual(
+      expect.objectContaining({ id: view.id, filterJson: { provider: 'aws' } })
+    );
+    await expect(
+      service.applyViewScope({ provider: 'azure' as const, page: 1, pageSize: 25 }, { subject: 'viewer-user', role: 'viewer' }, view.id)
+    ).resolves.toMatchObject({ provider: 'aws', page: 1, pageSize: 25 });
+    await expect(service.getViewForRole(view.id, { subject: 'analyst-user', role: 'analyst' })).rejects.toThrow(
+      ForbiddenException
     );
   });
 });

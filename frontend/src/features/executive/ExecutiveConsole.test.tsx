@@ -65,6 +65,12 @@ function createClient(overrides: Partial<CostalyxClient> = {}): CostalyxClient {
       gcp: { monthlyCostUsd: '34.67500000', isEstimate: true, assumptions: ['rate from workloadSpec'] },
       tolerancePercent: '0.0000'
     }),
+    listReports: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
+    runReport: async () => ({ reportId: 'report-1', generatedAt: '2026-07-04T00:00:00.000Z', rows: [] }),
+    listViews: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
+    createView: async () => {
+      throw new Error('not expected');
+    },
     ...overrides
   };
 }

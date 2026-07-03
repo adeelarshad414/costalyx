@@ -152,6 +152,7 @@ paths:
       operationId: listCostRecords
       x-required-role: viewer
       parameters:
+        - $ref: "#/components/parameters/ActiveViewId"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
         - $ref: "#/components/parameters/Provider"
@@ -191,6 +192,7 @@ paths:
       operationId: getCostRecordsSummary
       x-required-role: viewer
       parameters:
+        - $ref: "#/components/parameters/ActiveViewId"
         - $ref: "#/components/parameters/Provider"
         - name: accountId
           in: query
@@ -223,6 +225,8 @@ paths:
       summary: Export normalized cost records as CSV
       operationId: exportCostRecords
       x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/ActiveViewId"
       responses:
         "200":
           description: CSV export of normalized cost records
@@ -242,6 +246,7 @@ paths:
       operationId: getCostExplorerFlow
       x-required-role: viewer
       parameters:
+        - $ref: "#/components/parameters/ActiveViewId"
         - $ref: "#/components/parameters/Provider"
         - $ref: "#/components/parameters/DateFrom"
         - $ref: "#/components/parameters/DateTo"
@@ -739,6 +744,7 @@ paths:
       x-required-role: viewer
       parameters:
         - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/ActiveViewId"
         - $ref: "#/components/parameters/DateFrom"
         - $ref: "#/components/parameters/DateTo"
       responses:
@@ -1025,6 +1031,14 @@ components:
         type: string
         minLength: 16
         maxLength: 128
+    ActiveViewId:
+      name: X-Costalyx-View-Id
+      in: header
+      required: false
+      description: Optional saved View applied as a session-wide data scope.
+      schema:
+        type: string
+        format: uuid
     Page:
       name: page
       in: query

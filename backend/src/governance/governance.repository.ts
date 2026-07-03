@@ -6,9 +6,11 @@ import type {
   AccountReference,
   AuditLogEntry,
   CloudCredentialReference,
+  CreateViewInput,
   FixedRoleRecord,
   PageQuery,
   Paginated,
+  SavedView,
   UserRecord
 } from './governance.types';
 import type { AuthenticatedUser } from '../security/token-verifier';
@@ -57,4 +59,7 @@ export interface GovernanceRepository {
   createUser(input: CreateUserDto, actor: AuthenticatedUser, idempotencyKey: string): Promise<UserRecord>;
   listRoles(): Promise<{ data: FixedRoleRecord[] }>;
   listAuditLog(query: PageQuery): Promise<Paginated<AuditLogEntry>>;
+  listViews(query: PageQuery, role: AuthenticatedUser['role']): Promise<Paginated<SavedView>>;
+  createView(input: CreateViewInput, actor: AuthenticatedUser, idempotencyKey: string): Promise<SavedView>;
+  getViewForRole(id: string, role: AuthenticatedUser['role']): Promise<SavedView>;
 }

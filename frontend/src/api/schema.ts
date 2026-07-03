@@ -965,6 +965,8 @@ export interface components {
         Id: string;
         /** @description Required on every mutating request; duplicate keys return the original result. */
         IdempotencyKey: string;
+        /** @description Optional saved View applied as a session-wide data scope. */
+        ActiveViewId: string;
         Page: number;
         PageSize: number;
         Provider: components["schemas"]["CloudProvider"];
@@ -1116,7 +1118,10 @@ export interface operations {
                 to?: components["parameters"]["DateTo"];
                 dimension?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Optional saved View applied as a session-wide data scope. */
+                "X-Costalyx-View-Id"?: components["parameters"]["ActiveViewId"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -1145,7 +1150,10 @@ export interface operations {
                 to?: components["parameters"]["DateTo"];
                 dimension?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Optional saved View applied as a session-wide data scope. */
+                "X-Costalyx-View-Id"?: components["parameters"]["ActiveViewId"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -1168,7 +1176,10 @@ export interface operations {
     exportCostRecords: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Optional saved View applied as a session-wide data scope. */
+                "X-Costalyx-View-Id"?: components["parameters"]["ActiveViewId"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -1197,7 +1208,10 @@ export interface operations {
                 dimensions?: string[];
                 costFloorUsd?: components["schemas"]["MoneyString"];
             };
-            header?: never;
+            header?: {
+                /** @description Optional saved View applied as a session-wide data scope. */
+                "X-Costalyx-View-Id"?: components["parameters"]["ActiveViewId"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -1739,7 +1753,10 @@ export interface operations {
                 from?: components["parameters"]["DateFrom"];
                 to?: components["parameters"]["DateTo"];
             };
-            header?: never;
+            header?: {
+                /** @description Optional saved View applied as a session-wide data scope. */
+                "X-Costalyx-View-Id"?: components["parameters"]["ActiveViewId"];
+            };
             path: {
                 id: components["parameters"]["Id"];
             };

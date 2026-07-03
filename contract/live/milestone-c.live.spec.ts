@@ -55,9 +55,9 @@ describeIfLive('Milestone C live backend contract', () => {
     const before = await request(`/api/v1/cost-records/summary?dimension=${dimensionId}`, {
       headers: authHeaders('viewer')
     });
-    await expect(before.json()).resolves.toEqual(
-      expect.objectContaining({ totalCostUsd: '0.00000000', resourceCount: 0, untaggedCount: 3 })
-    );
+    const beforeSummary = await before.json();
+    expect(beforeSummary).toEqual(expect.objectContaining({ totalCostUsd: '0.00000000', resourceCount: 0 }));
+    expect(beforeSummary.untaggedCount).toBeGreaterThanOrEqual(3);
 
     const tag = await request('/api/v1/resource-tags', {
       method: 'POST',
@@ -69,8 +69,8 @@ describeIfLive('Milestone C live backend contract', () => {
     const after = await request(`/api/v1/cost-records/summary?dimension=${dimensionId}`, {
       headers: authHeaders('viewer')
     });
-    await expect(after.json()).resolves.toEqual(
-      expect.objectContaining({ totalCostUsd: '0.41600000', resourceCount: 1, untaggedCount: 2 })
-    );
+    const afterSummary = await after.json();
+    expect(afterSummary).toEqual(expect.objectContaining({ totalCostUsd: '0.41600000', resourceCount: 1 }));
+    expect(afterSummary.untaggedCount).toBe(beforeSummary.untaggedCount - 1);
   });
 });

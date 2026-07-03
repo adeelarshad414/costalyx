@@ -123,6 +123,9 @@ export class InMemoryCostModelRepository implements CostModelRepository {
   async getExplorerFlow(
     query: {
       provider?: CloudProvider;
+      accountId?: string;
+      service?: string;
+      dimension?: string;
       from?: string;
       to?: string;
       dimensions?: CostExplorerDimension[];

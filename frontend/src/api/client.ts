@@ -31,8 +31,14 @@ type ExecutiveSummaryResponse =
   paths['/executive-summary']['get']['responses']['200']['content']['application/json'];
 type TcoEstimateRequest = paths['/tco/estimate']['post']['requestBody']['content']['application/json'];
 type TcoEstimateResponse = paths['/tco/estimate']['post']['responses']['200']['content']['application/json'];
+type ReportsResponse = paths['/reports']['get']['responses']['200']['content']['application/json'];
+type ReportRunResponse = paths['/reports/{id}/run']['get']['responses']['200']['content']['application/json'];
+type ViewsResponse = paths['/views']['get']['responses']['200']['content']['application/json'];
+type ViewCreateRequest = paths['/views']['post']['requestBody']['content']['application/json'];
+type ViewResponse = paths['/views']['post']['responses']['201']['content']['application/json'];
 type CostRecordPathQuery = NonNullable<paths['/cost-records']['get']['parameters']['query']>;
 type CloudProvider = NonNullable<CostRecordPathQuery['provider']>;
+type ReportCategory = NonNullable<NonNullable<paths['/reports']['get']['parameters']['query']>['category']>;
 type RecommendationStatus = NonNullable<
   NonNullable<paths['/recommendations']['get']['parameters']['query']>['status']
 >;
@@ -46,6 +52,7 @@ interface CostRecordQuery {
   dimension?: string;
   page?: number;
   pageSize?: number;
+  activeViewId?: string;
 }
 
 interface CostExplorerFlowQuery {
@@ -54,6 +61,7 @@ interface CostExplorerFlowQuery {
   to?: string;
   dimensions?: string[];
   costFloorUsd?: string;
+  activeViewId?: string;
 }
 
 interface RecommendationsQuery {
@@ -67,12 +75,25 @@ interface ExecutiveSummaryQuery {
   budgetBaselineUsd?: string;
 }
 
+interface ReportsQuery {
+  category?: ReportCategory;
+  page?: number;
+  pageSize?: number;
+}
+
+interface ReportRunQuery {
+  id: string;
+  activeViewId?: string;
+  from?: string;
+  to?: string;
+}
+
 export interface CostalyxClient {
   listCostRecords(query?: CostRecordQuery): Promise<CostRecordListResponse>;
   getCostSummary(query?: Omit<CostRecordQuery, 'page' | 'pageSize'>): Promise<CostSummaryResponse>;
   getCostExplorerFlow(query?: CostExplorerFlowQuery): Promise<CostExplorerFlowResponse>;
   createIngestionBatch(input: IngestionBatchCreateRequest & { idempotencyKey: string }): Promise<IngestionBatchResponse>;
-  exportCostRecords(): Promise<string>;
+  exportCostRecords(input?: { activeViewId?: string }): Promise<string>;
   listRoles(): Promise<RolesResponse>;
   listDimensions(): Promise<DimensionsResponse>;
   createDimension(input: DimensionCreateRequest & { idempotencyKey: string }): Promise<DimensionResponse>;
@@ -89,6 +110,10 @@ export interface CostalyxClient {
   getExecutiveSummary(query?: ExecutiveSummaryQuery): Promise<ExecutiveSummaryResponse>;
   exportExecutiveSummaryPdf(): Promise<string>;
   estimateTco(input: TcoEstimateRequest & { idempotencyKey: string }): Promise<TcoEstimateResponse>;
+  listReports(query?: ReportsQuery): Promise<ReportsResponse>;
+  runReport(query: ReportRunQuery): Promise<ReportRunResponse>;
+  listViews(query?: { page?: number; pageSize?: number }): Promise<ViewsResponse>;
+  createView(input: ViewCreateRequest & { idempotencyKey: string }): Promise<ViewResponse>;
 }
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
@@ -108,6 +133,7 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
     async listCostRecords(query) {
       const headers: Record<string, string> = {
         Accept: 'application/json',
+        ...activeViewHeader(query?.activeViewId),
         ...(await authHeaders())
       };
       const params = costRecordParams(query);
@@ -124,6 +150,7 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
       const response = await fetch(`${baseUrl}/cost-records/summary${queryString(params)}`, {
         headers: {
           Accept: 'application/json',
+          ...activeViewHeader(query?.activeViewId),
           ...(await authHeaders())
         }
       });
@@ -145,6 +172,7 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
       const response = await fetch(`${baseUrl}/cost-explorer/flow${queryString(params)}`, {
         headers: {
           Accept: 'application/json',
+          ...activeViewHeader(query?.activeViewId),
           ...(await authHeaders())
         }
       });
@@ -154,10 +182,11 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
       return response.json() as Promise<CostExplorerFlowResponse>;
     },
 
-    async exportCostRecords() {
+    async exportCostRecords(input) {
       const response = await fetch(`${baseUrl}/cost-records/export`, {
         headers: {
           Accept: 'text/csv',
+          ...activeViewHeader(input?.activeViewId),
           ...(await authHeaders())
         }
       });
@@ -369,6 +398,73 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
         throw new Error(`TCO estimate request failed with ${response.status}`);
       }
       return response.json() as Promise<TcoEstimateResponse>;
+    },
+
+    async listReports(query) {
+      const params = new URLSearchParams();
+      appendParam(params, 'category', query?.category);
+      appendParam(params, 'page', query?.page);
+      appendParam(params, 'pageSize', query?.pageSize);
+      const response = await fetch(`${baseUrl}/reports${queryString(params)}`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Reports request failed with ${response.status}`);
+      }
+      return response.json() as Promise<ReportsResponse>;
+    },
+
+    async runReport({ id, activeViewId, from, to }) {
+      const params = new URLSearchParams();
+      appendParam(params, 'from', from);
+      appendParam(params, 'to', to);
+      const response = await fetch(`${baseUrl}/reports/${id}/run${queryString(params)}`, {
+        headers: {
+          Accept: 'application/json',
+          ...activeViewHeader(activeViewId),
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Report run request failed with ${response.status}`);
+      }
+      return response.json() as Promise<ReportRunResponse>;
+    },
+
+    async listViews(query) {
+      const params = new URLSearchParams();
+      appendParam(params, 'page', query?.page);
+      appendParam(params, 'pageSize', query?.pageSize);
+      const response = await fetch(`${baseUrl}/views${queryString(params)}`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Views request failed with ${response.status}`);
+      }
+      return response.json() as Promise<ViewsResponse>;
+    },
+
+    async createView({ idempotencyKey, ...body }) {
+      const response = await fetch(`${baseUrl}/views`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+          ...(await authHeaders())
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error(`View create request failed with ${response.status}`);
+      }
+      return response.json() as Promise<ViewResponse>;
     }
   };
 }
@@ -401,4 +497,8 @@ function appendParam(params: URLSearchParams, key: string, value: string | numbe
   if (value !== undefined && value !== '') {
     params.set(key, String(value));
   }
+}
+
+function activeViewHeader(activeViewId: string | undefined): Record<string, string> {
+  return activeViewId ? { 'X-Costalyx-View-Id': activeViewId } : {};
 }

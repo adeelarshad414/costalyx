@@ -8,6 +8,7 @@ import { GovernanceModule } from './governance/governance.module';
 import { HealthController } from './health.controller';
 import { IngestionModule } from './ingestion/ingestion.module';
 import { OptimizationModule } from './optimization/optimization.module';
+import { ReportingModule } from './reporting/reporting.module';
 import { OidcTokenVerifier } from './security/oidc-token-verifier';
 import { RolesGuard } from './security/roles.guard';
 import { AUTH_TOKEN_VERIFIER } from './security/token-verifier';
@@ -20,7 +21,8 @@ import { AUTH_TOKEN_VERIFIER } from './security/token-verifier';
     IngestionModule,
     GovernanceModule,
     OptimizationModule,
-    ExecutiveModule
+    ExecutiveModule,
+    ReportingModule
   ],
   controllers: [HealthController],
   providers: [

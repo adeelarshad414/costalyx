@@ -51,6 +51,30 @@ export interface AuditLogEntry {
   createdAt: string;
 }
 
+export interface ViewFilter {
+  provider?: CloudProvider;
+  accountId?: string;
+  service?: string;
+  dimension?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface SavedView {
+  id: string;
+  orgId: string;
+  name: string;
+  filterJson: ViewFilter;
+  ownerId: string;
+  sharedRoleScope: Role[];
+}
+
+export interface CreateViewInput {
+  name: string;
+  filterJson: ViewFilter;
+  sharedRoleScope?: Role[];
+}
+
 export interface PageQuery {
   page: number;
   pageSize: number;

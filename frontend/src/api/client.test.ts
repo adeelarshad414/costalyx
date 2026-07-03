@@ -388,4 +388,96 @@ describe('createCostalyxClient', () => {
       })
     );
   });
+
+  it('sends bearer auth, active view scope, and idempotency for reporting views', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [{ id: 'report-1', name: 'Cost Detail', category: 'cost' }],
+          meta: { total: 1, page: 1, pageSize: 25 }
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          reportId: 'report-1',
+          generatedAt: '2026-07-04T00:00:00.000Z',
+          rows: [{ provider: 'aws', resourceId: 'db-prod-001', costTotalUsd: '49.64000000' }]
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [{ id: 'view-1', name: 'AWS Viewer Scope', filterJson: { provider: 'aws' }, sharedRoleScope: ['viewer'] }],
+          meta: { total: 1, page: 1, pageSize: 25 }
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: 'view-1',
+          name: 'AWS Viewer Scope',
+          filterJson: { provider: 'aws' },
+          sharedRoleScope: ['viewer']
+        })
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createCostalyxClient({
+      baseUrl: 'http://api.test/api/v1',
+      getAccessToken: async () => 'signed-keycloak-token'
+    });
+
+    await client.listReports({ category: 'cost' });
+    await client.runReport({ id: 'report-1', activeViewId: 'view-1' });
+    await client.listViews();
+    await client.createView({
+      name: 'AWS Viewer Scope',
+      filterJson: { provider: 'aws' },
+      sharedRoleScope: ['viewer'],
+      idempotencyKey: 'view-key-1'
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'http://api.test/api/v1/reports?category=cost',
+      expect.objectContaining({
+        headers: {
+          Accept: 'application/json',
+          Authorization: 'Bearer signed-keycloak-token'
+        }
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'http://api.test/api/v1/reports/report-1/run',
+      expect.objectContaining({
+        headers: {
+          Accept: 'application/json',
+          Authorization: 'Bearer signed-keycloak-token',
+          'X-Costalyx-View-Id': 'view-1'
+        }
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      'http://api.test/api/v1/views',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          Authorization: 'Bearer signed-keycloak-token',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'view-key-1'
+        },
+        body: JSON.stringify({
+          name: 'AWS Viewer Scope',
+          filterJson: { provider: 'aws' },
+          sharedRoleScope: ['viewer']
+        })
+      })
+    );
+  });
 });

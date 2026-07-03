@@ -49,6 +49,9 @@ export interface CostModelRepository {
 
   getExplorerFlow(query?: {
     provider?: CloudProvider;
+    accountId?: string;
+    service?: string;
+    dimension?: string;
     from?: string;
     to?: string;
     dimensions?: CostExplorerDimension[];

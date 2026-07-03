@@ -3,6 +3,7 @@ import type { AuthenticatedUser } from '../security/token-verifier';
 import type { CreateAccountDto, CreateAccountGroupDto, PatchAccountGroupDto } from './dto/account.dto';
 import type { CreateCloudCredentialDto, RotateCloudCredentialDto } from './dto/cloud-credential.dto';
 import type { CreateUserDto } from './dto/user.dto';
+import type { CreateViewDto } from './dto/view.dto';
 import { GOVERNANCE_REPOSITORY, type GovernanceRepository } from './governance.repository';
 import type {
   AccountGroup,
@@ -11,6 +12,8 @@ import type {
   CloudCredentialReference,
   PageQuery,
   Paginated,
+  SavedView,
+  ViewFilter,
   UserRecord
 } from './governance.types';
 
@@ -95,4 +98,56 @@ export class GovernanceService {
   listAuditLog(query: PageQuery): Promise<Paginated<AuditLogEntry>> {
     return this.repository.listAuditLog(query);
   }
+
+  listViews(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<SavedView>> {
+    return this.repository.listViews(query, actor.role);
+  }
+
+  createView(input: CreateViewDto, actor: AuthenticatedUser, idempotencyKey: string): Promise<SavedView> {
+    return this.repository.createView(
+      {
+        ...input,
+        filterJson: normalizeViewFilter(input.filterJson),
+        sharedRoleScope: input.sharedRoleScope?.length ? input.sharedRoleScope : [actor.role]
+      },
+      actor,
+      idempotencyKey
+    );
+  }
+
+  getViewForRole(id: string, actor: AuthenticatedUser): Promise<SavedView> {
+    return this.repository.getViewForRole(id, actor.role);
+  }
+
+  async applyViewScope<T extends object>(query: T, actor: AuthenticatedUser, viewId?: string): Promise<T> {
+    if (!viewId) {
+      return query;
+    }
+    const view = await this.getViewForRole(viewId, actor);
+    return mergeViewScope(query, view.filterJson);
+  }
+}
+
+function mergeViewScope<T extends object>(query: T, filter: ViewFilter): T {
+  const scoped = { ...query } as Record<string, unknown>;
+  for (const key of ['provider', 'accountId', 'service', 'dimension', 'from', 'to'] as const) {
+    const value = filter[key];
+    if (value) {
+      scoped[key] = value;
+    }
+  }
+  return scoped as T;
+}
+
+function normalizeViewFilter(value: Record<string, unknown>): ViewFilter {
+  const filter: ViewFilter = {};
+  if (value.provider === 'aws' || value.provider === 'azure' || value.provider === 'gcp') {
+    filter.provider = value.provider;
+  }
+  for (const key of ['accountId', 'service', 'dimension', 'from', 'to'] as const) {
+    if (typeof value[key] === 'string' && value[key]) {
+      filter[key] = value[key];
+    }
+  }
+  return filter;
 }

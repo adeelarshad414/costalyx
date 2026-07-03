@@ -8,6 +8,7 @@ import { GovernanceConsole } from './features/governance/GovernanceConsole';
 import { IngestionOverview } from './features/ingestion/IngestionOverview';
 import { InsightsConsole } from './features/insights/InsightsConsole';
 import { OptimizationConsole } from './features/optimization/OptimizationConsole';
+import { ReportingConsole } from './features/reporting/ReportingConsole';
 
 export function App() {
   const auth = useAuth();
@@ -34,6 +35,7 @@ export function App() {
         <ExecutiveConsole client={client} />
         <InsightsConsole client={client} />
         <OptimizationConsole client={client} />
+        <ReportingConsole client={client} />
         <AllocationConsole client={client} />
         <GovernanceConsole client={client} />
       </AuthBoundary>

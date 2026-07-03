@@ -273,6 +273,9 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
   async getExplorerFlow(
     query: {
       provider?: CloudProvider;
+      accountId?: string;
+      service?: string;
+      dimension?: string;
       from?: string;
       to?: string;
       dimensions?: CostExplorerDimension[];
@@ -281,6 +284,9 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
   ) {
     const records = await this.listRecords({
       provider: query.provider,
+      accountId: query.accountId,
+      service: query.service,
+      dimension: query.dimension,
       from: query.from,
       to: query.to,
       page: 1,

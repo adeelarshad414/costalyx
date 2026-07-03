@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { InMemoryAuditLogStore, type AuditLogStore } from '../audit/audit-log.store';
 import { stableId } from '../cost-model/stable-id';
@@ -11,8 +11,10 @@ import type {
   AccountGroup,
   AccountReference,
   CloudCredentialReference,
+  CreateViewInput,
   PageQuery,
   Paginated,
+  SavedView,
   UserRecord
 } from './governance.types';
 
@@ -22,6 +24,7 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
   private readonly accountGroups = new Map<string, AccountGroup>();
   private readonly credentials = new Map<string, CloudCredentialReference>();
   private readonly users = new Map<string, UserRecord>();
+  private readonly views = new Map<string, SavedView>();
   private readonly idempotentResponses = new Map<string, unknown>();
 
   constructor(private readonly auditLog: AuditLogStore = new InMemoryAuditLogStore()) {}
@@ -176,6 +179,40 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
 
   async listAuditLog(query: PageQuery) {
     return this.auditLog.list(query);
+  }
+
+  async listViews(query: PageQuery, role: AuthenticatedUser['role']): Promise<Paginated<SavedView>> {
+    return paginate(
+      [...this.views.values()].filter((view) => role === 'admin' || view.sharedRoleScope.includes(role)),
+      query
+    );
+  }
+
+  async createView(input: CreateViewInput, actor: AuthenticatedUser, idempotencyKey: string): Promise<SavedView> {
+    return this.withIdempotency(idempotencyKey, () => {
+      const view: SavedView = {
+        id: randomUUID(),
+        orgId: stableId('org:default'),
+        name: input.name,
+        filterJson: input.filterJson,
+        ownerId: stableId(`actor:${actor.subject}`),
+        sharedRoleScope: [...new Set(input.sharedRoleScope ?? [actor.role])]
+      };
+      this.views.set(view.id, view);
+      void this.auditLog.append(actor, 'view_created', 'view', view.id);
+      return view;
+    });
+  }
+
+  async getViewForRole(id: string, role: AuthenticatedUser['role']): Promise<SavedView> {
+    const view = this.views.get(id);
+    if (!view) {
+      throw new NotFoundException(`View ${id} was not found.`);
+    }
+    if (role !== 'admin' && !view.sharedRoleScope.includes(role)) {
+      throw new ForbiddenException(`View ${id} is not shared with ${role}.`);
+    }
+    return view;
   }
 
   private withIdempotency<T>(idempotencyKey: string, create: () => T): T {
