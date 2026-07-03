@@ -1,36 +1,39 @@
 openapi: 3.1.0
 info:
   title: Costalyx API
-  version: 0.1.0
-  description: |
-    Skeleton OpenAPI contract for Costalyx.
-
-    This file is checked in as the contract source consumed by generated
-    TypeScript clients. Once the NestJS backend exists, builds should
-    regenerate this contract from decorators and fail if the generated output
-    drifts from the committed API surface.
+  version: 1.0.0
+  description: >
+    Multi-cloud cost intelligence platform API. This is a scaffolding
+    skeleton generated from 02-DATA-MODEL.md and 03-API-CONTRACTS.md.
+    Codex should extend, not replace, this structure. Additive-only changes
+    once implementation begins (see 02-DATA-MODEL.md migration discipline).
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 servers:
-  - url: http://localhost:3000
-    description: Local development backend
+  - url: /api/v1
+    description: Same-origin API v1
+  - url: http://localhost:3000/api/v1
+    description: Local development API v1
 tags:
-  - name: Health
-  - name: Ingestion
-  - name: Cost Data
-  - name: Accounts
-  - name: Dimensions
-  - name: Optimization
-  - name: Reporting
-  - name: TCO
-  - name: Admin
+  - name: health
+  - name: ingestion
+  - name: cost-data
+  - name: accounts
+  - name: dimensions
+  - name: optimization
+  - name: reporting
+  - name: tco
+  - name: admin
 security:
   - bearerAuth: []
 paths:
   /healthz:
     get:
-      tags: [Health]
+      servers:
+        - url: http://localhost:3000
+          description: Local backend root
+      tags: [health]
       summary: Liveness check
       operationId: getHealthz
       security: []
@@ -44,7 +47,10 @@ paths:
 
   /metrics:
     get:
-      tags: [Health]
+      servers:
+        - url: http://localhost:3000
+          description: Local backend root
+      tags: [health]
       summary: Prometheus metrics
       operationId: getMetrics
       x-required-role: admin
@@ -60,9 +66,9 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/v1/ingestion/batches:
+  /ingestion/batches:
     post:
-      tags: [Ingestion]
+      tags: [ingestion]
       summary: Trigger a manual ingestion run
       operationId: createIngestionBatch
       x-required-role: admin
@@ -92,9 +98,9 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
-  /api/v1/ingestion/batches/{id}:
+  /ingestion/batches/{id}:
     get:
-      tags: [Ingestion]
+      tags: [ingestion]
       summary: Get ingestion batch status
       operationId: getIngestionBatch
       x-required-role: viewer
@@ -114,9 +120,9 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/v1/ingestion/batches/{id}/errors:
+  /ingestion/batches/{id}/errors:
     get:
-      tags: [Ingestion]
+      tags: [ingestion]
       summary: List row-level ingestion errors
       operationId: listIngestionBatchErrors
       x-required-role: analyst
@@ -138,9 +144,9 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/v1/cost-records:
+  /cost-records:
     get:
-      tags: [Cost Data]
+      tags: [cost-data]
       summary: List normalized cost records
       operationId: listCostRecords
       x-required-role: viewer
@@ -177,9 +183,9 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/v1/cost-records/summary:
+  /cost-records/summary:
     get:
-      tags: [Cost Data]
+      tags: [cost-data]
       summary: Get pre-aggregated cost totals
       operationId: getCostRecordsSummary
       x-required-role: viewer
@@ -210,9 +216,9 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/v1/cost-explorer/flow:
+  /cost-explorer/flow:
     get:
-      tags: [Cost Data]
+      tags: [cost-data]
       summary: Get Sankey-shaped cost explorer flow
       operationId: getCostExplorerFlow
       x-required-role: viewer
@@ -245,9 +251,9 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/v1/accounts:
+  /accounts:
     get:
-      tags: [Accounts]
+      tags: [accounts]
       summary: List cloud billing accounts
       operationId: listAccounts
       x-required-role: viewer
@@ -267,7 +273,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
     post:
-      tags: [Accounts]
+      tags: [accounts]
       summary: Create a cloud billing account reference
       operationId: createAccount
       x-required-role: admin
@@ -295,9 +301,9 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /api/v1/account-groups:
+  /account-groups:
     get:
-      tags: [Accounts]
+      tags: [accounts]
       summary: List account groups
       operationId: listAccountGroups
       x-required-role: viewer
@@ -316,7 +322,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
     post:
-      tags: [Accounts]
+      tags: [accounts]
       summary: Create an account group
       operationId: createAccountGroup
       x-required-role: admin
@@ -344,9 +350,9 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /api/v1/account-groups/{id}:
+  /account-groups/{id}:
     patch:
-      tags: [Accounts]
+      tags: [accounts]
       summary: Update an account group
       operationId: updateAccountGroup
       x-required-role: admin
@@ -375,7 +381,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
     delete:
-      tags: [Accounts]
+      tags: [accounts]
       summary: Delete an account group
       operationId: deleteAccountGroup
       x-required-role: admin
@@ -392,9 +398,9 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/v1/dimensions:
+  /dimensions:
     get:
-      tags: [Dimensions]
+      tags: [dimensions]
       summary: List custom dimensions
       operationId: listDimensions
       x-required-role: viewer
@@ -413,7 +419,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
     post:
-      tags: [Dimensions]
+      tags: [dimensions]
       summary: Create an unbounded custom dimension
       operationId: createDimension
       x-required-role: analyst
@@ -441,9 +447,9 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /api/v1/dimensions/{id}/mappings:
+  /dimensions/{id}/mappings:
     post:
-      tags: [Dimensions]
+      tags: [dimensions]
       summary: Add a tag mapping to a dimension
       operationId: createDimensionMapping
       x-required-role: analyst
@@ -472,9 +478,9 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/v1/resource-tags:
+  /resource-tags:
     get:
-      tags: [Dimensions]
+      tags: [dimensions]
       summary: List tags for a resource
       operationId: listResourceTags
       x-required-role: viewer
@@ -500,9 +506,9 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/v1/recommendations:
+  /recommendations:
     get:
-      tags: [Optimization]
+      tags: [optimization]
       summary: List optimization recommendations
       operationId: listRecommendations
       x-required-role: viewer
@@ -525,9 +531,9 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/v1/recommendations/{id}:
+  /recommendations/{id}:
     patch:
-      tags: [Optimization]
+      tags: [optimization]
       summary: Update recommendation status
       operationId: updateRecommendation
       x-required-role: analyst
@@ -556,9 +562,9 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/v1/realized-savings:
+  /realized-savings:
     get:
-      tags: [Optimization]
+      tags: [optimization]
       summary: List realized savings ledger rows
       operationId: listRealizedSavings
       x-required-role: viewer
@@ -577,9 +583,9 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/v1/reports:
+  /reports:
     get:
-      tags: [Reporting]
+      tags: [reporting]
       summary: List canned reports
       operationId: listReports
       x-required-role: viewer
@@ -602,9 +608,9 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/v1/reports/{id}/run:
+  /reports/{id}/run:
     get:
-      tags: [Reporting]
+      tags: [reporting]
       summary: Run a canned report
       operationId: runReport
       x-required-role: viewer
@@ -628,9 +634,9 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/v1/views:
+  /views:
     get:
-      tags: [Reporting]
+      tags: [reporting]
       summary: List saved views
       operationId: listViews
       x-required-role: viewer
@@ -649,7 +655,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
     post:
-      tags: [Reporting]
+      tags: [reporting]
       summary: Create a saved view
       operationId: createView
       x-required-role: analyst
@@ -677,9 +683,9 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /api/v1/tco/estimate:
+  /tco/estimate:
     post:
-      tags: [TCO]
+      tags: [tco]
       summary: Estimate cross-cloud cost for a workload
       operationId: estimateTco
       x-required-role: viewer
@@ -705,9 +711,9 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/v1/users:
+  /users:
     get:
-      tags: [Admin]
+      tags: [admin]
       summary: List users
       operationId: listUsers
       x-required-role: admin
@@ -726,7 +732,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
     post:
-      tags: [Admin]
+      tags: [admin]
       summary: Create user
       operationId: createUser
       x-required-role: admin
@@ -754,9 +760,9 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /api/v1/roles:
+  /roles:
     get:
-      tags: [Admin]
+      tags: [admin]
       summary: List roles
       operationId: listRoles
       x-required-role: admin
@@ -778,7 +784,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
     post:
-      tags: [Admin]
+      tags: [admin]
       summary: Create role
       operationId: createRole
       x-required-role: admin
@@ -806,9 +812,9 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /api/v1/audit-log:
+  /audit-log:
     get:
-      tags: [Admin]
+      tags: [admin]
       summary: List immutable audit log entries
       operationId: listAuditLog
       x-required-role: admin

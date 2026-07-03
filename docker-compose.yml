@@ -1,8 +1,14 @@
 name: costalyx
 
+# Costalyx local development stack - see 09-DEPLOYMENT.md.
+# Run: make dev-up  (or: docker compose up -d)
+# Seeds: dev Keycloak realm with fixed roles, dev Vault path, fixture cost data.
+
 services:
   postgres:
     image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    container_name: costalyx-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-costalyx_dev}
       POSTGRES_USER: ${POSTGRES_USER:-costalyx}
@@ -11,6 +17,7 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -21,7 +28,9 @@ services:
 
   keycloak:
     image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.2}
-    command: ["start-dev", "--http-port=8080", "--hostname-strict=false"]
+    container_name: costalyx-keycloak
+    restart: unless-stopped
+    command: ["start-dev", "--import-realm", "--http-port=8080", "--hostname-strict=false"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-CHANGE_ME_DEV_ONLY}
@@ -30,6 +39,8 @@ services:
     ports:
       - "${KEYCLOAK_PORT:-8080}:8080"
       - "${KEYCLOAK_MANAGEMENT_PORT:-9000}:9000"
+    volumes:
+      - ./deploy/keycloak/costalyx-realm.json:/opt/keycloak/data/import/costalyx-realm.json:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,6 +49,8 @@ services:
 
   vault:
     image: ${VAULT_IMAGE:-hashicorp/vault:1.17}
+    container_name: costalyx-vault
+    restart: unless-stopped
     cap_add:
       - IPC_LOCK
     environment:
@@ -55,6 +68,8 @@ services:
 
   redpanda:
     image: ${REDPANDA_IMAGE:-redpandadata/redpanda:v24.3.1}
+    container_name: costalyx-redpanda
+    restart: unless-stopped
     command:
       - redpanda
       - start
@@ -86,20 +101,30 @@ services:
       - costalyx
 
   backend:
-    profiles: ["app"]
     build:
       context: ./backend
-      target: dev
+      dockerfile: Dockerfile.dev
+    container_name: costalyx-backend
+    restart: unless-stopped
     command: ["npm", "run", "start:dev"]
     environment:
       APP_ENV: local
+      NODE_ENV: development
       PORT: "3000"
       DATABASE_URL: postgresql://costalyx:CHANGE_ME_DEV_ONLY@postgres:5432/costalyx_dev
       KEYCLOAK_ISSUER_URL: http://keycloak:8080/realms/costalyx-dev
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: costalyx-dev
       VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID:-CHANGE_ME_DEV_ONLY}
       REDPANDA_BROKERS: redpanda:9092
+      USE_MOCKS: "false"
+      SEED_FIXTURE_DATA: "true"
     ports:
       - "${BACKEND_PORT:-3000}:3000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
@@ -113,10 +138,11 @@ services:
       - costalyx
 
   frontend:
-    profiles: ["app"]
     build:
       context: ./frontend
-      target: dev
+      dockerfile: Dockerfile.dev
+    container_name: costalyx-frontend
+    restart: unless-stopped
     command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
     environment:
       VITE_API_BASE_URL: http://localhost:3000/api/v1
@@ -125,6 +151,9 @@ services:
       VITE_KEYCLOAK_CLIENT_ID: costalyx-web
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       backend:
         condition: service_started
