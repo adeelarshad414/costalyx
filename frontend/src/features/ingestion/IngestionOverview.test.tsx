@@ -16,8 +16,14 @@ function renderAsAdmin(ui: React.ReactElement) {
 }
 
 describe('IngestionOverview', () => {
+  const governanceClientMethods = {
+    exportCostRecords: async () => 'id,provider\n',
+    listRoles: async () => ({ data: [] })
+  } satisfies Pick<CostalyxClient, 'exportCostRecords' | 'listRoles'>;
+
   it('renders populated cost data with mono-formatted money from the generated client wrapper', async () => {
     const client: CostalyxClient = {
+      ...governanceClientMethods,
       listCostRecords: async () => ({
         data: [
           {
@@ -50,6 +56,7 @@ describe('IngestionOverview', () => {
 
   it('renders a designed empty state when the API returns no cost records', async () => {
     const client: CostalyxClient = {
+      ...governanceClientMethods,
       listCostRecords: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
       createIngestionBatch: async () => {
         throw new Error('not expected');
@@ -64,6 +71,7 @@ describe('IngestionOverview', () => {
 
   it('renders a designed error state when the API rejects', async () => {
     const client: CostalyxClient = {
+      ...governanceClientMethods,
       listCostRecords: async () => {
         throw new Error('Forbidden');
       },
@@ -81,6 +89,7 @@ describe('IngestionOverview', () => {
   it('runs ingestion through the real client and reloads records', async () => {
     let loaded = false;
     const client: CostalyxClient = {
+      ...governanceClientMethods,
       listCostRecords: async () =>
         loaded
           ? {

@@ -73,4 +73,47 @@ describe('createCostalyxClient', () => {
       })
     );
   });
+
+  it('loads fixed roles and exports cost records with bearer auth', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: [{ name: 'viewer', fixed: true }] })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () => 'id,provider\n'
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createCostalyxClient({
+      baseUrl: 'http://api.test/api/v1',
+      getAccessToken: async () => 'signed-keycloak-token'
+    });
+
+    await expect(client.listRoles()).resolves.toEqual({ data: [{ name: 'viewer', fixed: true }] });
+    await expect(client.exportCostRecords()).resolves.toBe('id,provider\n');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'http://api.test/api/v1/roles',
+      expect.objectContaining({
+        headers: {
+          Accept: 'application/json',
+          Authorization: 'Bearer signed-keycloak-token'
+        }
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'http://api.test/api/v1/cost-records/export',
+      expect.objectContaining({
+        headers: {
+          Accept: 'text/csv',
+          Authorization: 'Bearer signed-keycloak-token'
+        }
+      })
+    );
+  });
 });

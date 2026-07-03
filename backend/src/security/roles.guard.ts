@@ -27,8 +27,11 @@ export class RolesGuard implements CanActivate {
       context.getClass()
     ]);
     const minimumRole = required ?? 'viewer';
-    const request = context.switchToHttp().getRequest<{ headers: Record<string, string | undefined> }>();
+    const request = context
+      .switchToHttp()
+      .getRequest<{ headers: Record<string, string | undefined>; user?: AuthenticatedUser }>();
     const user = await this.authenticate(request.headers);
+    request.user = user;
 
     if (!hasRequiredRole(user.role, minimumRole)) {
       throw new ForbiddenException(`Requires ${minimumRole} role.`);

@@ -216,6 +216,24 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /cost-records/export:
+    get:
+      tags: [cost-data]
+      summary: Export normalized cost records as CSV
+      operationId: exportCostRecords
+      x-required-role: viewer
+      responses:
+        "200":
+          description: CSV export of normalized cost records
+          content:
+            text/csv:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /cost-explorer/flow:
     get:
       tags: [cost-data]
@@ -391,6 +409,84 @@ paths:
       responses:
         "204":
           description: Account group deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /cloud-credentials:
+    get:
+      tags: [accounts]
+      summary: List cloud credential Vault references
+      operationId: listCloudCredentials
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated credential references
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedCloudCredentials"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [accounts]
+      summary: Register a cloud credential Vault reference
+      operationId: createCloudCredential
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloudCredentialCreate"
+      responses:
+        "201":
+          description: Credential reference registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloudCredential"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /cloud-credentials/{id}/rotation:
+    patch:
+      tags: [accounts]
+      summary: Rotate a cloud credential Vault reference
+      operationId: rotateCloudCredential
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloudCredentialRotation"
+      responses:
+        "200":
+          description: Credential reference rotated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloudCredential"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -785,7 +881,7 @@ paths:
           $ref: "#/components/responses/Forbidden"
     post:
       tags: [admin]
-      summary: Create role
+      summary: Reject custom role creation until the custom-role milestone
       operationId: createRole
       x-required-role: admin
       parameters:
@@ -797,12 +893,6 @@ paths:
             schema:
               $ref: "#/components/schemas/RoleCreate"
       responses:
-        "201":
-          description: Role created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Role"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -1084,6 +1174,55 @@ components:
           items:
             type: string
             format: uuid
+
+    CloudCredential:
+      type: object
+      required: [id, provider, accountId, displayName, vaultPath, createdAt, rotatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        provider:
+          $ref: "#/components/schemas/CloudProvider"
+        accountId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        vaultPath:
+          type: string
+          description: Vault/OpenBao path reference only; never a plaintext or base64 credential.
+        createdAt:
+          type: string
+          format: date-time
+        rotatedAt:
+          type: ["string", "null"]
+          format: date-time
+
+    CloudCredentialCreate:
+      type: object
+      required: [provider, accountId, displayName, vaultPath]
+      additionalProperties: false
+      properties:
+        provider:
+          $ref: "#/components/schemas/CloudProvider"
+        accountId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        vaultPath:
+          type: string
+          description: Vault/OpenBao path reference only; plaintext credential fields are rejected.
+
+    CloudCredentialRotation:
+      type: object
+      required: [vaultPath]
+      additionalProperties: false
+      properties:
+        vaultPath:
+          type: string
+          description: New Vault/OpenBao path reference only.
 
     CostRecord:
       type: object
@@ -1574,6 +1713,15 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/AccountGroup"
+    PaginatedCloudCredentials:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/CloudCredential"
     PaginatedDimensions:
       allOf:
         - $ref: "#/components/schemas/PaginatedResponse"

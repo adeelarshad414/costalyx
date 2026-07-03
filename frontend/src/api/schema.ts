@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cost-records/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export normalized cost records as CSV */
+        get: operations["exportCostRecords"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cost-explorer/flow": {
         parameters: {
             query?: never;
@@ -192,6 +209,41 @@ export interface paths {
         head?: never;
         /** Update an account group */
         patch: operations["updateAccountGroup"];
+        trace?: never;
+    };
+    "/cloud-credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List cloud credential Vault references */
+        get: operations["listCloudCredentials"];
+        put?: never;
+        /** Register a cloud credential Vault reference */
+        post: operations["createCloudCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cloud-credentials/{id}/rotation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rotate a cloud credential Vault reference */
+        patch: operations["rotateCloudCredential"];
         trace?: never;
     };
     "/dimensions": {
@@ -394,7 +446,7 @@ export interface paths {
         /** List roles */
         get: operations["listRoles"];
         put?: never;
-        /** Create role */
+        /** Reject custom role creation until the custom-role milestone */
         post: operations["createRole"];
         delete?: never;
         options?: never;
@@ -488,6 +540,32 @@ export interface components {
         AccountGroupPatch: {
             name?: string;
             accountIds?: string[];
+        };
+        CloudCredential: {
+            /** Format: uuid */
+            id: string;
+            provider: components["schemas"]["CloudProvider"];
+            /** Format: uuid */
+            accountId: string;
+            displayName: string;
+            /** @description Vault/OpenBao path reference only; never a plaintext or base64 credential. */
+            vaultPath: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            rotatedAt: string | null;
+        };
+        CloudCredentialCreate: {
+            provider: components["schemas"]["CloudProvider"];
+            /** Format: uuid */
+            accountId: string;
+            displayName: string;
+            /** @description Vault/OpenBao path reference only; plaintext credential fields are rejected. */
+            vaultPath: string;
+        };
+        CloudCredentialRotation: {
+            /** @description New Vault/OpenBao path reference only. */
+            vaultPath: string;
         };
         CostRecord: {
             /** Format: uuid */
@@ -719,6 +797,9 @@ export interface components {
         };
         PaginatedAccountGroups: components["schemas"]["PaginatedResponse"] & {
             data?: components["schemas"]["AccountGroup"][];
+        };
+        PaginatedCloudCredentials: components["schemas"]["PaginatedResponse"] & {
+            data?: components["schemas"]["CloudCredential"][];
         };
         PaginatedDimensions: components["schemas"]["PaginatedResponse"] & {
             data?: components["schemas"]["Dimension"][];
@@ -1023,6 +1104,28 @@ export interface operations {
             403: components["responses"]["Forbidden"];
         };
     };
+    exportCostRecords: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV export of normalized cost records */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
     getCostExplorerFlow: {
         parameters: {
             query?: {
@@ -1217,6 +1320,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccountGroup"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listCloudCredentials: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                pageSize?: components["parameters"]["PageSize"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated credential references */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCloudCredentials"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createCloudCredential: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required on every mutating request; duplicate keys return the original result. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloudCredentialCreate"];
+            };
+        };
+        responses: {
+            /** @description Credential reference registered */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudCredential"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    rotateCloudCredential: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required on every mutating request; duplicate keys return the original result. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloudCredentialRotation"];
+            };
+        };
+        responses: {
+            /** @description Credential reference rotated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudCredential"];
                 };
             };
             400: components["responses"]["BadRequest"];
@@ -1662,15 +1853,6 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Role created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Role"];
-                };
-            };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];

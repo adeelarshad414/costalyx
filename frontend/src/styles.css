@@ -90,11 +90,14 @@ td {
   background: var(--surface-1);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
+  margin-bottom: 16px;
   padding: 20px;
 }
 
 .panel-toolbar {
+  align-items: center;
   display: flex;
+  gap: 12px;
   justify-content: flex-end;
   margin-bottom: 12px;
 }
@@ -124,4 +127,25 @@ td {
 
 .font-mono-data {
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.governance-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.role-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+}
+
+.role-list li,
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
 }
