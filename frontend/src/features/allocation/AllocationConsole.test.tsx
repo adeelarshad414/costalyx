@@ -47,7 +47,12 @@ describe('AllocationConsole', () => {
         inactiveCount: 0,
         isEstimate: false
       }),
-      getCostExplorerFlow: async () => ({ nodes: [], links: [] })
+      getCostExplorerFlow: async () => ({ nodes: [], links: [] }),
+      listRecommendations: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
+      updateRecommendation: async () => {
+        throw new Error('not expected');
+      },
+      listRealizedSavings: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } })
     };
 
     renderWithRole(<AllocationConsole client={client} />, ['viewer']);
@@ -97,7 +102,12 @@ describe('AllocationConsole', () => {
         inactiveCount: 0,
         isEstimate: false
       }),
-      getCostExplorerFlow: async () => ({ nodes: [], links: [] })
+      getCostExplorerFlow: async () => ({ nodes: [], links: [] }),
+      listRecommendations: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
+      updateRecommendation: async () => {
+        throw new Error('not expected');
+      },
+      listRealizedSavings: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } })
     };
 
     renderWithRole(<AllocationConsole client={client} />, ['analyst']);

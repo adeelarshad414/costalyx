@@ -240,4 +240,72 @@ describe('createCostalyxClient', () => {
       })
     );
   });
+
+  it('sends bearer auth and idempotency keys for optimization recommendations', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [{ id: 'recommendation-1', type: 'rightsizing', resourceId: 'i-1', estimatedSavingsUsd: '1.00000000', status: 'open', createdAt: '2026-07-04T00:00:00.000Z' }],
+          meta: { total: 1, page: 1, pageSize: 25 }
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: 'recommendation-1',
+          type: 'rightsizing',
+          resourceId: 'i-1',
+          estimatedSavingsUsd: '1.00000000',
+          status: 'applied',
+          createdAt: '2026-07-04T00:00:00.000Z'
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } })
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createCostalyxClient({
+      baseUrl: 'http://api.test/api/v1',
+      getAccessToken: async () => 'signed-keycloak-token'
+    });
+
+    await client.listRecommendations({ status: 'open' });
+    await client.updateRecommendation({
+      id: 'recommendation-1',
+      status: 'applied',
+      idempotencyKey: 'recommendation-key-1'
+    });
+    await client.listRealizedSavings();
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'http://api.test/api/v1/recommendations?status=open',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer signed-keycloak-token' })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'http://api.test/api/v1/recommendations/recommendation-1',
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer signed-keycloak-token',
+          'Idempotency-Key': 'recommendation-key-1'
+        }),
+        body: JSON.stringify({ status: 'applied' })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      'http://api.test/api/v1/realized-savings',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer signed-keycloak-token' })
+      })
+    );
+  });
 });

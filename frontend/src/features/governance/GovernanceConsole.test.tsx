@@ -34,7 +34,12 @@ const allocationClientMethods = {
   listResourceTags: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
   upsertResourceTag: async () => {
     throw new Error('not expected');
-  }
+  },
+  listRecommendations: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
+  updateRecommendation: async () => {
+    throw new Error('not expected');
+  },
+  listRealizedSavings: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } })
 } satisfies Pick<
   CostalyxClient,
   | 'getCostSummary'
@@ -44,6 +49,9 @@ const allocationClientMethods = {
   | 'createDimensionMapping'
   | 'listResourceTags'
   | 'upsertResourceTag'
+  | 'listRecommendations'
+  | 'updateRecommendation'
+  | 'listRealizedSavings'
 >;
 
 describe('GovernanceConsole', () => {

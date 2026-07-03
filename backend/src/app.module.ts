@@ -6,12 +6,20 @@ import { CostModelModule } from './cost-model/cost-model.module';
 import { GovernanceModule } from './governance/governance.module';
 import { HealthController } from './health.controller';
 import { IngestionModule } from './ingestion/ingestion.module';
+import { OptimizationModule } from './optimization/optimization.module';
 import { OidcTokenVerifier } from './security/oidc-token-verifier';
 import { RolesGuard } from './security/roles.guard';
 import { AUTH_TOKEN_VERIFIER } from './security/token-verifier';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), AllocationModule, CostModelModule, IngestionModule, GovernanceModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    AllocationModule,
+    CostModelModule,
+    IngestionModule,
+    GovernanceModule,
+    OptimizationModule
+  ],
   controllers: [HealthController],
   providers: [
     {

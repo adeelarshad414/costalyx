@@ -67,6 +67,11 @@ function createInsightsClient(overrides: Partial<CostalyxClient> = {}): Costalyx
     upsertResourceTag: async () => {
       throw new Error('not expected');
     },
+    listRecommendations: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
+    updateRecommendation: async () => {
+      throw new Error('not expected');
+    },
+    listRealizedSavings: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
     ...overrides
   };
 }

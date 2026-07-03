@@ -6,6 +6,7 @@ import { AllocationConsole } from './features/allocation/AllocationConsole';
 import { GovernanceConsole } from './features/governance/GovernanceConsole';
 import { IngestionOverview } from './features/ingestion/IngestionOverview';
 import { InsightsConsole } from './features/insights/InsightsConsole';
+import { OptimizationConsole } from './features/optimization/OptimizationConsole';
 
 export function App() {
   const auth = useAuth();
@@ -30,6 +31,7 @@ export function App() {
       <AuthBoundary>
         <IngestionOverview client={client} />
         <InsightsConsole client={client} />
+        <OptimizationConsole client={client} />
         <AllocationConsole client={client} />
         <GovernanceConsole client={client} />
       </AuthBoundary>

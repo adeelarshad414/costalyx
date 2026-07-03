@@ -21,8 +21,17 @@ type DimensionMappingResponse =
 type ResourceTagsResponse = paths['/resource-tags']['get']['responses']['200']['content']['application/json'];
 type ResourceTagUpsertRequest = paths['/resource-tags']['post']['requestBody']['content']['application/json'];
 type ResourceTagResponse = paths['/resource-tags']['post']['responses']['201']['content']['application/json'];
+type RecommendationsResponse = paths['/recommendations']['get']['responses']['200']['content']['application/json'];
+type RecommendationPatchRequest =
+  paths['/recommendations/{id}']['patch']['requestBody']['content']['application/json'];
+type RecommendationResponse =
+  paths['/recommendations/{id}']['patch']['responses']['200']['content']['application/json'];
+type RealizedSavingsResponse = paths['/realized-savings']['get']['responses']['200']['content']['application/json'];
 type CostRecordPathQuery = NonNullable<paths['/cost-records']['get']['parameters']['query']>;
 type CloudProvider = NonNullable<CostRecordPathQuery['provider']>;
+type RecommendationStatus = NonNullable<
+  NonNullable<paths['/recommendations']['get']['parameters']['query']>['status']
+>;
 
 interface CostRecordQuery {
   provider?: CloudProvider;
@@ -43,6 +52,12 @@ interface CostExplorerFlowQuery {
   costFloorUsd?: string;
 }
 
+interface RecommendationsQuery {
+  status?: RecommendationStatus;
+  page?: number;
+  pageSize?: number;
+}
+
 export interface CostalyxClient {
   listCostRecords(query?: CostRecordQuery): Promise<CostRecordListResponse>;
   getCostSummary(query?: Omit<CostRecordQuery, 'page' | 'pageSize'>): Promise<CostSummaryResponse>;
@@ -57,6 +72,11 @@ export interface CostalyxClient {
   ): Promise<DimensionMappingResponse>;
   listResourceTags(input: { resourceId: string }): Promise<ResourceTagsResponse>;
   upsertResourceTag(input: ResourceTagUpsertRequest & { idempotencyKey: string }): Promise<ResourceTagResponse>;
+  listRecommendations(query?: RecommendationsQuery): Promise<RecommendationsResponse>;
+  updateRecommendation(
+    input: RecommendationPatchRequest & { id: string; idempotencyKey: string }
+  ): Promise<RecommendationResponse>;
+  listRealizedSavings(query?: { page?: number; pageSize?: number }): Promise<RealizedSavingsResponse>;
 }
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
@@ -241,6 +261,56 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
         throw new Error(`Resource tag request failed with ${response.status}`);
       }
       return response.json() as Promise<ResourceTagResponse>;
+    },
+
+    async listRecommendations(query) {
+      const params = new URLSearchParams();
+      appendParam(params, 'status', query?.status);
+      appendParam(params, 'page', query?.page);
+      appendParam(params, 'pageSize', query?.pageSize);
+      const response = await fetch(`${baseUrl}/recommendations${queryString(params)}`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Recommendations request failed with ${response.status}`);
+      }
+      return response.json() as Promise<RecommendationsResponse>;
+    },
+
+    async updateRecommendation({ id, idempotencyKey, ...body }) {
+      const response = await fetch(`${baseUrl}/recommendations/${id}`, {
+        method: 'PATCH',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+          ...(await authHeaders())
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error(`Recommendation update failed with ${response.status}`);
+      }
+      return response.json() as Promise<RecommendationResponse>;
+    },
+
+    async listRealizedSavings(query) {
+      const params = new URLSearchParams();
+      appendParam(params, 'page', query?.page);
+      appendParam(params, 'pageSize', query?.pageSize);
+      const response = await fetch(`${baseUrl}/realized-savings${queryString(params)}`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Realized savings request failed with ${response.status}`);
+      }
+      return response.json() as Promise<RealizedSavingsResponse>;
     }
   };
 }
