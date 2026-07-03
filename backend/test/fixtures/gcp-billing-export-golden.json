@@ -1,0 +1,34 @@
+[
+  {
+    "provider": "gcp",
+    "accountExternalId": "gcp-billing-001",
+    "resourceId": "//compute.googleapis.com/projects/project-prod-001/zones/us-central1-a/instances/vm-prod-001",
+    "serviceName": "Compute Engine",
+    "usageFamily": "N1 Instance Core",
+    "leaseType": "on_demand",
+    "transactionType": "usage",
+    "hourlyRateUsd": "0.04750000",
+    "usageHours": "4.0000",
+    "costTotalUsd": "0.19000000",
+    "costTotalUsdRoundedToCent": "0.19",
+    "isEstimate": false,
+    "validFrom": "2026-06-01T00:00:00.000Z",
+    "validTo": "2026-06-01T04:00:00.000Z"
+  },
+  {
+    "provider": "gcp",
+    "accountExternalId": "gcp-billing-001",
+    "resourceId": "//compute.googleapis.com/projects/project-prod-001/zones/us-central1-a/instances/vm-preemptible-002",
+    "serviceName": "Compute Engine",
+    "usageFamily": "Preemptible N1 Instance Core",
+    "leaseType": "spot",
+    "transactionType": "usage",
+    "hourlyRateUsd": "0.01000000",
+    "usageHours": "12.0000",
+    "costTotalUsd": "0.12000000",
+    "costTotalUsdRoundedToCent": "0.12",
+    "isEstimate": true,
+    "validFrom": "2026-06-01T00:00:00.000Z",
+    "validTo": "2026-06-01T12:00:00.000Z"
+  }
+]

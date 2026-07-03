@@ -18,14 +18,14 @@ export class IngestionService {
 
   constructor(private readonly costModel: CostModelService) {}
 
-  createBatch(input: { provider: CloudProvider; sourceUri: string; idempotencyKey: string }) {
+  async createBatch(input: { provider: CloudProvider; sourceUri: string; idempotencyKey: string }) {
     const adapter = this.adapters[input.provider];
     const sourcePath = resolve(process.cwd(), '..', input.sourceUri);
 
     try {
       const raw = readFileSync(sourcePath, 'utf8');
       const rows = adapter.parse(raw, input.idempotencyKey);
-      return this.costModel.saveIngestion({ ...input, rows });
+      return await this.costModel.saveIngestion({ ...input, rows });
     } catch (error) {
       if (error instanceof Error) {
         throw new BadRequestException(error.message);

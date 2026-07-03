@@ -1,0 +1,3 @@
+SubscriptionId,ResourceId,ServiceName,MeterCategory,PricingModel,ChargeType,EffectivePrice,Quantity,UsageStart,UsageEnd
+sub-prod-001,/subscriptions/sub-prod-001/resourceGroups/rg-prod/providers/Microsoft.Compute/virtualMachines/vm-prod-001,Azure Virtual Machines,Virtual Machines,OnDemand,Usage,0.09600000,3.0000,2026-06-01T00:00:00Z,2026-06-01T03:00:00Z
+sub-prod-001,/subscriptions/sub-prod-001/resourceGroups/rg-prod/providers/Microsoft.Compute/virtualMachines/vm-spot-002,Azure Virtual Machines,Virtual Machines,Spot,Usage,0.01200000,10.0000,2026-06-01T00:00:00Z,2026-06-01T10:00:00Z

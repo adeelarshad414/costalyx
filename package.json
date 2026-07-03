@@ -7,6 +7,9 @@
     "backend",
     "frontend"
   ],
+  "overrides": {
+    "multer": "^2.2.0"
+  },
   "scripts": {
     "generate:client": "openapi-typescript openapi.yaml -o frontend/src/api/schema.ts",
     "test": "npm run test:backend && npm run test:frontend && npm run test:contract && npm run migration:check",
@@ -23,6 +26,6 @@
     "js-yaml": "^4.1.0",
     "openapi-typescript": "^7.6.1",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^4.1.9"
   }
 }

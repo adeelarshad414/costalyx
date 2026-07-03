@@ -2,15 +2,14 @@ import { formatDecimal, multiplyMoney, roundMoneyToCent } from '../../cost-model
 import type { LeaseType, NormalizedCostRecord } from '../../cost-model/cost-record.types';
 import { stableId } from '../../cost-model/stable-id';
 import type { CostIngestionAdapter } from '../cost-ingestion-adapter';
-
-type CurRow = Record<string, string>;
+import { parseCsv, required, type CsvRow } from './csv';
 
 export class AwsCurIngestionAdapter implements CostIngestionAdapter {
   parse(rawBatch: string, sourceBatchId: string): NormalizedCostRecord[] {
     return parseCsv(rawBatch).map((row) => this.normalizeRow(row, sourceBatchId));
   }
 
-  private normalizeRow(row: CurRow, sourceBatchId: string): NormalizedCostRecord {
+  private normalizeRow(row: CsvRow, sourceBatchId: string): NormalizedCostRecord {
     const usageType = required(row, 'lineItem/UsageType');
     const lineItemType = required(row, 'lineItem/LineItemType');
     const leaseType = classifyLeaseType(usageType);
@@ -76,40 +75,4 @@ function classifyTransactionType(lineItemType: string): string {
     return 'tax';
   }
   return 'usage';
-}
-
-function required(row: CurRow, key: string): string {
-  const value = row[key];
-  if (value === undefined || value === '') {
-    throw new Error(`Missing required CUR field ${key}`);
-  }
-  return value;
-}
-
-function parseCsv(raw: string): CurRow[] {
-  const lines = raw.trim().split(/\r?\n/);
-  const headers = splitCsvLine(lines[0] ?? '');
-  return lines.slice(1).map((line) => {
-    const values = splitCsvLine(line);
-    return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? '']));
-  });
-}
-
-function splitCsvLine(line: string): string[] {
-  const values: string[] = [];
-  let current = '';
-  let quoted = false;
-
-  for (const char of line) {
-    if (char === '"') {
-      quoted = !quoted;
-    } else if (char === ',' && !quoted) {
-      values.push(current);
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-  values.push(current);
-  return values;
 }

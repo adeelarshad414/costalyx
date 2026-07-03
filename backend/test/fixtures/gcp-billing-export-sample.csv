@@ -1,0 +1,3 @@
+billing_account_id,project_id,resource_name,service_description,sku_description,pricing_type,transaction_type,hourly_rate_usd,usage_hours,usage_start_time,usage_end_time
+gcp-billing-001,project-prod-001,//compute.googleapis.com/projects/project-prod-001/zones/us-central1-a/instances/vm-prod-001,Compute Engine,N1 Instance Core,OnDemand,Usage,0.04750000,4.0000,2026-06-01T00:00:00Z,2026-06-01T04:00:00Z
+gcp-billing-001,project-prod-001,//compute.googleapis.com/projects/project-prod-001/zones/us-central1-a/instances/vm-preemptible-002,Compute Engine,Preemptible N1 Instance Core,Preemptible,Usage,0.01000000,12.0000,2026-06-01T00:00:00Z,2026-06-01T12:00:00Z

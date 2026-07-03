@@ -1,5 +1,6 @@
 import type { NormalizedCostRecord } from '../../src/cost-model/cost-record.types';
 import { CostModelService } from '../../src/cost-model/cost-model.service';
+import { InMemoryCostModelRepository } from '../../src/cost-model/in-memory-cost-model.repository';
 
 function record(overrides: Partial<NormalizedCostRecord> = {}): NormalizedCostRecord {
   return {
@@ -27,16 +28,20 @@ function record(overrides: Partial<NormalizedCostRecord> = {}): NormalizedCostRe
 }
 
 describe('CostModelService', () => {
-  it('stores new rows and counts duplicate replay rows without duplicating records', () => {
-    const service = new CostModelService();
+  function createService() {
+    return new CostModelService(new InMemoryCostModelRepository());
+  }
 
-    const first = service.saveIngestion({
+  it('stores new rows and counts duplicate replay rows without duplicating records', async () => {
+    const service = createService();
+
+    const first = await service.saveIngestion({
       provider: 'aws',
       sourceUri: 'fixture.csv',
       idempotencyKey: 'first',
       rows: [record()]
     });
-    const second = service.saveIngestion({
+    const second = await service.saveIngestion({
       provider: 'aws',
       sourceUri: 'fixture.csv',
       idempotencyKey: 'second',
@@ -45,18 +50,20 @@ describe('CostModelService', () => {
 
     expect(first.ingestedRows).toBe(1);
     expect(second.duplicateRows).toBe(1);
-    expect(service.listRecords({ page: 1, pageSize: 25 }).meta.total).toBe(1);
+    await expect(service.listRecords({ page: 1, pageSize: 25 })).resolves.toMatchObject({
+      meta: { total: 1 }
+    });
   });
 
-  it('replays the exact response for duplicate idempotency keys', () => {
-    const service = new CostModelService();
-    const first = service.saveIngestion({
+  it('replays the exact response for duplicate idempotency keys', async () => {
+    const service = createService();
+    const first = await service.saveIngestion({
       provider: 'aws',
       sourceUri: 'fixture.csv',
       idempotencyKey: 'same-key',
       rows: [record()]
     });
-    const replay = service.saveIngestion({
+    const replay = await service.saveIngestion({
       provider: 'aws',
       sourceUri: 'fixture.csv',
       idempotencyKey: 'same-key',
@@ -66,16 +73,16 @@ describe('CostModelService', () => {
     expect(replay).toEqual(first);
   });
 
-  it('returns computed summary totals from stored hourly rates and usage hours', () => {
-    const service = new CostModelService();
-    service.saveIngestion({
+  it('returns computed summary totals from stored hourly rates and usage hours', async () => {
+    const service = createService();
+    await service.saveIngestion({
       provider: 'aws',
       sourceUri: 'fixture.csv',
       idempotencyKey: 'summary',
       rows: [record(), record({ id: 'row-2', resourceId: 'resource-2', fingerprint: 'fingerprint-2', costTotalUsd: '1.00000000', isEstimate: true })]
     });
 
-    expect(service.getSummary()).toEqual({
+    await expect(service.getSummary()).resolves.toEqual({
       totalCostUsd: '1.41600000',
       resourceCount: 2,
       untaggedCount: 2,

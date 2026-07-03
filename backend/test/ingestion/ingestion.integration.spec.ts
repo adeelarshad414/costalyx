@@ -34,7 +34,7 @@ describe('Milestone A ingestion API', () => {
       sourceUri: 'backend/test/fixtures/aws-cur-sample.csv'
     };
 
-    const first = await request(app.getHttpServer())
+    const first = await request(app.getHttpAdapter().getInstance())
       .post('/api/v1/ingestion/batches')
       .set('x-costalyx-role', 'admin')
       .set('Idempotency-Key', 'milestone-a-first-ingest')
@@ -45,7 +45,7 @@ describe('Milestone A ingestion API', () => {
     expect(first.body.ingestedRows).toBe(3);
     expect(first.body.duplicateRows).toBe(0);
 
-    const second = await request(app.getHttpServer())
+    const second = await request(app.getHttpAdapter().getInstance())
       .post('/api/v1/ingestion/batches')
       .set('x-costalyx-role', 'admin')
       .set('Idempotency-Key', 'milestone-a-second-ingest')
@@ -56,7 +56,7 @@ describe('Milestone A ingestion API', () => {
     expect(second.body.ingestedRows).toBe(0);
     expect(second.body.duplicateRows).toBe(3);
 
-    const records = await request(app.getHttpServer())
+    const records = await request(app.getHttpAdapter().getInstance())
       .get('/api/v1/cost-records?page=1&pageSize=25')
       .set('x-costalyx-role', 'viewer')
       .expect(200);
@@ -75,14 +75,14 @@ describe('Milestone A ingestion API', () => {
       sourceUri: 'backend/test/fixtures/aws-cur-sample.csv'
     };
 
-    const first = await request(app.getHttpServer())
+    const first = await request(app.getHttpAdapter().getInstance())
       .post('/api/v1/ingestion/batches')
       .set('x-costalyx-role', 'admin')
       .set('Idempotency-Key', 'milestone-a-idempotency-key')
       .send(body)
       .expect(202);
 
-    const replay = await request(app.getHttpServer())
+    const replay = await request(app.getHttpAdapter().getInstance())
       .post('/api/v1/ingestion/batches')
       .set('x-costalyx-role', 'admin')
       .set('Idempotency-Key', 'milestone-a-idempotency-key')
