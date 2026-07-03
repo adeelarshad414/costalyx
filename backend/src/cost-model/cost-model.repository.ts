@@ -1,4 +1,10 @@
-import type { CloudProvider, IngestionBatch, NormalizedCostRecord } from './cost-record.types';
+import type {
+  CloudProvider,
+  CostExplorerDimension,
+  CostExplorerFlow,
+  IngestionBatch,
+  NormalizedCostRecord
+} from './cost-record.types';
 
 export const COST_MODEL_REPOSITORY = Symbol('COST_MODEL_REPOSITORY');
 
@@ -17,6 +23,8 @@ export interface CostModelRepository {
     accountId?: string;
     service?: string;
     dimension?: string;
+    from?: string;
+    to?: string;
     page: number;
     pageSize: number;
   }): Promise<{
@@ -29,6 +37,8 @@ export interface CostModelRepository {
     accountId?: string;
     service?: string;
     dimension?: string;
+    from?: string;
+    to?: string;
   }): Promise<{
     totalCostUsd: string;
     resourceCount: number;
@@ -36,4 +46,12 @@ export interface CostModelRepository {
     inactiveCount: number;
     isEstimate: boolean;
   }>;
+
+  getExplorerFlow(query?: {
+    provider?: CloudProvider;
+    from?: string;
+    to?: string;
+    dimensions?: CostExplorerDimension[];
+    costFloorUsd?: string;
+  }): Promise<CostExplorerFlow>;
 }

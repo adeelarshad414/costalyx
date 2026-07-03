@@ -1,6 +1,6 @@
 import { Controller, Get, Header, Query } from '@nestjs/common';
 import { CostModelService } from './cost-model.service';
-import { ListCostRecordsQueryDto } from './dto/list-cost-records-query.dto';
+import { CostExplorerFlowQueryDto, ListCostRecordsQueryDto } from './dto/list-cost-records-query.dto';
 import { RequiredRole } from '../security/roles.decorator';
 
 @Controller('api/v1')
@@ -17,6 +17,12 @@ export class CostRecordsController {
   @RequiredRole('viewer')
   getCostRecordsSummary(@Query() query: ListCostRecordsQueryDto) {
     return this.costModel.getSummary(query);
+  }
+
+  @Get('cost-explorer/flow')
+  @RequiredRole('viewer')
+  getCostExplorerFlow(@Query() query: CostExplorerFlowQueryDto) {
+    return this.costModel.getExplorerFlow(query);
   }
 
   @Get('cost-records/export')

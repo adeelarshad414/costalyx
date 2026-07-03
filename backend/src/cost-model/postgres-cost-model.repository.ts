@@ -1,7 +1,14 @@
 import { NotFoundException, type OnModuleDestroy } from '@nestjs/common';
 import { Pool, type PoolClient } from 'pg';
+import { buildCostExplorerFlow } from './cost-explorer-flow';
 import type { CostModelRepository } from './cost-model.repository';
-import type { CloudProvider, IngestionBatch, LeaseType, NormalizedCostRecord } from './cost-record.types';
+import type {
+  CloudProvider,
+  CostExplorerDimension,
+  IngestionBatch,
+  LeaseType,
+  NormalizedCostRecord
+} from './cost-record.types';
 import { formatDecimal, roundMoneyToCent } from './decimal';
 import { stableId } from './stable-id';
 
@@ -121,6 +128,8 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
     accountId?: string;
     service?: string;
     dimension?: string;
+    from?: string;
+    to?: string;
     page: number;
     pageSize: number;
   }) {
@@ -169,10 +178,20 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
     };
   }
 
-  async getSummary(query: { provider?: CloudProvider; accountId?: string; service?: string; dimension?: string } = {}) {
+  async getSummary(
+    query: {
+      provider?: CloudProvider;
+      accountId?: string;
+      service?: string;
+      dimension?: string;
+      from?: string;
+      to?: string;
+    } = {}
+  ) {
     if (query.dimension) {
       return this.getDimensionSummary(query);
     }
+    const { whereSql, params } = buildRecordWhere(query);
     const result = await this.pool.query(
       `SELECT
          COALESCE(SUM(hourly_rate_usd * usage_hours), 0)::text AS total_cost_usd,
@@ -180,7 +199,9 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
          COUNT(*)::int AS untagged_count,
          0::int AS inactive_count,
          COALESCE(BOOL_OR(is_estimate), false) AS is_estimate
-       FROM cost_records`
+       FROM cost_records cr
+       ${whereSql}`,
+      params
     );
     const row = (result.rows[0] ?? {}) as PgRow;
     return {
@@ -197,6 +218,8 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
     accountId?: string;
     service?: string;
     dimension?: string;
+    from?: string;
+    to?: string;
   }) {
     const { whereSql, params } = buildRecordWhere(query);
     const baseSql = whereSql ? `${whereSql} AND` : 'WHERE';
@@ -247,6 +270,29 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
     };
   }
 
+  async getExplorerFlow(
+    query: {
+      provider?: CloudProvider;
+      from?: string;
+      to?: string;
+      dimensions?: CostExplorerDimension[];
+      costFloorUsd?: string;
+    } = {}
+  ) {
+    const records = await this.listRecords({
+      provider: query.provider,
+      from: query.from,
+      to: query.to,
+      page: 1,
+      pageSize: 200
+    });
+    return buildCostExplorerFlow({
+      records: records.data,
+      dimensions: query.dimensions,
+      costFloorUsd: query.costFloorUsd
+    });
+  }
+
   private async upsertAccount(client: PoolClient, row: NormalizedCostRecord): Promise<void> {
     await client.query(
       `INSERT INTO accounts (id, provider, external_account_id, display_name, vendor)
@@ -258,7 +304,7 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
   }
 }
 
-function buildRecordWhere(query: { provider?: CloudProvider; accountId?: string; service?: string }) {
+function buildRecordWhere(query: { provider?: CloudProvider; accountId?: string; service?: string; from?: string; to?: string }) {
   const clauses: string[] = [];
   const params: string[] = [];
   if (query.provider) {
@@ -272,6 +318,14 @@ function buildRecordWhere(query: { provider?: CloudProvider; accountId?: string;
   if (query.service) {
     params.push(query.service);
     clauses.push(`cr.service_name = $${params.length}`);
+  }
+  if (query.from) {
+    params.push(query.from);
+    clauses.push(`cr.valid_from >= $${params.length}`);
+  }
+  if (query.to) {
+    params.push(query.to);
+    clauses.push(`cr.valid_from <= $${params.length}`);
   }
   return {
     whereSql: clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '',

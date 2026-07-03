@@ -5,7 +5,7 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-04 01:07:49 PKT_
+_Last updated: 2026-07-04 01:25:36 PKT_
 
 ## Milestone status
 
@@ -14,7 +14,7 @@ _Last updated: 2026-07-04 01:07:49 PKT_
 | A — Ingestion & Core Cost Model | Blocked | `npm test` passed with local-network permission: backend 10 suites / 28 tests, frontend 6 files / 12 tests, static contract 1 file / 2 tests, migration additive check passed. `npm run ci:live-contract` passed: live backend contract 1 file / 4 tests. GitHub Actions `verify` passed on both push and PR runs for checkpoint `010a9a0`; stale hung runs were cancelled. Live Postgres opt-in suite passed earlier: 2 suites / 3 tests. `npm --workspace backend run build` passed. `npm --workspace frontend run build` passed. `npm --workspace backend run test:coverage` passed service/guard/pricing gates. `npm run test:e2e` reported 1 skipped Keycloak login test because no live Keycloak credentials/stack were available. `docker compose config`, `git diff --check`, and `npm audit --audit-level=high` passed. | AWS/Azure/GCP adapters, golden fixtures, PostgreSQL persistence, idempotency, duplicate prevention, backend bearer-token RBAC, frontend Keycloak provider, bearer-token client wiring, `<PermissionGate>`, admin-only UI ingestion trigger with `Idempotency-Key`, strict issuer validation with Docker JWKS override, live-backend contract script, CI workflow, builds, coverage, compose validation, whitespace check, and dependency audit are verified locally. Still not `Done`: live browser E2E through Keycloak has not passed because the local Docker Keycloak image pull failed twice with registry TLS handshake timeouts. |
 | B — RBAC & Trust Tiers | Blocked | `npm --workspace backend test -- --runTestsByPath test/governance/postgres-governance.repository.spec.ts test/governance/governance.service.spec.ts` passed 2 suites / 8 tests. `npm --workspace backend test -- --runTestsByPath test/security/milestone-b-privileged-actions.integration.spec.ts test/governance/governance.postgres.integration.spec.ts` passed 11 authorization tests with the opt-in Postgres API suite skipped when `RUN_POSTGRES_INTEGRATION` was unset. `RUN_POSTGRES_INTEGRATION=true DATABASE_URL=postgresql://costalyx:CHANGE_ME_DEV_ONLY@localhost:5432/costalyx_dev npm --workspace backend test -- --runTestsByPath test/governance/governance.postgres.integration.spec.ts test/cost-model/postgres-cost-model.pg.spec.ts test/ingestion/ingestion.postgres.integration.spec.ts` passed 3 suites / 4 tests against local Docker Postgres. `npm test` passed backend 13 suites / 47 tests with 3 opt-in suites skipped, frontend 7 files / 15 tests, contract 2 static files / 5 tests, additive migration check 4 files. `npm run ci:live-contract` passed 2 live files / 7 tests. Backend and frontend builds passed; backend coverage passed at 90.41% statements / 89.47% functions / 89.78% lines. `npm audit --audit-level=high`, `docker compose config`, `git diff --check`, and source/API governance secret-shaped scan passed. `npm run test:e2e` reported 1 skipped Keycloak login test. | Fixed roles, server-side guard enforcement, frontend admin gating, OpenAPI/client coverage, additive RBAC/audit migrations, durable governance PostgreSQL repository selection via `DATABASE_URL`, idempotent governance responses, and real Postgres persistence across Nest app instances are verified. Still not `Done`: live browser E2E through Keycloak remains skipped/blocked. |
 | C — Allocation & Dynamic Tagging | Blocked | `npm --workspace backend test -- --runTestsByPath test/allocation/allocation.service.spec.ts test/allocation/milestone-c-allocation.integration.spec.ts test/security/milestone-b-privileged-actions.integration.spec.ts` passed 3 suites / 17 tests. `npm --workspace frontend test -- --run src/api/client.test.ts src/features/allocation/AllocationConsole.test.tsx src/features/ingestion/IngestionOverview.test.tsx src/features/governance/GovernanceConsole.test.tsx` passed 4 files / 12 tests. `npm run test:contract -- --run contract/openapi.milestone-c.spec.ts` passed with static contract files now at 3 passed / 3 skipped. `RUN_POSTGRES_INTEGRATION=true DATABASE_URL=postgresql://costalyx:CHANGE_ME_DEV_ONLY@localhost:5432/costalyx_dev npm --workspace backend test -- --runTestsByPath test/allocation/allocation.postgres.integration.spec.ts test/governance/governance.postgres.integration.spec.ts test/cost-model/postgres-cost-model.pg.spec.ts test/ingestion/ingestion.postgres.integration.spec.ts --detectOpenHandles` passed 4 suites / 5 tests against local Docker Postgres. `npm test` passed backend 15 suites / 53 tests with 4 opt-in suites skipped, frontend 8 files / 18 tests, contract 3 files / 8 tests, additive migration check 5 files. `npm run ci:live-contract` passed 3 live files / 8 tests. Backend/frontend builds, backend coverage, `npm audit --audit-level=high`, `docker compose config`, `git diff --check`, and changed-surface secret-shaped scan passed. `npm run test:e2e` reported 1 skipped Keycloak login test. | Unbounded dimensions, tag-to-dimension mappings, manual resource re-tags, dimension-filtered aggregate summaries, analyst/server-side edit enforcement, audit rows for tag/dimension edits, PostgreSQL persistence, generated frontend client methods, and `AllocationConsole` viewer/analyst gating are implemented and verified. Still not `Done`: live browser E2E through Keycloak remains skipped/blocked. |
-| D — Insights Surfaces | Not started | — | |
+| D — Insights Surfaces | Blocked | `npm --workspace backend test -- --runTestsByPath test/cost-model/cost-explorer.service.spec.ts test/cost-model/cost-explorer.integration.spec.ts test/cost-model/postgres-cost-model.pg.spec.ts` passed 2 D suites / 4 tests with the opt-in Postgres suite skipped when `RUN_POSTGRES_INTEGRATION` was unset. `npm --workspace frontend test -- --run src/features/insights/InsightsConsole.test.tsx src/api/client.test.ts` passed 2 files / 8 tests. `npm run test:contract -- --run contract/openapi.milestone-d.spec.ts` passed with static contract files at 4 passed / 4 skipped. `RUN_POSTGRES_INTEGRATION=true DATABASE_URL=postgresql://costalyx:CHANGE_ME_DEV_ONLY@localhost:5432/costalyx_dev npm --workspace backend test -- --runTestsByPath test/cost-model/postgres-cost-model.pg.spec.ts test/allocation/allocation.postgres.integration.spec.ts test/governance/governance.postgres.integration.spec.ts test/ingestion/ingestion.postgres.integration.spec.ts --detectOpenHandles` passed 4 suites / 6 tests against local Docker Postgres. `npm test` passed backend 17 suites / 57 tests with 4 opt-in suites skipped, frontend 9 files / 22 tests, contract 4 files / 10 tests with 4 live files skipped in that command, additive migration check 5 files. `npm run ci:live-contract` passed 4 live files / 9 tests. Backend/frontend builds, backend coverage, `npm audit --audit-level=high`, `docker compose config`, `git diff --check`, and changed-surface secret-shaped scan passed. `npm run test:e2e` reported 1 skipped Keycloak login test. | Resource Inventory KPIs, provider tabs, paginated inventory detail, CSV export, Cost Explorer flow endpoint, dimension drill-down query parsing, cost-floor filtering, exact flow-vs-summary reconciliation, Postgres filter reconciliation, generated-client wrapper method, and `InsightsConsole` loading/populated/empty/error/export states are implemented and verified. Still not `Done`: live browser E2E through Keycloak remains skipped/blocked. |
 | E — Optimization | Not started | — | |
 | F — Executive & Cross-Persona Surfaces | Not started | — | |
 | G — Reporting & Governance | Not started | — | |
@@ -56,6 +56,16 @@ _Copy this block per feature; do not mark complete without linked evidence._
 - [x] Auth/permission enforced and tested at both layers (`milestone-c-allocation.integration.spec.ts` proves Viewer direct API calls to C mutating endpoints receive `403`; `AllocationConsole.test.tsx` proves Viewer UI hides tag edit controls and Analyst UI can invoke them)
 - [x] Contract test passing locally against a real backend (`npm run ci:live-contract`: 3 live files / 8 tests passed, including `contract/live/milestone-c.live.spec.ts`)
 - [x] Persistent allocation repository wired to PostgreSQL (`005_dynamic_allocation.sql` adds dynamic dimensions, mappings, resource tags, and allocation idempotency; opt-in real Postgres suite passed 4 suites / 5 tests)
+- [ ] Live browser Keycloak E2E completed (blocked by local Keycloak image pull TLS timeouts)
+
+### Feature: Milestone D — Insights Surfaces
+- [x] Backend endpoint implemented + unit/integration tests (`backend/test/cost-model/cost-explorer.service.spec.ts`: 2 tests passed for exact Resource Inventory versus Explorer reconciliation and cost-floor filtering; `backend/test/cost-model/cost-explorer.integration.spec.ts`: 2 tests passed for authenticated Resource Inventory/Explorer API behavior and unauthenticated `401`)
+- [x] OpenAPI spec validated + generated client wrapper wired (`contract/openapi.milestone-d.spec.ts`: 2 D tests passed; `openapi.yaml` already documented `/cost-explorer/flow`, `dimensions`, `costFloorUsd`, and `CostExplorerFlow`; `frontend/src/api/client.ts` now exposes `getCostExplorerFlow()` using generated OpenAPI response types)
+- [x] Frontend component consumes the generated client (`InsightsConsole` calls `listCostRecords()`, `getCostSummary()`, `getCostExplorerFlow()`, and `exportCostRecords()`; `frontend/src/api/client.test.ts` proves bearer auth and query serialization for `provider`, `dimensions`, and `costFloorUsd`)
+- [x] All four data states implemented and covered (`frontend/src/features/insights/InsightsConsole.test.tsx` covers populated KPIs/detail/flow/export, empty inventory state, and request error state; loading state is rendered while the async load is pending)
+- [x] Auth/permission enforced and tested at both layers (`cost-explorer.integration.spec.ts` proves unauthenticated Explorer flow calls receive `401`; live backend contract covers authenticated Resource Inventory/Explorer flow reconciliation against the Nest HTTP server; frontend renders under the Keycloak-backed `AuthProvider`)
+- [x] Contract test passing locally against a real backend (`npm run ci:live-contract`: 4 live files / 9 tests passed, including `contract/live/milestone-d.live.spec.ts`)
+- [x] Persistent cost repository path verified for D filters and reconciliation (`PostgresCostModelRepository.getSummary()` now applies provider/date filters on the non-dimension SQL path; opt-in real Postgres suite passed 4 suites / 6 tests, including the new AWS-only flow-vs-summary reconciliation test)
 - [ ] Live browser Keycloak E2E completed (blocked by local Keycloak image pull TLS timeouts)
 
 ## Blocked
@@ -113,6 +123,22 @@ and was not verifiable given the constraint._
   opt-in real Postgres tests verify dimensions, mappings, tags, and
   aggregate effects persist across Nest app instances.
 
+- **Blocker:** Milestone D live browser proof shares the same local Keycloak
+  blocker as Milestones A, B, and C.
+  **Impact:** Backend/contract/frontend insights evidence and PostgreSQL
+  reconciliation are verified, but the `07-FRONTEND-BACKEND-WIRING.md`
+  live-login requirement and `08-TESTING-STRATEGY.md` E2E persona
+  requirement are still not satisfied for the insights milestone.
+  **What was verified instead:** Direct API integration tests verify
+  authenticated Resource Inventory summary/list access, unauthenticated
+  Explorer flow `401`, and exact Explorer flow total reconciliation with the
+  matching Resource Inventory summary; frontend tests verify KPIs, provider
+  inventory detail, CSV export, flow rendering, empty state, and error state;
+  live backend contract verifies Resource Inventory/Explorer reconciliation
+  against a real Nest HTTP server; and opt-in real Postgres tests verify
+  provider-filtered summary totals reconcile with provider-filtered Explorer
+  flow totals.
+
 - **Resolved blocker:** Remote GitHub Actions result for the live-backend
   contract workflow was observed green after patching the live-contract
   runner to terminate the full backend process group and adding workflow
@@ -148,5 +174,5 @@ _If the same request/feature appears again across turns or documents._
 - (none yet)
 
 ## Known deviations from spec (with justification)
-- (none yet — Milestones A, B, and C are intentionally marked `Blocked`, not
+- (none yet — Milestones A, B, C, and D are intentionally marked `Blocked`, not
   `Done`, for the incomplete live Keycloak browser E2E above.)

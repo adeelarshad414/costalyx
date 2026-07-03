@@ -26,6 +26,7 @@ describe('IngestionOverview', () => {
       inactiveCount: 0,
       isEstimate: false
     }),
+    getCostExplorerFlow: async () => ({ nodes: [], links: [] }),
     listDimensions: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
     createDimension: async () => {
       throw new Error('not expected');

@@ -46,7 +46,8 @@ describe('AllocationConsole', () => {
         untaggedCount: 3,
         inactiveCount: 0,
         isEstimate: false
-      })
+      }),
+      getCostExplorerFlow: async () => ({ nodes: [], links: [] })
     };
 
     renderWithRole(<AllocationConsole client={client} />, ['viewer']);
@@ -95,7 +96,8 @@ describe('AllocationConsole', () => {
         untaggedCount: 2,
         inactiveCount: 0,
         isEstimate: false
-      })
+      }),
+      getCostExplorerFlow: async () => ({ nodes: [], links: [] })
     };
 
     renderWithRole(<AllocationConsole client={client} />, ['analyst']);

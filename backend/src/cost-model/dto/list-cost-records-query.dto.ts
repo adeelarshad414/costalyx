@@ -1,6 +1,14 @@
-import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import type { CloudProvider } from '../cost-record.types';
+import { Transform, Type } from 'class-transformer';
+import { IsEnum, IsIn, IsInt, IsISO8601, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
+import type { CloudProvider, CostExplorerDimension } from '../cost-record.types';
+
+const costExplorerDimensions: CostExplorerDimension[] = [
+  'provider',
+  'service',
+  'leaseType',
+  'transactionType',
+  'usageFamily'
+];
 
 export class ListCostRecordsQueryDto {
   @IsOptional()
@@ -20,6 +28,14 @@ export class ListCostRecordsQueryDto {
   dimension?: string;
 
   @IsOptional()
+  @IsISO8601()
+  from?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  to?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
@@ -31,4 +47,35 @@ export class ListCostRecordsQueryDto {
   @Min(1)
   @Max(200)
   pageSize = 25;
+}
+
+export class CostExplorerFlowQueryDto {
+  @IsOptional()
+  @IsEnum(['aws', 'azure', 'gcp'])
+  provider?: CloudProvider;
+
+  @IsOptional()
+  @IsISO8601()
+  from?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  to?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (Array.isArray(value)) {
+      return value.flatMap((entry) => String(entry).split(',')).filter(Boolean);
+    }
+    return String(value ?? '')
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  })
+  @IsIn(costExplorerDimensions, { each: true })
+  dimensions?: CostExplorerDimension[];
+
+  @IsOptional()
+  @Matches(/^[0-9]+(\.[0-9]{1,8})?$/)
+  costFloorUsd?: string;
 }

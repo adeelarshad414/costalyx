@@ -100,4 +100,46 @@ describeIfPostgres('PostgresCostModelRepository with a real database', () => {
     expect(replay.ingestedRows).toBe(0);
     expect(replay.duplicateRows).toBe(1);
   });
+
+  it('reconciles filtered Cost Explorer totals with Resource Inventory summary totals', async () => {
+    await repository.saveIngestion({
+      provider: 'aws',
+      sourceUri: 'postgres-explorer-aws.csv',
+      idempotencyKey: 'pg-explorer-aws',
+      rows: [record]
+    });
+    await repository.saveIngestion({
+      provider: 'azure',
+      sourceUri: 'postgres-explorer-azure.csv',
+      idempotencyKey: 'pg-explorer-azure',
+      rows: [
+        {
+          ...record,
+          id: '66666666-6666-4666-8666-666666666666',
+          provider: 'azure',
+          accountId: '77777777-7777-4777-8777-777777777777',
+          accountExternalId: 'azure-subscription-1',
+          resourceId: 'vm-azure-001',
+          serviceName: 'Azure Virtual Machines',
+          hourlyRateUsd: '4.00000000',
+          usageHours: '1.0000',
+          costTotalUsd: '4.00000000',
+          costTotalUsdRoundedToCent: '4.00',
+          fingerprint: '66666666-6666-4666-8666-666666666666'
+        }
+      ]
+    });
+
+    const summary = await repository.getSummary({ provider: 'aws' });
+    const flow = await repository.getExplorerFlow({
+      provider: 'aws',
+      dimensions: ['service', 'leaseType'],
+      costFloorUsd: '0.00000000'
+    });
+    const linkTotal = flow.links.reduce((sum, link) => sum + Number(link.costTotalUsd), 0);
+
+    expect(summary.totalCostUsd).toBe('0.20000000');
+    expect(linkTotal.toFixed(8)).toBe(summary.totalCostUsd);
+    expect(flow.nodes.map((node) => node.label)).toContain('Amazon EC2');
+  });
 });

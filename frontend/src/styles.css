@@ -141,6 +141,76 @@ td {
   grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
 }
 
+.insights-toolbar {
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.provider-tabs,
+.dimension-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.provider-tabs button {
+  background: var(--surface-2);
+}
+
+.provider-tabs button.is-active {
+  background: var(--brand-primary);
+}
+
+.insights-metrics,
+.insights-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.insights-metrics {
+  margin-bottom: 16px;
+}
+
+.insights-grid {
+  align-items: start;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+}
+
+.explorer-header,
+.cost-floor-control,
+.flow-list li {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.cost-floor-control {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin: 12px 0;
+}
+
+.cost-floor-control input {
+  accent-color: var(--brand-accent);
+  min-width: 160px;
+}
+
+.dimension-chip-row span {
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+}
+
+.flow-list {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+}
+
 .role-list {
   display: grid;
   gap: 8px;
@@ -174,7 +244,8 @@ td {
 }
 
 @media (max-width: 760px) {
-  .allocation-grid {
+  .allocation-grid,
+  .insights-grid {
     grid-template-columns: 1fr;
   }
 }

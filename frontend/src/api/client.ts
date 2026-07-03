@@ -9,6 +9,8 @@ type IngestionBatchResponse =
 type RolesResponse = paths['/roles']['get']['responses']['200']['content']['application/json'];
 type CostSummaryResponse =
   paths['/cost-records/summary']['get']['responses']['200']['content']['application/json'];
+type CostExplorerFlowResponse =
+  paths['/cost-explorer/flow']['get']['responses']['200']['content']['application/json'];
 type DimensionsResponse = paths['/dimensions']['get']['responses']['200']['content']['application/json'];
 type DimensionCreateRequest = paths['/dimensions']['post']['requestBody']['content']['application/json'];
 type DimensionResponse = paths['/dimensions']['post']['responses']['201']['content']['application/json'];
@@ -19,10 +21,32 @@ type DimensionMappingResponse =
 type ResourceTagsResponse = paths['/resource-tags']['get']['responses']['200']['content']['application/json'];
 type ResourceTagUpsertRequest = paths['/resource-tags']['post']['requestBody']['content']['application/json'];
 type ResourceTagResponse = paths['/resource-tags']['post']['responses']['201']['content']['application/json'];
+type CostRecordPathQuery = NonNullable<paths['/cost-records']['get']['parameters']['query']>;
+type CloudProvider = NonNullable<CostRecordPathQuery['provider']>;
+
+interface CostRecordQuery {
+  provider?: CloudProvider;
+  accountId?: string;
+  service?: string;
+  from?: string;
+  to?: string;
+  dimension?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+interface CostExplorerFlowQuery {
+  provider?: CloudProvider;
+  from?: string;
+  to?: string;
+  dimensions?: string[];
+  costFloorUsd?: string;
+}
 
 export interface CostalyxClient {
-  listCostRecords(query?: { dimension?: string }): Promise<CostRecordListResponse>;
-  getCostSummary(query?: { dimension?: string }): Promise<CostSummaryResponse>;
+  listCostRecords(query?: CostRecordQuery): Promise<CostRecordListResponse>;
+  getCostSummary(query?: Omit<CostRecordQuery, 'page' | 'pageSize'>): Promise<CostSummaryResponse>;
+  getCostExplorerFlow(query?: CostExplorerFlowQuery): Promise<CostExplorerFlowResponse>;
   createIngestionBatch(input: IngestionBatchCreateRequest & { idempotencyKey: string }): Promise<IngestionBatchResponse>;
   exportCostRecords(): Promise<string>;
   listRoles(): Promise<RolesResponse>;
@@ -54,10 +78,7 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
         Accept: 'application/json',
         ...(await authHeaders())
       };
-      const params = new URLSearchParams();
-      if (query?.dimension) {
-        params.set('dimension', query.dimension);
-      }
+      const params = costRecordParams(query);
 
       const response = await fetch(`${baseUrl}/cost-records${queryString(params)}`, { headers });
       if (!response.ok) {
@@ -67,10 +88,7 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
     },
 
     async getCostSummary(query) {
-      const params = new URLSearchParams();
-      if (query?.dimension) {
-        params.set('dimension', query.dimension);
-      }
+      const params = costRecordParams(query);
       const response = await fetch(`${baseUrl}/cost-records/summary${queryString(params)}`, {
         headers: {
           Accept: 'application/json',
@@ -81,6 +99,27 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
         throw new Error(`Cost summary request failed with ${response.status}`);
       }
       return response.json() as Promise<CostSummaryResponse>;
+    },
+
+    async getCostExplorerFlow(query) {
+      const params = new URLSearchParams();
+      appendParam(params, 'provider', query?.provider);
+      appendParam(params, 'from', query?.from);
+      appendParam(params, 'to', query?.to);
+      if (query?.dimensions?.length) {
+        params.set('dimensions', query.dimensions.join(','));
+      }
+      appendParam(params, 'costFloorUsd', query?.costFloorUsd);
+      const response = await fetch(`${baseUrl}/cost-explorer/flow${queryString(params)}`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Cost explorer request failed with ${response.status}`);
+      }
+      return response.json() as Promise<CostExplorerFlowResponse>;
     },
 
     async exportCostRecords() {
@@ -211,4 +250,27 @@ export const costalyxClient: CostalyxClient = createCostalyxClient();
 function queryString(params: URLSearchParams): string {
   const value = params.toString();
   return value ? `?${value}` : '';
+}
+
+function costRecordParams(query?: CostRecordQuery): URLSearchParams {
+  const params = new URLSearchParams();
+  appendParam(params, 'provider', query?.provider);
+  appendParam(params, 'accountId', query?.accountId);
+  appendParam(params, 'service', query?.service);
+  appendParam(params, 'from', query?.from);
+  appendParam(params, 'to', query?.to);
+  appendParam(params, 'dimension', query?.dimension);
+  if ('page' in (query ?? {}) && query?.page) {
+    params.set('page', String(query.page));
+  }
+  if ('pageSize' in (query ?? {}) && query?.pageSize) {
+    params.set('pageSize', String(query.pageSize));
+  }
+  return params;
+}
+
+function appendParam(params: URLSearchParams, key: string, value: string | number | undefined): void {
+  if (value !== undefined && value !== '') {
+    params.set(key, String(value));
+  }
 }

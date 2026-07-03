@@ -1,5 +1,6 @@
 export type CloudProvider = 'aws' | 'azure' | 'gcp';
 export type LeaseType = 'on_demand' | 'reserved' | 'savings_plan' | 'spot';
+export type CostExplorerDimension = 'provider' | 'service' | 'leaseType' | 'transactionType' | 'usageFamily';
 
 export interface NormalizedCostRecord {
   id: string;
@@ -32,4 +33,21 @@ export interface IngestionBatch {
   completedAt: string | null;
   ingestedRows: number;
   duplicateRows: number;
+}
+
+export interface CostExplorerNode {
+  id: string;
+  label: string;
+  costTotalUsd: string;
+}
+
+export interface CostExplorerLink {
+  source: string;
+  target: string;
+  costTotalUsd: string;
+}
+
+export interface CostExplorerFlow {
+  nodes: CostExplorerNode[];
+  links: CostExplorerLink[];
 }

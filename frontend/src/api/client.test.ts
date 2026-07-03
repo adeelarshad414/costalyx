@@ -117,6 +117,38 @@ describe('createCostalyxClient', () => {
     );
   });
 
+  it('loads cost explorer flow with filters, dimensions, and bearer auth', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        nodes: [{ id: 'service:Amazon EC2', label: 'Amazon EC2', costTotalUsd: '0.41600000' }],
+        links: []
+      })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createCostalyxClient({
+      baseUrl: 'http://api.test/api/v1',
+      getAccessToken: async () => 'signed-keycloak-token'
+    });
+
+    await client.getCostExplorerFlow({
+      provider: 'aws',
+      dimensions: ['service', 'leaseType'],
+      costFloorUsd: '0.01000000'
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://api.test/api/v1/cost-explorer/flow?provider=aws&dimensions=service%2CleaseType&costFloorUsd=0.01000000',
+      expect.objectContaining({
+        headers: {
+          Accept: 'application/json',
+          Authorization: 'Bearer signed-keycloak-token'
+        }
+      })
+    );
+  });
+
   it('sends bearer auth and idempotency keys for dynamic allocation mutations', async () => {
     const fetchMock = vi
       .fn()

@@ -5,6 +5,7 @@ import { useAuth } from './auth/AuthProvider';
 import { AllocationConsole } from './features/allocation/AllocationConsole';
 import { GovernanceConsole } from './features/governance/GovernanceConsole';
 import { IngestionOverview } from './features/ingestion/IngestionOverview';
+import { InsightsConsole } from './features/insights/InsightsConsole';
 
 export function App() {
   const auth = useAuth();
@@ -28,6 +29,7 @@ export function App() {
       </header>
       <AuthBoundary>
         <IngestionOverview client={client} />
+        <InsightsConsole client={client} />
         <AllocationConsole client={client} />
         <GovernanceConsole client={client} />
       </AuthBoundary>
