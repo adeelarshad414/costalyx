@@ -5,13 +5,13 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-03 22:01:52 PKT_
+_Last updated: 2026-07-03 22:08:18 PKT_
 
 ## Milestone status
 
 | Milestone | Status | Test evidence | Notes |
 |---|---|---|---|
-| A — Ingestion & Core Cost Model | Blocked | `npm test` passed with local-network permission: backend 10 suites / 27 tests, frontend 6 files / 10 tests, static contract 1 file / 2 tests, migration additive check passed. `npm run ci:live-contract` passed: live backend contract 1 file / 4 tests. Live Postgres opt-in suite passed: 2 suites / 3 tests. `npm --workspace backend run build` passed. `npm --workspace frontend run build` passed. `npm --workspace backend run test:coverage` passed service/guard/pricing gates. `npm run test:e2e` reported 1 skipped Keycloak login test because credentials were not provided. `docker compose config`, `git diff --check`, and `npm audit --audit-level=high` passed. | AWS/Azure/GCP adapters, golden fixtures, PostgreSQL persistence, idempotency, duplicate prevention, backend bearer-token RBAC, frontend Keycloak provider, bearer-token client wiring, `<PermissionGate>`, live-backend contract script, CI workflow, builds, coverage, compose validation, whitespace check, and dependency audit are verified locally. Still not `Done`: live browser E2E through Keycloak has not passed, and remote GitHub Actions results are not yet observed green. |
+| A — Ingestion & Core Cost Model | Blocked | `npm test` passed with local-network permission: backend 10 suites / 27 tests, frontend 6 files / 10 tests, static contract 1 file / 2 tests, migration additive check passed. `npm run ci:live-contract` passed: live backend contract 1 file / 4 tests, including after the process-cleanup patch. Live Postgres opt-in suite passed: 2 suites / 3 tests. `npm --workspace backend run build` passed. `npm --workspace frontend run build` passed. `npm --workspace backend run test:coverage` passed service/guard/pricing gates. `npm run test:e2e` reported 1 skipped Keycloak login test because credentials were not provided. `docker compose config`, `git diff --check`, and `npm audit --audit-level=high` passed. | AWS/Azure/GCP adapters, golden fixtures, PostgreSQL persistence, idempotency, duplicate prevention, backend bearer-token RBAC, frontend Keycloak provider, bearer-token client wiring, `<PermissionGate>`, live-backend contract script, CI workflow, builds, coverage, compose validation, whitespace check, and dependency audit are verified locally. A GitHub Actions hang was traced to the live-contract runner cleanup path and patched with process-group termination plus workflow timeouts. Still not `Done`: live browser E2E through Keycloak has not passed, and a fresh remote GitHub Actions result is not yet observed green. |
 | B — RBAC & Trust Tiers | Not started | — | |
 | C — Allocation & Dynamic Tagging | Not started | — | |
 | D — Insights Surfaces | Not started | — | |
@@ -56,14 +56,17 @@ and was not verifiable given the constraint._
   it as skipped due missing `E2E_KEYCLOAK_USERNAME`/`E2E_KEYCLOAK_PASSWORD`.
 
 - **Blocker:** Remote GitHub Actions result for the new live-backend contract
-  workflow has not yet been observed green on the PR.
+  workflow has not yet been observed green on the PR. The first remote run
+  hung inside `npm run ci:live-contract`; the runner has now been patched to
+  terminate the full backend process group and the workflow has explicit
+  timeouts.
   **Impact:** Local live-backend contract evidence exists, but the
   `07-FRONTEND-BACKEND-WIRING.md` CI requirement cannot be claimed complete
   until the PR checks run and pass remotely.
   **What was verified instead:** `.github/workflows/ci.yml` now runs
   `npm test`, `npm run ci:live-contract`, builds, and `npm audit
   --audit-level=high`; local `npm run ci:live-contract` passed 4 live-backend
-  tests against a real Nest HTTP server.
+  tests against a real Nest HTTP server after the cleanup patch.
 
 ## Ambiguities flagged for human review
 _Anything resolved by updating a source-of-truth doc gets annotated inline

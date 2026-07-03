@@ -10,6 +10,7 @@ const backend = spawn('npm', ['--workspace', 'backend', 'run', 'start:dev'], {
     HOST: '127.0.0.1',
     PORT: port
   },
+  detached: process.platform !== 'win32',
   stdio: ['ignore', 'pipe', 'pipe']
 });
 
@@ -30,16 +31,16 @@ try {
     },
     stdio: 'inherit'
   });
-  const code = await waitForExit(contract);
+  const code = await waitForExit(contract, 60000);
   process.exitCode = code;
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
   console.error(backendLog);
   process.exitCode = 1;
 } finally {
-  backend.kill('SIGTERM');
+  terminateProcessTree(backend, 'SIGTERM');
   await waitForExit(backend, 5000).catch(() => {
-    backend.kill('SIGKILL');
+    terminateProcessTree(backend, 'SIGKILL');
   });
 }
 
@@ -61,6 +62,11 @@ async function waitForHealth(url, timeoutMs) {
 
 function waitForExit(child, timeoutMs) {
   return new Promise((resolve, reject) => {
+    if (child.exitCode !== null || child.signalCode !== null) {
+      resolve(child.exitCode ?? 0);
+      return;
+    }
+
     const timer = timeoutMs
       ? setTimeout(() => reject(new Error(`Timed out waiting for pid ${child.pid} to exit.`)), timeoutMs)
       : null;
@@ -72,4 +78,23 @@ function waitForExit(child, timeoutMs) {
     });
     child.once('error', reject);
   });
+}
+
+function terminateProcessTree(child, signal) {
+  if (!child.pid || child.exitCode !== null || child.signalCode !== null) {
+    return;
+  }
+
+  try {
+    if (process.platform === 'win32') {
+      child.kill(signal);
+      return;
+    }
+
+    process.kill(-child.pid, signal);
+  } catch (error) {
+    if (!(error instanceof Error) || !('code' in error) || error.code !== 'ESRCH') {
+      throw error;
+    }
+  }
 }
