@@ -308,4 +308,84 @@ describe('createCostalyxClient', () => {
       })
     );
   });
+
+  it('sends bearer auth for executive summary and idempotency keys for TCO estimates', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          totalSpendUsd: '50.15600000',
+          revenueBaselineUsd: '1000.00000000',
+          spendAsRevenuePercent: '5.0156',
+          budgetBaselineUsd: '100.00000000',
+          budgetUsedPercent: '50.1560',
+          trend: { direction: 'up', deltaUsd: '49.64000000' },
+          topMovers: []
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () => '%PDF-1.4 executive'
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          aws: { monthlyCostUsd: '49.64000000', isEstimate: false, assumptions: ['rate from workloadSpec'] },
+          azure: { monthlyCostUsd: '70.08000000', isEstimate: true, assumptions: ['rate from workloadSpec'] },
+          gcp: { monthlyCostUsd: '34.67500000', isEstimate: true, assumptions: ['rate from workloadSpec'] },
+          tolerancePercent: '0.0000'
+        })
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createCostalyxClient({
+      baseUrl: 'http://api.test/api/v1',
+      getAccessToken: async () => 'signed-keycloak-token'
+    });
+
+    await client.getExecutiveSummary({ revenueBaselineUsd: '1000.00000000', budgetBaselineUsd: '100.00000000' });
+    await expect(client.exportExecutiveSummaryPdf()).resolves.toBe('%PDF-1.4 executive');
+    await client.estimateTco({
+      workloadSpec: {
+        usageHours: '730.0000',
+        providerHourlyRatesUsd: { aws: '0.06800000', azure: '0.09600000', gcp: '0.04750000' }
+      },
+      idempotencyKey: 'tco-key-1'
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'http://api.test/api/v1/executive-summary?revenueBaselineUsd=1000.00000000&budgetBaselineUsd=100.00000000',
+      expect.objectContaining({
+        headers: {
+          Accept: 'application/json',
+          Authorization: 'Bearer signed-keycloak-token'
+        }
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'http://api.test/api/v1/executive-summary/export',
+      expect.objectContaining({
+        headers: {
+          Accept: 'application/pdf',
+          Authorization: 'Bearer signed-keycloak-token'
+        }
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      'http://api.test/api/v1/tco/estimate',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          Authorization: 'Bearer signed-keycloak-token',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'tco-key-1'
+        }
+      })
+    );
+  });
 });

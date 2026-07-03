@@ -72,6 +72,22 @@ function createInsightsClient(overrides: Partial<CostalyxClient> = {}): Costalyx
       throw new Error('not expected');
     },
     listRealizedSavings: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
+    getExecutiveSummary: async () => ({
+      totalSpendUsd: '0.00000000',
+      revenueBaselineUsd: '1000.00000000',
+      spendAsRevenuePercent: '0.0000',
+      budgetBaselineUsd: '100.00000000',
+      budgetUsedPercent: '0.0000',
+      trend: { direction: 'flat', deltaUsd: '0.00000000' },
+      topMovers: []
+    }),
+    exportExecutiveSummaryPdf: async () => '%PDF-1.4',
+    estimateTco: async () => ({
+      aws: { monthlyCostUsd: '0.00000000', isEstimate: true, assumptions: [] },
+      azure: { monthlyCostUsd: '0.00000000', isEstimate: true, assumptions: [] },
+      gcp: { monthlyCostUsd: '0.00000000', isEstimate: true, assumptions: [] },
+      tolerancePercent: '0.0000'
+    }),
     ...overrides
   };
 }

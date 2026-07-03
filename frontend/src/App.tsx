@@ -3,6 +3,7 @@ import { createCostalyxClient } from './api/client';
 import { AuthBoundary } from './auth/AuthBoundary';
 import { useAuth } from './auth/AuthProvider';
 import { AllocationConsole } from './features/allocation/AllocationConsole';
+import { ExecutiveConsole } from './features/executive/ExecutiveConsole';
 import { GovernanceConsole } from './features/governance/GovernanceConsole';
 import { IngestionOverview } from './features/ingestion/IngestionOverview';
 import { InsightsConsole } from './features/insights/InsightsConsole';
@@ -30,6 +31,7 @@ export function App() {
       </header>
       <AuthBoundary>
         <IngestionOverview client={client} />
+        <ExecutiveConsole client={client} />
         <InsightsConsole client={client} />
         <OptimizationConsole client={client} />
         <AllocationConsole client={client} />

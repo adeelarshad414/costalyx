@@ -27,6 +27,10 @@ type RecommendationPatchRequest =
 type RecommendationResponse =
   paths['/recommendations/{id}']['patch']['responses']['200']['content']['application/json'];
 type RealizedSavingsResponse = paths['/realized-savings']['get']['responses']['200']['content']['application/json'];
+type ExecutiveSummaryResponse =
+  paths['/executive-summary']['get']['responses']['200']['content']['application/json'];
+type TcoEstimateRequest = paths['/tco/estimate']['post']['requestBody']['content']['application/json'];
+type TcoEstimateResponse = paths['/tco/estimate']['post']['responses']['200']['content']['application/json'];
 type CostRecordPathQuery = NonNullable<paths['/cost-records']['get']['parameters']['query']>;
 type CloudProvider = NonNullable<CostRecordPathQuery['provider']>;
 type RecommendationStatus = NonNullable<
@@ -58,6 +62,11 @@ interface RecommendationsQuery {
   pageSize?: number;
 }
 
+interface ExecutiveSummaryQuery {
+  revenueBaselineUsd?: string;
+  budgetBaselineUsd?: string;
+}
+
 export interface CostalyxClient {
   listCostRecords(query?: CostRecordQuery): Promise<CostRecordListResponse>;
   getCostSummary(query?: Omit<CostRecordQuery, 'page' | 'pageSize'>): Promise<CostSummaryResponse>;
@@ -77,6 +86,9 @@ export interface CostalyxClient {
     input: RecommendationPatchRequest & { id: string; idempotencyKey: string }
   ): Promise<RecommendationResponse>;
   listRealizedSavings(query?: { page?: number; pageSize?: number }): Promise<RealizedSavingsResponse>;
+  getExecutiveSummary(query?: ExecutiveSummaryQuery): Promise<ExecutiveSummaryResponse>;
+  exportExecutiveSummaryPdf(): Promise<string>;
+  estimateTco(input: TcoEstimateRequest & { idempotencyKey: string }): Promise<TcoEstimateResponse>;
 }
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
@@ -311,6 +323,52 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
         throw new Error(`Realized savings request failed with ${response.status}`);
       }
       return response.json() as Promise<RealizedSavingsResponse>;
+    },
+
+    async getExecutiveSummary(query) {
+      const params = new URLSearchParams();
+      appendParam(params, 'revenueBaselineUsd', query?.revenueBaselineUsd);
+      appendParam(params, 'budgetBaselineUsd', query?.budgetBaselineUsd);
+      const response = await fetch(`${baseUrl}/executive-summary${queryString(params)}`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Executive summary request failed with ${response.status}`);
+      }
+      return response.json() as Promise<ExecutiveSummaryResponse>;
+    },
+
+    async exportExecutiveSummaryPdf() {
+      const response = await fetch(`${baseUrl}/executive-summary/export`, {
+        headers: {
+          Accept: 'application/pdf',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Executive summary export failed with ${response.status}`);
+      }
+      return response.text();
+    },
+
+    async estimateTco({ idempotencyKey, ...body }) {
+      const response = await fetch(`${baseUrl}/tco/estimate`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+          ...(await authHeaders())
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error(`TCO estimate request failed with ${response.status}`);
+      }
+      return response.json() as Promise<TcoEstimateResponse>;
     }
   };
 }

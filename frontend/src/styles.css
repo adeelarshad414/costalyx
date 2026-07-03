@@ -217,6 +217,64 @@ td {
   grid-template-columns: minmax(0, 1fr) minmax(260px, 0.8fr);
 }
 
+.executive-toolbar {
+  justify-content: space-between;
+}
+
+.executive-toolbar h2 {
+  margin: 0;
+}
+
+.executive-metrics,
+.executive-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.executive-metrics {
+  margin-bottom: 16px;
+}
+
+.executive-grid {
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.8fr);
+}
+
+.executive-list {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+}
+
+.executive-list li {
+  border-bottom: 1px solid var(--border-subtle);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  padding: 10px 0;
+}
+
+.tco-grid {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.tco-grid div {
+  align-items: baseline;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.tco-grid dt,
+.tco-grid dd {
+  margin: 0;
+}
+
 .optimization-list {
   display: grid;
   gap: 10px;
@@ -276,11 +334,13 @@ td {
 
 @media (max-width: 760px) {
   .allocation-grid,
+  .executive-grid,
   .insights-grid,
   .optimization-grid {
     grid-template-columns: 1fr;
   }
 
+  .executive-list li,
   .optimization-list li {
     grid-template-columns: auto minmax(0, 1fr);
   }

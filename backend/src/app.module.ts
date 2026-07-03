@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { AllocationModule } from './allocation/allocation.module';
 import { CostModelModule } from './cost-model/cost-model.module';
+import { ExecutiveModule } from './executive/executive.module';
 import { GovernanceModule } from './governance/governance.module';
 import { HealthController } from './health.controller';
 import { IngestionModule } from './ingestion/ingestion.module';
@@ -18,7 +19,8 @@ import { AUTH_TOKEN_VERIFIER } from './security/token-verifier';
     CostModelModule,
     IngestionModule,
     GovernanceModule,
-    OptimizationModule
+    OptimizationModule,
+    ExecutiveModule
   ],
   controllers: [HealthController],
   providers: [
