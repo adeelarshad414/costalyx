@@ -1,0 +1,140 @@
+name: costalyx
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-costalyx_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-costalyx}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-CHANGE_ME_DEV_ONLY}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - costalyx
+
+  keycloak:
+    image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.2}
+    command: ["start-dev", "--http-port=8080", "--hostname-strict=false"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-CHANGE_ME_DEV_ONLY}
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    ports:
+      - "${KEYCLOAK_PORT:-8080}:8080"
+      - "${KEYCLOAK_MANAGEMENT_PORT:-9000}:9000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - costalyx
+
+  vault:
+    image: ${VAULT_IMAGE:-hashicorp/vault:1.17}
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID:-CHANGE_ME_DEV_ONLY}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    ports:
+      - "${VAULT_PORT:-8200}:8200"
+    healthcheck:
+      test: ["CMD-SHELL", "VAULT_ADDR=http://127.0.0.1:8200 vault status >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - costalyx
+
+  redpanda:
+    image: ${REDPANDA_IMAGE:-redpandadata/redpanda:v24.3.1}
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp
+      - "1"
+      - --memory
+      - 512M
+      - --reserve-memory
+      - 0M
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:9092
+    ports:
+      - "${REDPANDA_KAFKA_PORT:-9092}:9092"
+      - "${REDPANDA_ADMIN_PORT:-9644}:9644"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - costalyx
+
+  backend:
+    profiles: ["app"]
+    build:
+      context: ./backend
+      target: dev
+    command: ["npm", "run", "start:dev"]
+    environment:
+      APP_ENV: local
+      PORT: "3000"
+      DATABASE_URL: postgresql://costalyx:CHANGE_ME_DEV_ONLY@postgres:5432/costalyx_dev
+      KEYCLOAK_ISSUER_URL: http://keycloak:8080/realms/costalyx-dev
+      VAULT_ADDR: http://vault:8200
+      REDPANDA_BROKERS: redpanda:9092
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      vault:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    networks:
+      - costalyx
+
+  frontend:
+    profiles: ["app"]
+    build:
+      context: ./frontend
+      target: dev
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000/api/v1
+      VITE_KEYCLOAK_URL: http://localhost:8080
+      VITE_KEYCLOAK_REALM: costalyx-dev
+      VITE_KEYCLOAK_CLIENT_ID: costalyx-web
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - costalyx
+
+networks:
+  costalyx:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redpanda_data:

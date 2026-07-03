@@ -1,0 +1,1655 @@
+openapi: 3.1.0
+info:
+  title: Costalyx API
+  version: 0.1.0
+  description: |
+    Skeleton OpenAPI contract for Costalyx.
+
+    This file is checked in as the contract source consumed by generated
+    TypeScript clients. Once the NestJS backend exists, builds should
+    regenerate this contract from decorators and fail if the generated output
+    drifts from the committed API surface.
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: http://localhost:3000
+    description: Local development backend
+tags:
+  - name: Health
+  - name: Ingestion
+  - name: Cost Data
+  - name: Accounts
+  - name: Dimensions
+  - name: Optimization
+  - name: Reporting
+  - name: TCO
+  - name: Admin
+security:
+  - bearerAuth: []
+paths:
+  /healthz:
+    get:
+      tags: [Health]
+      summary: Liveness check
+      operationId: getHealthz
+      security: []
+      responses:
+        "200":
+          description: Backend process is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /metrics:
+    get:
+      tags: [Health]
+      summary: Prometheus metrics
+      operationId: getMetrics
+      x-required-role: admin
+      responses:
+        "200":
+          description: Prometheus-compatible metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/ingestion/batches:
+    post:
+      tags: [Ingestion]
+      summary: Trigger a manual ingestion run
+      operationId: createIngestionBatch
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngestionBatchCreate"
+      responses:
+        "202":
+          description: Ingestion batch accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionBatch"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/ingestion/batches/{id}:
+    get:
+      tags: [Ingestion]
+      summary: Get ingestion batch status
+      operationId: getIngestionBatch
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Ingestion batch status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionBatch"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/ingestion/batches/{id}/errors:
+    get:
+      tags: [Ingestion]
+      summary: List row-level ingestion errors
+      operationId: listIngestionBatchErrors
+      x-required-role: analyst
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated ingestion errors
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedIngestionErrors"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/cost-records:
+    get:
+      tags: [Cost Data]
+      summary: List normalized cost records
+      operationId: listCostRecords
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Provider"
+        - name: accountId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: service
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+        - name: dimension
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated cost records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedCostRecords"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/cost-records/summary:
+    get:
+      tags: [Cost Data]
+      summary: Get pre-aggregated cost totals
+      operationId: getCostRecordsSummary
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Provider"
+        - name: accountId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+        - name: dimension
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cost summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CostSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/cost-explorer/flow:
+    get:
+      tags: [Cost Data]
+      summary: Get Sankey-shaped cost explorer flow
+      operationId: getCostExplorerFlow
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Provider"
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+        - name: dimensions
+          in: query
+          description: Ordered dimensions to drill through
+          schema:
+            type: array
+            items:
+              type: string
+        - name: costFloorUsd
+          in: query
+          schema:
+            $ref: "#/components/schemas/MoneyString"
+      responses:
+        "200":
+          description: Sankey flow graph
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CostExplorerFlow"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/accounts:
+    get:
+      tags: [Accounts]
+      summary: List cloud billing accounts
+      operationId: listAccounts
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Provider"
+      responses:
+        "200":
+          description: Paginated accounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedAccounts"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Accounts]
+      summary: Create a cloud billing account reference
+      operationId: createAccount
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountCreate"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/account-groups:
+    get:
+      tags: [Accounts]
+      summary: List account groups
+      operationId: listAccountGroups
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated account groups
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedAccountGroups"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Accounts]
+      summary: Create an account group
+      operationId: createAccountGroup
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountGroupCreate"
+      responses:
+        "201":
+          description: Account group created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountGroup"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/account-groups/{id}:
+    patch:
+      tags: [Accounts]
+      summary: Update an account group
+      operationId: updateAccountGroup
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountGroupPatch"
+      responses:
+        "200":
+          description: Account group updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountGroup"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Accounts]
+      summary: Delete an account group
+      operationId: deleteAccountGroup
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "204":
+          description: Account group deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/dimensions:
+    get:
+      tags: [Dimensions]
+      summary: List custom dimensions
+      operationId: listDimensions
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated dimensions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedDimensions"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Dimensions]
+      summary: Create an unbounded custom dimension
+      operationId: createDimension
+      x-required-role: analyst
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DimensionCreate"
+      responses:
+        "201":
+          description: Dimension created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dimension"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/dimensions/{id}/mappings:
+    post:
+      tags: [Dimensions]
+      summary: Add a tag mapping to a dimension
+      operationId: createDimensionMapping
+      x-required-role: analyst
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DimensionMappingCreate"
+      responses:
+        "201":
+          description: Dimension mapping created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DimensionMapping"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/resource-tags:
+    get:
+      tags: [Dimensions]
+      summary: List tags for a resource
+      operationId: listResourceTags
+      x-required-role: viewer
+      parameters:
+        - name: resourceId
+          in: query
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated resource tags
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedResourceTags"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/recommendations:
+    get:
+      tags: [Optimization]
+      summary: List optimization recommendations
+      operationId: listRecommendations
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/RecommendationStatus"
+      responses:
+        "200":
+          description: Paginated recommendations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedRecommendations"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/recommendations/{id}:
+    patch:
+      tags: [Optimization]
+      summary: Update recommendation status
+      operationId: updateRecommendation
+      x-required-role: analyst
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecommendationPatch"
+      responses:
+        "200":
+          description: Recommendation updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recommendation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/realized-savings:
+    get:
+      tags: [Optimization]
+      summary: List realized savings ledger rows
+      operationId: listRealizedSavings
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated realized savings rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedRealizedSavings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/reports:
+    get:
+      tags: [Reporting]
+      summary: List canned reports
+      operationId: listReports
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: category
+          in: query
+          schema:
+            $ref: "#/components/schemas/ReportCategory"
+      responses:
+        "200":
+          description: Paginated report catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedReports"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/reports/{id}/run:
+    get:
+      tags: [Reporting]
+      summary: Run a canned report
+      operationId: runReport
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+      responses:
+        "200":
+          description: Report result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportRun"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/views:
+    get:
+      tags: [Reporting]
+      summary: List saved views
+      operationId: listViews
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated views
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedViews"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Reporting]
+      summary: Create a saved view
+      operationId: createView
+      x-required-role: analyst
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ViewCreate"
+      responses:
+        "201":
+          description: View created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/View"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/tco/estimate:
+    post:
+      tags: [TCO]
+      summary: Estimate cross-cloud cost for a workload
+      operationId: estimateTco
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TcoEstimateRequest"
+      responses:
+        "200":
+          description: Cross-cloud TCO estimate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TcoEstimateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/users:
+    get:
+      tags: [Admin]
+      summary: List users
+      operationId: listUsers
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedUsers"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Admin]
+      summary: Create user
+      operationId: createUser
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreate"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/roles:
+    get:
+      tags: [Admin]
+      summary: List roles
+      operationId: listRoles
+      x-required-role: admin
+      responses:
+        "200":
+          description: Roles
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Role"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Admin]
+      summary: Create role
+      operationId: createRole
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleCreate"
+      responses:
+        "201":
+          description: Role created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/audit-log:
+    get:
+      tags: [Admin]
+      summary: List immutable audit log entries
+      operationId: listAuditLog
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated audit log entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedAuditLog"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Keycloak-issued OIDC access token.
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Required on every mutating request; duplicate keys return the original result.
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 25
+    Provider:
+      name: provider
+      in: query
+      schema:
+        $ref: "#/components/schemas/CloudProvider"
+    DateFrom:
+      name: from
+      in: query
+      schema:
+        type: string
+        format: date-time
+    DateTo:
+      name: to
+      in: query
+      schema:
+        type: string
+        format: date-time
+
+  responses:
+    BadRequest:
+      description: Request validation failed
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Unauthorized:
+      description: Missing or invalid bearer token
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Forbidden:
+      description: Authenticated caller lacks the required role
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Conflict:
+      description: Request conflicts with current state or idempotency replay
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, detail, instance]
+      properties:
+        type:
+          type: string
+          format: uri
+          examples: ["https://api.costalyx.local/errors/validation-error"]
+        title:
+          type: string
+          examples: ["Validation Error"]
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+        requestId:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+
+    CloudProvider:
+      type: string
+      enum: [aws, azure, gcp]
+
+    LeaseType:
+      type: string
+      enum: [on_demand, reserved, savings_plan, spot]
+
+    RoleName:
+      type: string
+      enum: [viewer, analyst, admin]
+
+    MoneyString:
+      type: string
+      pattern: '^-?[0-9]+(\.[0-9]{1,8})?$'
+      examples: ["1234.5600"]
+
+    ListMeta:
+      type: object
+      required: [total, page, pageSize]
+      properties:
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 200
+
+    Account:
+      type: object
+      required: [id, provider, externalAccountId, displayName, vendor, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        provider:
+          $ref: "#/components/schemas/CloudProvider"
+        externalAccountId:
+          type: string
+        displayName:
+          type: string
+        vendor:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    AccountCreate:
+      type: object
+      required: [provider, externalAccountId, displayName]
+      properties:
+        provider:
+          $ref: "#/components/schemas/CloudProvider"
+        externalAccountId:
+          type: string
+        displayName:
+          type: string
+        vaultCredentialPath:
+          type: string
+          description: Vault/OpenBao path reference only; never a plaintext secret.
+
+    AccountGroup:
+      type: object
+      required: [id, name, accountIds, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        accountIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+    AccountGroupCreate:
+      type: object
+      required: [name, accountIds]
+      properties:
+        name:
+          type: string
+        accountIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    AccountGroupPatch:
+      type: object
+      properties:
+        name:
+          type: string
+        accountIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    CostRecord:
+      type: object
+      required:
+        - id
+        - provider
+        - accountId
+        - resourceId
+        - serviceName
+        - leaseType
+        - hourlyRateUsd
+        - usageHours
+        - costTotalUsd
+        - isEstimate
+        - validFrom
+      properties:
+        id:
+          type: string
+          format: uuid
+        provider:
+          $ref: "#/components/schemas/CloudProvider"
+        accountId:
+          type: string
+          format: uuid
+        resourceId:
+          type: string
+        serviceName:
+          type: string
+        usageFamily:
+          type: string
+        leaseType:
+          $ref: "#/components/schemas/LeaseType"
+        transactionType:
+          type: string
+        hourlyRateUsd:
+          $ref: "#/components/schemas/MoneyString"
+        usageHours:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]{1,4})?$'
+        costTotalUsd:
+          allOf:
+            - $ref: "#/components/schemas/MoneyString"
+          readOnly: true
+          description: Computed at query time, never stored.
+        isEstimate:
+          type: boolean
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: ["string", "null"]
+          format: date-time
+        ingestedAt:
+          type: string
+          format: date-time
+
+    CostSummary:
+      type: object
+      required: [totalCostUsd, resourceCount, untaggedCount, inactiveCount, isEstimate]
+      properties:
+        totalCostUsd:
+          $ref: "#/components/schemas/MoneyString"
+        resourceCount:
+          type: integer
+          minimum: 0
+        untaggedCount:
+          type: integer
+          minimum: 0
+        inactiveCount:
+          type: integer
+          minimum: 0
+        isEstimate:
+          type: boolean
+
+    CostExplorerFlow:
+      type: object
+      required: [nodes, links]
+      properties:
+        nodes:
+          type: array
+          items:
+            type: object
+            required: [id, label, costTotalUsd]
+            properties:
+              id:
+                type: string
+              label:
+                type: string
+              costTotalUsd:
+                $ref: "#/components/schemas/MoneyString"
+        links:
+          type: array
+          items:
+            type: object
+            required: [source, target, costTotalUsd]
+            properties:
+              source:
+                type: string
+              target:
+                type: string
+              costTotalUsd:
+                $ref: "#/components/schemas/MoneyString"
+
+    Dimension:
+      type: object
+      required: [id, orgId, name, createdBy, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        orgId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        createdBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+    DimensionCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+
+    DimensionMapping:
+      type: object
+      required: [id, dimensionId, tagKey]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dimensionId:
+          type: string
+          format: uuid
+        tagKey:
+          type: string
+        tagValuePattern:
+          type: ["string", "null"]
+
+    DimensionMappingCreate:
+      type: object
+      required: [tagKey]
+      properties:
+        tagKey:
+          type: string
+        tagValuePattern:
+          type: ["string", "null"]
+
+    ResourceTag:
+      type: object
+      required: [resourceId, tagKey, tagValue, source]
+      properties:
+        resourceId:
+          type: string
+        tagKey:
+          type: string
+        tagValue:
+          type: string
+        source:
+          type: string
+          enum: [native, manual, inferred]
+
+    IngestionBatch:
+      type: object
+      required: [id, provider, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        provider:
+          $ref: "#/components/schemas/CloudProvider"
+        status:
+          type: string
+          enum: [pending, processing, complete, failed]
+        sourceUri:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+
+    IngestionBatchCreate:
+      type: object
+      required: [provider, sourceUri]
+      properties:
+        provider:
+          $ref: "#/components/schemas/CloudProvider"
+        sourceUri:
+          type: string
+          description: Provider-native source URI or object reference.
+
+    IngestionError:
+      type: object
+      required: [id, batchId, rowNumber, detail]
+      properties:
+        id:
+          type: string
+          format: uuid
+        batchId:
+          type: string
+          format: uuid
+        rowNumber:
+          type: integer
+          minimum: 1
+        detail:
+          type: string
+
+    RecommendationStatus:
+      type: string
+      enum: [open, applied, dismissed]
+
+    Recommendation:
+      type: object
+      required: [id, type, resourceId, estimatedSavingsUsd, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [rightsizing, ri_purchase, idle, commitment_gap]
+        resourceId:
+          type: string
+        estimatedSavingsUsd:
+          $ref: "#/components/schemas/MoneyString"
+        status:
+          $ref: "#/components/schemas/RecommendationStatus"
+        createdAt:
+          type: string
+          format: date-time
+
+    RecommendationPatch:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [applied, dismissed]
+
+    RealizedSaving:
+      type: object
+      required:
+        - id
+        - recommendationId
+        - appliedAt
+        - baselineCostUsd
+        - actualCostUsd
+        - deltaUsd
+        - verificationSource
+      properties:
+        id:
+          type: string
+          format: uuid
+        recommendationId:
+          type: string
+          format: uuid
+        appliedAt:
+          type: string
+          format: date-time
+        baselineCostUsd:
+          $ref: "#/components/schemas/MoneyString"
+        actualCostUsd:
+          $ref: "#/components/schemas/MoneyString"
+        deltaUsd:
+          $ref: "#/components/schemas/MoneyString"
+        verificationSource:
+          type: string
+          enum: [ingested_billing]
+
+    ReportCategory:
+      type: string
+      enum: [cost, cost_summary, invoices, utilization, underutilization]
+
+    Report:
+      type: object
+      required: [id, name, category]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        category:
+          $ref: "#/components/schemas/ReportCategory"
+        description:
+          type: string
+
+    ReportRun:
+      type: object
+      required: [reportId, generatedAt, rows]
+      properties:
+        reportId:
+          type: string
+          format: uuid
+        generatedAt:
+          type: string
+          format: date-time
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    View:
+      type: object
+      required: [id, orgId, name, filterJson, ownerId, sharedRoleScope]
+      properties:
+        id:
+          type: string
+          format: uuid
+        orgId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        filterJson:
+          type: object
+          additionalProperties: true
+        ownerId:
+          type: string
+          format: uuid
+        sharedRoleScope:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleName"
+
+    ViewCreate:
+      type: object
+      required: [name, filterJson]
+      properties:
+        name:
+          type: string
+        filterJson:
+          type: object
+          additionalProperties: true
+        sharedRoleScope:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleName"
+
+    TcoEstimateRequest:
+      type: object
+      required: [workloadSpec]
+      properties:
+        workloadSpec:
+          type: object
+          additionalProperties: true
+
+    TcoEstimateResponse:
+      type: object
+      required: [aws, azure, gcp, tolerancePercent]
+      properties:
+        aws:
+          $ref: "#/components/schemas/TcoProviderEstimate"
+        azure:
+          $ref: "#/components/schemas/TcoProviderEstimate"
+        gcp:
+          $ref: "#/components/schemas/TcoProviderEstimate"
+        tolerancePercent:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]{1,4})?$'
+
+    TcoProviderEstimate:
+      type: object
+      required: [monthlyCostUsd, isEstimate]
+      properties:
+        monthlyCostUsd:
+          $ref: "#/components/schemas/MoneyString"
+        isEstimate:
+          type: boolean
+        assumptions:
+          type: array
+          items:
+            type: string
+
+    User:
+      type: object
+      required: [id, email, displayName, roles]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleName"
+
+    UserCreate:
+      type: object
+      required: [email, displayName, roles]
+      properties:
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleName"
+
+    Role:
+      type: object
+      required: [name, fixed]
+      properties:
+        name:
+          $ref: "#/components/schemas/RoleName"
+        fixed:
+          type: boolean
+
+    RoleCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        permissionBitset:
+          type: string
+          description: Future additive custom-role permission bitset.
+
+    AuditLogEntry:
+      type: object
+      required: [id, actorId, action, targetType, targetId, prevHash, hash, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        actorId:
+          type: string
+          format: uuid
+        action:
+          type: string
+        targetType:
+          type: string
+        targetId:
+          type: string
+        prevHash:
+          type: ["string", "null"]
+        hash:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    PaginatedCostRecords:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/CostRecord"
+    PaginatedAccounts:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Account"
+    PaginatedAccountGroups:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/AccountGroup"
+    PaginatedDimensions:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Dimension"
+    PaginatedResourceTags:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ResourceTag"
+    PaginatedIngestionErrors:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/IngestionError"
+    PaginatedRecommendations:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Recommendation"
+    PaginatedRealizedSavings:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/RealizedSaving"
+    PaginatedReports:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Report"
+    PaginatedViews:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/View"
+    PaginatedUsers:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/User"
+    PaginatedAuditLog:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/AuditLogEntry"
+
+    PaginatedResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items: {}
+        meta:
+          $ref: "#/components/schemas/ListMeta"
