@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { GovernanceService } from '../../src/governance/governance.service';
+import { InMemoryGovernanceRepository } from '../../src/governance/in-memory-governance.repository';
 import type { AuthenticatedUser } from '../../src/security/token-verifier';
 
 const actor: AuthenticatedUser = { subject: 'admin-user', role: 'admin' };
@@ -9,11 +10,11 @@ describe('GovernanceService', () => {
   let service: GovernanceService;
 
   beforeEach(() => {
-    service = new GovernanceService();
+    service = new GovernanceService(new InMemoryGovernanceRepository());
   });
 
-  it('creates account references without exposing Vault paths in list responses', () => {
-    const account = service.createAccount(
+  it('creates account references without exposing Vault paths in list responses', async () => {
+    const account = await service.createAccount(
       {
         provider: 'aws',
         externalAccountId: '123456789012',
@@ -25,29 +26,31 @@ describe('GovernanceService', () => {
     );
 
     expect(account.vaultCredentialPath).toBe('kv/costalyx/aws/prod');
-    expect(service.listAccounts({ page: 1, pageSize: 25 }).data[0]).not.toHaveProperty('vaultCredentialPath');
+    expect((await service.listAccounts({ page: 1, pageSize: 25 })).data[0]).not.toHaveProperty('vaultCredentialPath');
   });
 
-  it('creates, updates, deletes, and idempotently replays account groups', () => {
-    const created = service.createAccountGroup(
+  it('creates, updates, deletes, and idempotently replays account groups', async () => {
+    const created = await service.createAccountGroup(
       { name: 'Platform', accountIds: [accountId] },
       actor,
       'group-create-key'
     );
-    expect(service.createAccountGroup({ name: 'Ignored', accountIds: [] }, actor, 'group-create-key')).toBe(created);
+    await expect(service.createAccountGroup({ name: 'Ignored', accountIds: [] }, actor, 'group-create-key')).resolves.toBe(
+      created
+    );
 
-    const updated = service.updateAccountGroup(created.id, { name: 'Platform owners' }, actor, 'group-update-key');
+    const updated = await service.updateAccountGroup(created.id, { name: 'Platform owners' }, actor, 'group-update-key');
     expect(updated).toMatchObject({ name: 'Platform owners', accountIds: [accountId] });
 
-    service.deleteAccountGroup(created.id, actor, 'group-delete-key');
-    expect(service.listAccountGroups({ page: 1, pageSize: 25 }).data).toEqual([]);
-    expect(() => service.updateAccountGroup(created.id, { name: 'Missing' }, actor, 'group-missing-key')).toThrow(
+    await service.deleteAccountGroup(created.id, actor, 'group-delete-key');
+    expect((await service.listAccountGroups({ page: 1, pageSize: 25 })).data).toEqual([]);
+    await expect(service.updateAccountGroup(created.id, { name: 'Missing' }, actor, 'group-missing-key')).rejects.toThrow(
       NotFoundException
     );
   });
 
-  it('stores credential references only and records rotation audit evidence', () => {
-    const credential = service.createCredential(
+  it('stores credential references only and records rotation audit evidence', async () => {
+    const credential = await service.createCredential(
       {
         provider: 'aws',
         accountId,
@@ -57,7 +60,7 @@ describe('GovernanceService', () => {
       actor,
       'credential-create-key'
     );
-    const rotated = service.rotateCredential(
+    const rotated = await service.rotateCredential(
       credential.id,
       { vaultPath: 'kv/costalyx/aws/prod-v2' },
       actor,
@@ -66,20 +69,22 @@ describe('GovernanceService', () => {
 
     expect(rotated.vaultPath).toBe('kv/costalyx/aws/prod-v2');
     expect(rotated.rotatedAt).toEqual(expect.any(String));
-    expect(() => service.rotateCredential('22222222-2222-4222-8222-222222222222', { vaultPath: 'kv/missing' }, actor, 'missing')).toThrow(
+    await expect(
+      service.rotateCredential('22222222-2222-4222-8222-222222222222', { vaultPath: 'kv/missing' }, actor, 'missing')
+    ).rejects.toThrow(
       NotFoundException
     );
   });
 
-  it('keeps Milestone B roles fixed while auditing user role changes', () => {
-    const user = service.createUser(
+  it('keeps Milestone B roles fixed while auditing user role changes', async () => {
+    const user = await service.createUser(
       { email: 'viewer@example.test', displayName: 'Viewer User', roles: ['viewer'] },
       actor,
       'user-create-key'
     );
 
     expect(user.roles).toEqual(['viewer']);
-    expect(service.listRoles()).toEqual({
+    expect(await service.listRoles()).toEqual({
       data: [
         { name: 'viewer', fixed: true },
         { name: 'analyst', fixed: true },
@@ -87,16 +92,18 @@ describe('GovernanceService', () => {
       ]
     });
     expect(() => service.rejectCustomRoleCreation()).toThrow(BadRequestException);
-    expect(service.listAuditLog({ page: 1, pageSize: 25 }).data.map((entry) => entry.action)).toContain('role_change');
+    expect((await service.listAuditLog({ page: 1, pageSize: 25 })).data.map((entry) => entry.action)).toContain(
+      'role_change'
+    );
   });
 
-  it('returns paginated hash-chained audit entries', () => {
-    service.createUser(
+  it('returns paginated hash-chained audit entries', async () => {
+    await service.createUser(
       { email: 'analyst@example.test', displayName: 'Analyst User', roles: ['analyst'] },
       actor,
       'audit-user-key'
     );
-    service.createCredential(
+    await service.createCredential(
       {
         provider: 'gcp',
         accountId,
@@ -107,7 +114,7 @@ describe('GovernanceService', () => {
       'audit-credential-key'
     );
 
-    const audit = service.listAuditLog({ page: 1, pageSize: 1 });
+    const audit = await service.listAuditLog({ page: 1, pageSize: 1 });
     expect(audit.meta).toEqual({ total: 2, page: 1, pageSize: 1 });
     expect(audit.data[0]).toEqual(
       expect.objectContaining({

@@ -5,14 +5,14 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-03 22:41:08 PKT_
+_Last updated: 2026-07-03 22:52:46 PKT_
 
 ## Milestone status
 
 | Milestone | Status | Test evidence | Notes |
 |---|---|---|---|
 | A — Ingestion & Core Cost Model | Blocked | `npm test` passed with local-network permission: backend 10 suites / 28 tests, frontend 6 files / 12 tests, static contract 1 file / 2 tests, migration additive check passed. `npm run ci:live-contract` passed: live backend contract 1 file / 4 tests. GitHub Actions `verify` passed on both push and PR runs for checkpoint `010a9a0`; stale hung runs were cancelled. Live Postgres opt-in suite passed earlier: 2 suites / 3 tests. `npm --workspace backend run build` passed. `npm --workspace frontend run build` passed. `npm --workspace backend run test:coverage` passed service/guard/pricing gates. `npm run test:e2e` reported 1 skipped Keycloak login test because no live Keycloak credentials/stack were available. `docker compose config`, `git diff --check`, and `npm audit --audit-level=high` passed. | AWS/Azure/GCP adapters, golden fixtures, PostgreSQL persistence, idempotency, duplicate prevention, backend bearer-token RBAC, frontend Keycloak provider, bearer-token client wiring, `<PermissionGate>`, admin-only UI ingestion trigger with `Idempotency-Key`, strict issuer validation with Docker JWKS override, live-backend contract script, CI workflow, builds, coverage, compose validation, whitespace check, and dependency audit are verified locally. Still not `Done`: live browser E2E through Keycloak has not passed because the local Docker Keycloak image pull failed twice with registry TLS handshake timeouts. |
-| B — RBAC & Trust Tiers | In progress | `npm --workspace backend test -- --runTestsByPath test/security/milestone-b-privileged-actions.integration.spec.ts` passed 11 direct API authorization tests. `npm --workspace frontend test -- --run src/api/client.test.ts src/features/governance/GovernanceConsole.test.tsx src/features/ingestion/IngestionOverview.test.tsx` passed 3 files / 9 tests. `npm run test:contract` passed 2 static files / 5 tests with live contract files skipped without `LIVE_API_BASE_URL`. `npm run ci:live-contract` passed 2 live files / 7 tests. `npm test` passed backend 12 suites / 44 tests, frontend 7 files / 15 tests, contract 2 static files / 5 tests, additive migration check 3 files. Backend and frontend builds passed; backend coverage passed at 92.57% statements / 91.83% functions / 92.22% lines. GitHub Actions `verify` passed on push and PR runs for checkpoint `d64d7aa`. | Fixed roles, server-side guard enforcement for account groups, credential references, users, roles, audit log, authenticated CSV export, frontend admin gating, OpenAPI schemas, generated client, and additive RBAC/audit migrations are implemented. Still not `Done`: governance runtime persistence is not yet wired to Postgres repositories and live Keycloak browser E2E remains blocked by Docker image pulls. |
+| B — RBAC & Trust Tiers | Blocked | `npm --workspace backend test -- --runTestsByPath test/governance/postgres-governance.repository.spec.ts test/governance/governance.service.spec.ts` passed 2 suites / 8 tests. `npm --workspace backend test -- --runTestsByPath test/security/milestone-b-privileged-actions.integration.spec.ts test/governance/governance.postgres.integration.spec.ts` passed 11 authorization tests with the opt-in Postgres API suite skipped when `RUN_POSTGRES_INTEGRATION` was unset. `RUN_POSTGRES_INTEGRATION=true DATABASE_URL=postgresql://costalyx:CHANGE_ME_DEV_ONLY@localhost:5432/costalyx_dev npm --workspace backend test -- --runTestsByPath test/governance/governance.postgres.integration.spec.ts test/cost-model/postgres-cost-model.pg.spec.ts test/ingestion/ingestion.postgres.integration.spec.ts` passed 3 suites / 4 tests against local Docker Postgres. `npm test` passed backend 13 suites / 47 tests with 3 opt-in suites skipped, frontend 7 files / 15 tests, contract 2 static files / 5 tests, additive migration check 4 files. `npm run ci:live-contract` passed 2 live files / 7 tests. Backend and frontend builds passed; backend coverage passed at 90.41% statements / 89.47% functions / 89.78% lines. `npm audit --audit-level=high`, `docker compose config`, `git diff --check`, and source/API governance secret-shaped scan passed. `npm run test:e2e` reported 1 skipped Keycloak login test. | Fixed roles, server-side guard enforcement, frontend admin gating, OpenAPI/client coverage, additive RBAC/audit migrations, durable governance PostgreSQL repository selection via `DATABASE_URL`, idempotent governance responses, and real Postgres persistence across Nest app instances are verified. Still not `Done`: live browser E2E through Keycloak remains skipped/blocked. |
 | C — Allocation & Dynamic Tagging | Not started | — | |
 | D — Insights Surfaces | Not started | — | |
 | E — Optimization | Not started | — | |
@@ -44,7 +44,7 @@ _Copy this block per feature; do not mark complete without linked evidence._
 - [x] UI hides privileged actions for insufficient roles (`frontend/src/features/governance/GovernanceConsole.test.tsx` proves Viewer sees export but not admin credential/account/user actions)
 - [x] Auth/permission enforced and tested at both layers (`milestone-b-privileged-actions.integration.spec.ts` proves Viewer direct API calls receive 403; frontend governance tests prove UI hiding)
 - [x] Contract test passing locally against a real backend (`npm run ci:live-contract`: 2 live files / 7 tests passed)
-- [ ] Persistent governance repository wired to PostgreSQL (`003_rbac_trust_tiers.sql` and rollback exist; runtime service is still in-memory, so B cannot be marked Done)
+- [x] Persistent governance repository wired to PostgreSQL (`backend/src/governance/postgres-governance.repository.ts` is selected by `GovernanceModule` when `DATABASE_URL` is set; `004_governance_idempotency.sql` adds durable idempotency storage; `RUN_POSTGRES_INTEGRATION=true DATABASE_URL=postgresql://costalyx:CHANGE_ME_DEV_ONLY@localhost:5432/costalyx_dev npm --workspace backend test -- --runTestsByPath test/governance/governance.postgres.integration.spec.ts test/cost-model/postgres-cost-model.pg.spec.ts test/ingestion/ingestion.postgres.integration.spec.ts` passed 3 suites / 4 tests against local Docker Postgres)
 - [ ] Live browser Keycloak E2E completed (blocked by local Keycloak image pull TLS timeouts)
 - [x] Remote GitHub Actions observed green for the B checkpoint after push (`verify` passed on push and PR runs for `d64d7aa`)
 
@@ -73,7 +73,8 @@ and was not verifiable given the constraint._
 
 - **Blocker:** Milestone B live browser proof shares the same local Keycloak
   blocker as Milestone A.
-  **Impact:** Backend/contract/frontend RBAC evidence is strong, but the
+  **Impact:** Backend/contract/frontend RBAC evidence and PostgreSQL
+  governance persistence are verified, but the
   `07-FRONTEND-BACKEND-WIRING.md` live login requirement is still not
   satisfied for the auth milestone.
   **What was verified instead:** Direct API integration tests verify
@@ -81,7 +82,10 @@ and was not verifiable given the constraint._
   credential references, users, roles, audit log, and Admin-only mutation
   surfaces; frontend tests verify Viewer UI hiding and Admin role loading;
   `npm run ci:live-contract` verifies the same role behavior against a real
-  Nest HTTP server with the test-role header fallback.
+  Nest HTTP server with the test-role header fallback; `PostgresGovernanceRepository`
+  tests verify parameterized SQL/idempotent replay/rollback; and the opt-in
+  real Postgres suite verifies accounts, account groups, credential
+  references, users, and audit evidence persist across Nest app instances.
 
 - **Resolved blocker:** Remote GitHub Actions result for the live-backend
   contract workflow was observed green after patching the live-contract
@@ -114,5 +118,5 @@ _If the same request/feature appears again across turns or documents._
 - (none yet)
 
 ## Known deviations from spec (with justification)
-- (none yet — Milestone A is intentionally marked `Blocked`, not `Done`, for
-  the incomplete live Keycloak browser E2E above.)
+- (none yet — Milestones A and B are intentionally marked `Blocked`, not
+  `Done`, for the incomplete live Keycloak browser E2E above.)
