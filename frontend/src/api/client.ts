@@ -9,17 +9,29 @@ export interface CostalyxClient {
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
-export const costalyxClient: CostalyxClient = {
-  async listCostRecords() {
-    const response = await fetch(`${apiBaseUrl}/cost-records`, {
-      headers: {
-        Accept: 'application/json',
-        'x-costalyx-role': 'viewer'
+interface CostalyxClientOptions {
+  baseUrl?: string;
+  getAccessToken?: () => Promise<string | null>;
+}
+
+export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: CostalyxClientOptions = {}): CostalyxClient {
+  return {
+    async listCostRecords() {
+      const token = await getAccessToken?.();
+      const headers: Record<string, string> = {
+        Accept: 'application/json'
+      };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
       }
-    });
-    if (!response.ok) {
-      throw new Error(`Cost records request failed with ${response.status}`);
+
+      const response = await fetch(`${baseUrl}/cost-records`, { headers });
+      if (!response.ok) {
+        throw new Error(`Cost records request failed with ${response.status}`);
+      }
+      return response.json() as Promise<CostRecordListResponse>;
     }
-    return response.json() as Promise<CostRecordListResponse>;
-  }
-};
+  };
+}
+
+export const costalyxClient: CostalyxClient = createCostalyxClient();

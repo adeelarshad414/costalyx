@@ -16,11 +16,15 @@
     "test:backend": "npm --workspace backend test",
     "test:frontend": "npm --workspace frontend test -- --run",
     "test:contract": "vitest run contract",
+    "test:contract:live": "vitest run contract/live",
+    "ci:live-contract": "node scripts/run-live-contract.mjs",
+    "test:e2e": "playwright test",
     "migration:check": "node scripts/check-additive-migrations.mjs",
     "dev-up": "docker compose up -d",
     "dev-down": "docker compose down"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.10.2",
     "js-yaml": "^4.1.0",

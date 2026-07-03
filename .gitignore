@@ -10,3 +10,5 @@ coverage/
 frontend/dist/
 backend/dist/
 *.tsbuildinfo
+playwright-report/
+test-results/

@@ -1,0 +1,44 @@
+name: Costalyx CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'codex/**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run ci:live-contract
+      - run: npm --workspace backend run build
+      - run: npm --workspace frontend run build
+      - run: npm audit --audit-level=high
+
+  e2e:
+    runs-on: ubuntu-latest
+    if: ${{ vars.E2E_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: docker compose up -d
+      - run: npm run test:e2e
+        env:
+          E2E_BASE_URL: http://127.0.0.1:5173
+          E2E_KEYCLOAK_USERNAME: ${{ secrets.E2E_KEYCLOAK_USERNAME }}
+          E2E_KEYCLOAK_PASSWORD: ${{ secrets.E2E_KEYCLOAK_PASSWORD }}

@@ -1,0 +1,73 @@
+import { describe, expect, it } from 'vitest';
+
+const baseUrl = process.env.LIVE_API_BASE_URL;
+const describeIfLive = baseUrl ? describe : describe.skip;
+
+function authHeaders(role: 'viewer' | 'analyst' | 'admin') {
+  const token = process.env.LIVE_API_TOKEN;
+  return token ? { Authorization: `Bearer ${token}` } : { 'x-costalyx-role': role };
+}
+
+async function request(path: string, init: RequestInit = {}) {
+  if (!baseUrl) {
+    throw new Error('LIVE_API_BASE_URL is required.');
+  }
+  return fetch(`${baseUrl}${path}`, init);
+}
+
+describeIfLive('Milestone A live backend contract', () => {
+  it('serves the public health endpoint from a real backend instance', async () => {
+    const response = await request('/healthz');
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ status: 'ok' });
+  });
+
+  it('returns the documented paginated cost-records shape', async () => {
+    const response = await request('/api/v1/cost-records?page=1&pageSize=1', {
+      headers: authHeaders('viewer')
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(body.data)).toBe(true);
+    expect(body.meta).toEqual(expect.objectContaining({ page: 1, pageSize: 1 }));
+    expect(typeof body.meta.total).toBe('number');
+  });
+
+  it('returns RFC 7807 bad-request shape for missing Idempotency-Key', async () => {
+    const response = await request('/api/v1/ingestion/batches', {
+      method: 'POST',
+      headers: {
+        ...authHeaders('admin'),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ provider: 'aws', sourceUri: 'backend/test/fixtures/aws-cur-sample.csv' })
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get('content-type')).toContain('application/problem+json');
+    expect(body).toEqual(
+      expect.objectContaining({
+        title: 'Validation Error',
+        status: 400,
+        detail: 'Idempotency-Key header is required.'
+      })
+    );
+  });
+
+  it('returns 403, not a filtered 200, for Viewer access to Admin ingestion', async () => {
+    const response = await request('/api/v1/ingestion/batches', {
+      method: 'POST',
+      headers: {
+        ...authHeaders('viewer'),
+        'Content-Type': 'application/json',
+        'Idempotency-Key': 'live-contract-viewer-denied'
+      },
+      body: JSON.stringify({ provider: 'aws', sourceUri: 'backend/test/fixtures/aws-cur-sample.csv' })
+    });
+
+    expect(response.status).toBe(403);
+  });
+});

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { costalyxClient, type CostalyxClient } from '../../api/client';
+import { PermissionGate } from '../../auth/PermissionGate';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 
@@ -50,13 +51,25 @@ export function IngestionOverview({ client = costalyxClient }: IngestionOverview
   if (records.length === 0) {
     return (
       <section className="panel">
-        <EmptyState title="No cost records yet" actionLabel="Run ingestion" />
+        <EmptyState
+          title="No cost records yet"
+          action={
+            <PermissionGate requiredRole="admin" mode="hide">
+              <button type="button">Run ingestion</button>
+            </PermissionGate>
+          }
+        />
       </section>
     );
   }
 
   return (
     <section className="panel" aria-label="Normalized cost records">
+      <div className="panel-toolbar">
+        <PermissionGate requiredRole="admin" mode="hide">
+          <button type="button">Run ingestion</button>
+        </PermissionGate>
+      </div>
       <table>
         <thead>
           <tr>

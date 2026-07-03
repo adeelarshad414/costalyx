@@ -67,6 +67,10 @@ td {
 }
 
 .app-header {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
   margin-bottom: 24px;
 }
 
@@ -87,6 +91,23 @@ td {
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 20px;
+}
+
+.panel-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.session-pill {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.session-pill span {
+  color: var(--brand-accent);
+  font-weight: 700;
 }
 
 .state {

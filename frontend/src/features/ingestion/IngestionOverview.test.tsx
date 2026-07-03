@@ -1,6 +1,19 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { IngestionOverview } from './IngestionOverview';
 import type { CostalyxClient } from '../../api/client';
+import { AuthProvider, type KeycloakAdapter } from '../../auth/AuthProvider';
+
+function renderAsAdmin(ui: React.ReactElement) {
+  const adapter: KeycloakAdapter = {
+    token: 'token-1',
+    tokenParsed: { sub: 'admin-user', realm_access: { roles: ['admin'] } },
+    init: async () => true,
+    login: async () => undefined,
+    logout: async () => undefined,
+    updateToken: async () => true
+  };
+  return render(<AuthProvider adapter={adapter}>{ui}</AuthProvider>);
+}
 
 describe('IngestionOverview', () => {
   it('renders populated cost data with mono-formatted money from the generated client wrapper', async () => {
@@ -25,7 +38,7 @@ describe('IngestionOverview', () => {
       })
     };
 
-    render(<IngestionOverview client={client} />);
+    renderAsAdmin(<IngestionOverview client={client} />);
 
     expect(screen.getByText('Loading cost records')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText('i-aws-prod-001')).toBeInTheDocument());
@@ -37,7 +50,7 @@ describe('IngestionOverview', () => {
       listCostRecords: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } })
     };
 
-    render(<IngestionOverview client={client} />);
+    renderAsAdmin(<IngestionOverview client={client} />);
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'No cost records yet' })).toBeInTheDocument());
     expect(screen.getByRole('button', { name: 'Run ingestion' })).toBeInTheDocument();
@@ -50,7 +63,7 @@ describe('IngestionOverview', () => {
       }
     };
 
-    render(<IngestionOverview client={client} />);
+    renderAsAdmin(<IngestionOverview client={client} />);
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Could not load cost records' })).toBeInTheDocument());
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();

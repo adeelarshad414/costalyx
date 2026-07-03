@@ -1,13 +1,32 @@
+import { useMemo } from 'react';
+import { createCostalyxClient } from './api/client';
+import { AuthBoundary } from './auth/AuthBoundary';
+import { useAuth } from './auth/AuthProvider';
 import { IngestionOverview } from './features/ingestion/IngestionOverview';
 
 export function App() {
+  const auth = useAuth();
+  const client = useMemo(() => createCostalyxClient({ getAccessToken: auth.getAccessToken }), [auth.getAccessToken]);
+
   return (
     <main className="app-shell">
       <header className="app-header">
-        <p>Costalyx</p>
-        <h1>Cloud spend, normalized at the source</h1>
+        <div>
+          <p>Costalyx</p>
+          <h1>Cloud spend, normalized at the source</h1>
+        </div>
+        {auth.status === 'authenticated' ? (
+          <div className="session-pill">
+            <span>{auth.role}</span>
+            <button type="button" onClick={auth.logout}>
+              Sign out
+            </button>
+          </div>
+        ) : null}
       </header>
-      <IngestionOverview />
+      <AuthBoundary>
+        <IngestionOverview client={client} />
+      </AuthBoundary>
     </main>
   );
 }
