@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { AllocationModule } from './allocation/allocation.module';
 import { CostModelModule } from './cost-model/cost-model.module';
 import { GovernanceModule } from './governance/governance.module';
 import { HealthController } from './health.controller';
@@ -10,7 +11,7 @@ import { RolesGuard } from './security/roles.guard';
 import { AUTH_TOKEN_VERIFIER } from './security/token-verifier';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), CostModelModule, IngestionModule, GovernanceModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), AllocationModule, CostModelModule, IngestionModule, GovernanceModule],
   controllers: [HealthController],
   providers: [
     {

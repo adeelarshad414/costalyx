@@ -135,6 +135,12 @@ td {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.allocation-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
+}
+
 .role-list {
   display: grid;
   gap: 8px;
@@ -148,4 +154,27 @@ td {
   flex-wrap: wrap;
   gap: 12px;
   justify-content: space-between;
+}
+
+.metric-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.metric-list div {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+}
+
+.metric-list dt,
+.metric-list dd {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .allocation-grid {
+    grid-template-columns: 1fr;
+  }
 }

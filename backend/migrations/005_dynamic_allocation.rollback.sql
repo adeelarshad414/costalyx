@@ -1,0 +1,9 @@
+DROP INDEX IF EXISTS allocation_idempotency_created_at_idx;
+DROP INDEX IF EXISTS resource_tags_lookup_idx;
+DROP INDEX IF EXISTS dimension_tag_mappings_tag_lookup_idx;
+DROP INDEX IF EXISTS dimension_tag_mappings_dimension_id_idx;
+DROP INDEX IF EXISTS dimensions_org_name_idx;
+DROP TABLE IF EXISTS allocation_idempotency;
+DROP TABLE IF EXISTS resource_tags;
+DROP TABLE IF EXISTS dimension_tag_mappings;
+DROP TABLE IF EXISTS dimensions;

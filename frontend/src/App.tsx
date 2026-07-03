@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { createCostalyxClient } from './api/client';
 import { AuthBoundary } from './auth/AuthBoundary';
 import { useAuth } from './auth/AuthProvider';
+import { AllocationConsole } from './features/allocation/AllocationConsole';
 import { GovernanceConsole } from './features/governance/GovernanceConsole';
 import { IngestionOverview } from './features/ingestion/IngestionOverview';
 
@@ -27,6 +28,7 @@ export function App() {
       </header>
       <AuthBoundary>
         <IngestionOverview client={client} />
+        <AllocationConsole client={client} />
         <GovernanceConsole client={client} />
       </AuthBoundary>
     </main>

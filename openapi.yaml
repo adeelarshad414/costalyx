@@ -601,6 +601,32 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [dimensions]
+      summary: Upsert a manual or inferred resource tag
+      operationId: upsertResourceTag
+      x-required-role: analyst
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceTagUpsert"
+      responses:
+        "201":
+          description: Resource tag upserted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceTag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /recommendations:
     get:
@@ -1378,6 +1404,20 @@ components:
           type: ["string", "null"]
 
     ResourceTag:
+      type: object
+      required: [resourceId, tagKey, tagValue, source]
+      properties:
+        resourceId:
+          type: string
+        tagKey:
+          type: string
+        tagValue:
+          type: string
+        source:
+          type: string
+          enum: [native, manual, inferred]
+
+    ResourceTagUpsert:
       type: object
       required: [resourceId, tagKey, tagValue, source]
       properties:

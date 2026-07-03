@@ -15,9 +15,39 @@ function renderWithRole(ui: React.ReactElement, roles: string[]) {
   return render(<AuthProvider adapter={adapter}>{ui}</AuthProvider>);
 }
 
+const allocationClientMethods = {
+  getCostSummary: async () => ({
+    totalCostUsd: '0.00000000',
+    resourceCount: 0,
+    untaggedCount: 0,
+    inactiveCount: 0,
+    isEstimate: false
+  }),
+  listDimensions: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
+  createDimension: async () => {
+    throw new Error('not expected');
+  },
+  createDimensionMapping: async () => {
+    throw new Error('not expected');
+  },
+  listResourceTags: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
+  upsertResourceTag: async () => {
+    throw new Error('not expected');
+  }
+} satisfies Pick<
+  CostalyxClient,
+  | 'getCostSummary'
+  | 'listDimensions'
+  | 'createDimension'
+  | 'createDimensionMapping'
+  | 'listResourceTags'
+  | 'upsertResourceTag'
+>;
+
 describe('GovernanceConsole', () => {
   it('hides admin-only governance actions for a viewer while keeping export available', async () => {
     const client: CostalyxClient = {
+      ...allocationClientMethods,
       listCostRecords: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
       createIngestionBatch: async () => {
         throw new Error('not expected');
@@ -35,6 +65,7 @@ describe('GovernanceConsole', () => {
 
   it('loads fixed roles and shows admin-only governance actions for an admin', async () => {
     const client: CostalyxClient = {
+      ...allocationClientMethods,
       listCostRecords: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
       createIngestionBatch: async () => {
         throw new Error('not expected');

@@ -120,10 +120,12 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
     provider?: CloudProvider;
     accountId?: string;
     service?: string;
+    dimension?: string;
     page: number;
     pageSize: number;
   }) {
     const { whereSql, params } = buildRecordWhere(query);
+    const filtered = addDimensionWhere(whereSql, params, query.dimension);
     const offset = (query.page - 1) * query.pageSize;
     const data = await this.pool.query(
       `SELECT
@@ -147,12 +149,15 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
          cr.fingerprint
        FROM cost_records cr
        JOIN accounts a ON a.id = cr.account_id
-       ${whereSql}
+       ${filtered.whereSql}
        ORDER BY cr.valid_from ASC, cr.id ASC
-       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
-      [...params, query.pageSize, offset]
+       LIMIT $${filtered.params.length + 1} OFFSET $${filtered.params.length + 2}`,
+      [...filtered.params, query.pageSize, offset]
     );
-    const total = await this.pool.query(`SELECT COUNT(*)::int AS total FROM cost_records cr ${whereSql}`, params);
+    const total = await this.pool.query(
+      `SELECT COUNT(*)::int AS total FROM cost_records cr ${filtered.whereSql}`,
+      filtered.params
+    );
 
     return {
       data: data.rows.map((row) => mapRecord(row as PgRow)),
@@ -164,7 +169,10 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
     };
   }
 
-  async getSummary() {
+  async getSummary(query: { provider?: CloudProvider; accountId?: string; service?: string; dimension?: string } = {}) {
+    if (query.dimension) {
+      return this.getDimensionSummary(query);
+    }
     const result = await this.pool.query(
       `SELECT
          COALESCE(SUM(hourly_rate_usd * usage_hours), 0)::text AS total_cost_usd,
@@ -173,6 +181,61 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
          0::int AS inactive_count,
          COALESCE(BOOL_OR(is_estimate), false) AS is_estimate
        FROM cost_records`
+    );
+    const row = (result.rows[0] ?? {}) as PgRow;
+    return {
+      totalCostUsd: formatDecimal(String(row.total_cost_usd ?? '0'), 8),
+      resourceCount: Number(row.resource_count ?? 0),
+      untaggedCount: Number(row.untagged_count ?? 0),
+      inactiveCount: Number(row.inactive_count ?? 0),
+      isEstimate: Boolean(row.is_estimate)
+    };
+  }
+
+  private async getDimensionSummary(query: {
+    provider?: CloudProvider;
+    accountId?: string;
+    service?: string;
+    dimension?: string;
+  }) {
+    const { whereSql, params } = buildRecordWhere(query);
+    const baseSql = whereSql ? `${whereSql} AND` : 'WHERE';
+    const notExistsSql = whereSql ? `${whereSql} AND` : 'WHERE';
+    const dimensionParam = params.length + 1;
+    const result = await this.pool.query(
+      `WITH base_records AS (
+         SELECT cr.resource_id, cr.hourly_rate_usd, cr.usage_hours, cr.is_estimate
+         FROM cost_records cr
+         ${baseSql} EXISTS (
+           SELECT 1
+           FROM resource_tags rt
+           JOIN dimension_tag_mappings dtm
+             ON dtm.dimension_id = $${dimensionParam}
+            AND dtm.tag_key = rt.tag_key
+            AND (dtm.tag_value_pattern IS NULL OR dtm.tag_value_pattern = rt.tag_value)
+           WHERE rt.resource_id = cr.resource_id
+         )
+       ), untagged AS (
+         SELECT COUNT(DISTINCT cr.resource_id)::int AS count
+         FROM cost_records cr
+         ${notExistsSql} NOT EXISTS (
+           SELECT 1
+           FROM resource_tags rt
+           JOIN dimension_tag_mappings dtm
+             ON dtm.dimension_id = $${dimensionParam}
+            AND dtm.tag_key = rt.tag_key
+            AND (dtm.tag_value_pattern IS NULL OR dtm.tag_value_pattern = rt.tag_value)
+           WHERE rt.resource_id = cr.resource_id
+         )
+       )
+       SELECT
+         COALESCE(SUM(base_records.hourly_rate_usd * base_records.usage_hours), 0)::text AS total_cost_usd,
+         COUNT(DISTINCT base_records.resource_id)::int AS resource_count,
+         COALESCE((SELECT count FROM untagged), 0)::int AS untagged_count,
+         0::int AS inactive_count,
+         COALESCE(BOOL_OR(base_records.is_estimate), false) AS is_estimate
+       FROM base_records`,
+      [...params, query.dimension]
     );
     const row = (result.rows[0] ?? {}) as PgRow;
     return {
@@ -213,6 +276,26 @@ function buildRecordWhere(query: { provider?: CloudProvider; accountId?: string;
   return {
     whereSql: clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '',
     params
+  };
+}
+
+function addDimensionWhere(whereSql: string, params: string[], dimension?: string) {
+  if (!dimension) {
+    return { whereSql, params };
+  }
+  const nextParams = [...params, dimension];
+  const clause = `EXISTS (
+    SELECT 1
+    FROM resource_tags rt
+    JOIN dimension_tag_mappings dtm
+      ON dtm.dimension_id = $${nextParams.length}
+     AND dtm.tag_key = rt.tag_key
+     AND (dtm.tag_value_pattern IS NULL OR dtm.tag_value_pattern = rt.tag_value)
+    WHERE rt.resource_id = cr.resource_id
+  )`;
+  return {
+    whereSql: whereSql ? `${whereSql} AND ${clause}` : `WHERE ${clause}`,
+    params: nextParams
   };
 }
 

@@ -52,7 +52,12 @@ PATCH        /api/v1/cloud-credentials/:id/rotation
 GET/POST     /api/v1/dimensions             unbounded — no fixed count
 POST         /api/v1/dimensions/:id/mappings
 GET          /api/v1/resource-tags?resourceId=
+POST         /api/v1/resource-tags          upsert a manual/inferred tag
 ```
+
+Milestone C manual resource re-tags are synchronously reflected on the next
+`/api/v1/cost-records/summary?dimension=` read in v1. A future async
+propagation pipeline must document its SLA before replacing this behavior.
 
 ### Optimization
 ```

@@ -15,8 +15,8 @@ export class CostRecordsController {
 
   @Get('cost-records/summary')
   @RequiredRole('viewer')
-  getCostRecordsSummary() {
-    return this.costModel.getSummary();
+  getCostRecordsSummary(@Query() query: ListCostRecordsQueryDto) {
+    return this.costModel.getSummary(query);
   }
 
   @Get('cost-records/export')

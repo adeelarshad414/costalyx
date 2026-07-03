@@ -16,6 +16,10 @@ export class ListCostRecordsQueryDto {
   service?: string;
 
   @IsOptional()
+  @IsString()
+  dimension?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

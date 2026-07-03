@@ -16,6 +16,7 @@ export interface CostModelRepository {
     provider?: CloudProvider;
     accountId?: string;
     service?: string;
+    dimension?: string;
     page: number;
     pageSize: number;
   }): Promise<{
@@ -23,7 +24,12 @@ export interface CostModelRepository {
     meta: { total: number; page: number; pageSize: number };
   }>;
 
-  getSummary(): Promise<{
+  getSummary(query?: {
+    provider?: CloudProvider;
+    accountId?: string;
+    service?: string;
+    dimension?: string;
+  }): Promise<{
     totalCostUsd: string;
     resourceCount: number;
     untaggedCount: number;

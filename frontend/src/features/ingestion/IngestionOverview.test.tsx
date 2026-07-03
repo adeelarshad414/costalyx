@@ -18,8 +18,26 @@ function renderAsAdmin(ui: React.ReactElement) {
 describe('IngestionOverview', () => {
   const governanceClientMethods = {
     exportCostRecords: async () => 'id,provider\n',
-    listRoles: async () => ({ data: [] })
-  } satisfies Pick<CostalyxClient, 'exportCostRecords' | 'listRoles'>;
+    listRoles: async () => ({ data: [] }),
+    getCostSummary: async () => ({
+      totalCostUsd: '0.00000000',
+      resourceCount: 0,
+      untaggedCount: 0,
+      inactiveCount: 0,
+      isEstimate: false
+    }),
+    listDimensions: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
+    createDimension: async () => {
+      throw new Error('not expected');
+    },
+    createDimensionMapping: async () => {
+      throw new Error('not expected');
+    },
+    listResourceTags: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
+    upsertResourceTag: async () => {
+      throw new Error('not expected');
+    }
+  } satisfies Omit<CostalyxClient, 'listCostRecords' | 'createIngestionBatch'>;
 
   it('renders populated cost data with mono-formatted money from the generated client wrapper', async () => {
     const client: CostalyxClient = {

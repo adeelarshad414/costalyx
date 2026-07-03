@@ -23,13 +23,14 @@ export class CostModelService {
     provider?: CloudProvider;
     accountId?: string;
     service?: string;
+    dimension?: string;
     page: number;
     pageSize: number;
   }) {
     return this.repository.listRecords(query);
   }
 
-  getSummary() {
-    return this.repository.getSummary();
+  getSummary(query?: { provider?: CloudProvider; accountId?: string; service?: string; dimension?: string }) {
+    return this.repository.getSummary(query);
   }
 }

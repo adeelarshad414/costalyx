@@ -116,4 +116,96 @@ describe('createCostalyxClient', () => {
       })
     );
   });
+
+  it('sends bearer auth and idempotency keys for dynamic allocation mutations', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [{ id: 'dimension-1', orgId: 'org-1', name: 'Team', createdBy: 'actor-1', createdAt: '2026-07-03T00:00:00.000Z' }],
+          meta: { total: 1, page: 1, pageSize: 25 }
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: 'dimension-1', orgId: 'org-1', name: 'Team', createdBy: 'actor-1', createdAt: '2026-07-03T00:00:00.000Z' })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: 'mapping-1', dimensionId: 'dimension-1', tagKey: 'owner', tagValuePattern: 'platform' })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ resourceId: 'i-aws-prod-001', tagKey: 'owner', tagValue: 'platform', source: 'manual' })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ totalCostUsd: '0.41600000', resourceCount: 1, untaggedCount: 2, inactiveCount: 0, isEstimate: false })
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createCostalyxClient({
+      baseUrl: 'http://api.test/api/v1',
+      getAccessToken: async () => 'signed-keycloak-token'
+    });
+
+    await client.listDimensions();
+    await client.createDimension({ name: 'Team', idempotencyKey: 'dimension-key-1' });
+    await client.createDimensionMapping({
+      dimensionId: 'dimension-1',
+      tagKey: 'owner',
+      tagValuePattern: 'platform',
+      idempotencyKey: 'mapping-key-1'
+    });
+    await client.upsertResourceTag({
+      resourceId: 'i-aws-prod-001',
+      tagKey: 'owner',
+      tagValue: 'platform',
+      source: 'manual',
+      idempotencyKey: 'tag-key-1'
+    });
+    await client.getCostSummary({ dimension: 'dimension-1' });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'http://api.test/api/v1/dimensions',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer signed-keycloak-token',
+          'Idempotency-Key': 'dimension-key-1'
+        })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      'http://api.test/api/v1/dimensions/dimension-1/mappings',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer signed-keycloak-token',
+          'Idempotency-Key': 'mapping-key-1'
+        })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      'http://api.test/api/v1/resource-tags',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer signed-keycloak-token',
+          'Idempotency-Key': 'tag-key-1'
+        })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
+      'http://api.test/api/v1/cost-records/summary?dimension=dimension-1',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer signed-keycloak-token' })
+      })
+    );
+  });
 });

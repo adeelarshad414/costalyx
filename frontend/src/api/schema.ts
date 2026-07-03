@@ -291,7 +291,8 @@ export interface paths {
         /** List tags for a resource */
         get: operations["listResourceTags"];
         put?: never;
-        post?: never;
+        /** Upsert a manual or inferred resource tag */
+        post: operations["upsertResourceTag"];
         delete?: never;
         options?: never;
         head?: never;
@@ -636,6 +637,13 @@ export interface components {
             tagValuePattern?: string | null;
         };
         ResourceTag: {
+            resourceId: string;
+            tagKey: string;
+            tagValue: string;
+            /** @enum {string} */
+            source: "native" | "manual" | "inferred";
+        };
+        ResourceTagUpsert: {
             resourceId: string;
             tagKey: string;
             tagValue: string;
@@ -1525,6 +1533,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedResourceTags"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    upsertResourceTag: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required on every mutating request; duplicate keys return the original result. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResourceTagUpsert"];
+            };
+        };
+        responses: {
+            /** @description Resource tag upserted */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceTag"];
                 };
             };
             400: components["responses"]["BadRequest"];

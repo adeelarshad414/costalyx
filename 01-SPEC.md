@@ -48,6 +48,10 @@ auditable UI.
   migration; a cost row can be re-tagged and the change is reflected in
   aggregate views within the documented propagation window
 
+**Milestone C resolution (2026-07-03):** v1 manual resource re-tags
+propagate synchronously on the next aggregate read. Future async tag
+backfills may introduce a longer SLA, but must document it before shipping.
+
 ### Milestone D — Insights Surfaces
 - Resource Inventory: per-cloud-provider tabbed view, KPI cards (total
   resources, untagged count, inactive count, cost total), paginated detail

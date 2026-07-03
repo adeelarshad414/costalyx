@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
+import { InMemoryAuditLogStore, type AuditLogStore } from '../audit/audit-log.store';
 import { stableId } from '../cost-model/stable-id';
 import type { AuthenticatedUser } from '../security/token-verifier';
 import type { CreateAccountDto, CreateAccountGroupDto, PatchAccountGroupDto } from './dto/account.dto';
@@ -9,7 +10,6 @@ import { fixedRoles, type GovernanceRepository } from './governance.repository';
 import type {
   AccountGroup,
   AccountReference,
-  AuditLogEntry,
   CloudCredentialReference,
   PageQuery,
   Paginated,
@@ -22,8 +22,9 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
   private readonly accountGroups = new Map<string, AccountGroup>();
   private readonly credentials = new Map<string, CloudCredentialReference>();
   private readonly users = new Map<string, UserRecord>();
-  private readonly auditLog: AuditLogEntry[] = [];
   private readonly idempotentResponses = new Map<string, unknown>();
+
+  constructor(private readonly auditLog: AuditLogStore = new InMemoryAuditLogStore()) {}
 
   async listAccounts(query: PageQuery): Promise<Paginated<Omit<AccountReference, 'vaultCredentialPath'>>> {
     return paginate(
@@ -49,7 +50,7 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
         vaultCredentialPath: input.vaultCredentialPath
       };
       this.accounts.set(account.id, account);
-      this.appendAudit(actor, 'account_created', 'account', account.id);
+      void this.auditLog.append(actor, 'account_created', 'account', account.id);
       return account;
     });
   }
@@ -71,7 +72,7 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
         createdAt: new Date().toISOString()
       };
       this.accountGroups.set(group.id, group);
-      this.appendAudit(actor, 'account_group_created', 'account_group', group.id);
+      void this.auditLog.append(actor, 'account_group_created', 'account_group', group.id);
       return group;
     });
   }
@@ -93,7 +94,7 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
         accountIds: input.accountIds ? [...input.accountIds] : existing.accountIds
       };
       this.accountGroups.set(id, updated);
-      this.appendAudit(actor, 'account_group_updated', 'account_group', id);
+      void this.auditLog.append(actor, 'account_group_updated', 'account_group', id);
       return updated;
     });
   }
@@ -103,7 +104,7 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
       if (!this.accountGroups.delete(id)) {
         throw new NotFoundException(`Account group ${id} was not found.`);
       }
-      this.appendAudit(actor, 'account_group_deleted', 'account_group', id);
+      void this.auditLog.append(actor, 'account_group_deleted', 'account_group', id);
       return { deleted: true };
     });
   }
@@ -128,7 +129,7 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
         rotatedAt: null
       };
       this.credentials.set(credential.id, credential);
-      this.appendAudit(actor, 'credential_created', 'cloud_credential', credential.id);
+      void this.auditLog.append(actor, 'credential_created', 'cloud_credential', credential.id);
       return credential;
     });
   }
@@ -146,7 +147,7 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
       }
       const updated = { ...existing, vaultPath: input.vaultPath, rotatedAt: new Date().toISOString() };
       this.credentials.set(id, updated);
-      this.appendAudit(actor, 'credential_rotated', 'cloud_credential', id);
+      void this.auditLog.append(actor, 'credential_rotated', 'cloud_credential', id);
       return updated;
     });
   }
@@ -164,7 +165,7 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
         roles: [...new Set(input.roles)]
       };
       this.users.set(user.id, user);
-      this.appendAudit(actor, 'role_change', 'user', user.id);
+      void this.auditLog.append(actor, 'role_change', 'user', user.id);
       return user;
     });
   }
@@ -173,8 +174,8 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
     return { data: fixedRoles };
   }
 
-  async listAuditLog(query: PageQuery): Promise<Paginated<AuditLogEntry>> {
-    return paginate([...this.auditLog].reverse(), query);
+  async listAuditLog(query: PageQuery) {
+    return this.auditLog.list(query);
   }
 
   private withIdempotency<T>(idempotencyKey: string, create: () => T): T {
@@ -186,21 +187,6 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
     this.idempotentResponses.set(idempotencyKey, response);
     return response;
   }
-
-  private appendAudit(actor: AuthenticatedUser, action: string, targetType: string, targetId: string): void {
-    const prevHash = this.auditLog[this.auditLog.length - 1]?.hash ?? null;
-    const entryWithoutHash = {
-      id: randomUUID(),
-      actorId: stableId(`actor:${actor.subject}`),
-      action,
-      targetType,
-      targetId,
-      prevHash,
-      createdAt: new Date().toISOString()
-    };
-    const hash = createHash('sha256').update(canonicalJson(entryWithoutHash)).digest('hex');
-    this.auditLog.push({ ...entryWithoutHash, hash });
-  }
 }
 
 function paginate<T>(items: T[], query: PageQuery): Paginated<T> {
@@ -209,8 +195,4 @@ function paginate<T>(items: T[], query: PageQuery): Paginated<T> {
     data: items.slice(start, start + query.pageSize),
     meta: { total: items.length, page: query.page, pageSize: query.pageSize }
   };
-}
-
-function canonicalJson(value: unknown): string {
-  return JSON.stringify(value, Object.keys(value as Record<string, unknown>).sort());
 }
