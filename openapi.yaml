@@ -1254,7 +1254,7 @@ components:
 
     IngestionBatch:
       type: object
-      required: [id, provider, status, createdAt]
+      required: [id, provider, status, createdAt, ingestedRows, duplicateRows]
       properties:
         id:
           type: string
@@ -1272,6 +1272,12 @@ components:
         completedAt:
           type: ["string", "null"]
           format: date-time
+        ingestedRows:
+          type: integer
+          minimum: 0
+        duplicateRows:
+          type: integer
+          minimum: 0
 
     IngestionBatchCreate:
       type: object
