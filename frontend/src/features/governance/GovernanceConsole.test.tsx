@@ -83,9 +83,9 @@ describe('GovernanceConsole', () => {
     renderWithRole(<GovernanceConsole client={client} />, ['admin']);
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Fixed roles' })).toBeInTheDocument());
-    expect(screen.getByText('viewer')).toBeInTheDocument();
-    expect(screen.getByText('analyst')).toBeInTheDocument();
-    expect(screen.getByText('admin')).toBeInTheDocument();
+    expect(await screen.findByText('viewer')).toBeInTheDocument();
+    expect(await screen.findByText('analyst')).toBeInTheDocument();
+    expect(await screen.findByText('admin')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Register credential' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Create account group' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Invite user' })).toBeInTheDocument();
