@@ -44,8 +44,10 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: docker compose up -d
-      - run: npm run test:e2e
+      - run: npm run test:e2e:keycloak
         env:
-          E2E_BASE_URL: http://127.0.0.1:5173
-          E2E_KEYCLOAK_USERNAME: ${{ secrets.E2E_KEYCLOAK_USERNAME }}
-          E2E_KEYCLOAK_PASSWORD: ${{ secrets.E2E_KEYCLOAK_PASSWORD }}
+          E2E_BASE_URL: http://localhost:5173
+          E2E_API_BASE_URL: http://127.0.0.1:3000/api/v1
+          E2E_KEYCLOAK_URL: http://127.0.0.1:8080
+      - run: docker compose down -v
+        if: ${{ always() }}

@@ -18,11 +18,13 @@ const roleRank: Record<Role, number> = {
 @Injectable()
 export class OidcTokenVerifier implements TokenVerifier {
   private readonly issuerUrl: string | undefined;
+  private readonly jwksUrl: string | undefined;
   private readonly audience: string;
   private readonly clientId: string;
 
   constructor(config: ConfigService) {
     this.issuerUrl = config.get<string>('KEYCLOAK_ISSUER_URL');
+    this.jwksUrl = config.get<string>('KEYCLOAK_JWKS_URL');
     this.clientId = config.get<string>('KEYCLOAK_CLIENT_ID') ?? 'costalyx-web';
     this.audience = config.get<string>('KEYCLOAK_AUDIENCE') ?? this.clientId;
   }
@@ -34,7 +36,7 @@ export class OidcTokenVerifier implements TokenVerifier {
 
     try {
       const { createRemoteJWKSet, jwtVerify } = await import('jose');
-      const jwks = createRemoteJWKSet(new URL(`${this.issuerUrl}/protocol/openid-connect/certs`));
+      const jwks = createRemoteJWKSet(resolveJwksUrl(this.issuerUrl, this.jwksUrl));
       const verified = await jwtVerify(token, jwks, {
         issuer: this.issuerUrl,
         audience: this.audience
@@ -47,6 +49,13 @@ export class OidcTokenVerifier implements TokenVerifier {
       throw new UnauthorizedException('Invalid bearer token.');
     }
   }
+}
+
+export function resolveJwksUrl(issuerUrl: string, configuredJwksUrl?: string): URL {
+  if (configuredJwksUrl) {
+    return new URL(configuredJwksUrl);
+  }
+  return new URL(`${issuerUrl.replace(/\/$/, '')}/protocol/openid-connect/certs`);
 }
 
 export function extractRoleFromClaims(claims: KeycloakClaims, clientId = 'costalyx-web'): AuthenticatedUser {

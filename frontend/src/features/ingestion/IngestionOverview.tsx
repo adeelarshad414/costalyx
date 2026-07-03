@@ -10,11 +10,14 @@ interface IngestionOverviewProps {
 
 type LoadState = 'loading' | 'loaded' | 'error';
 type CostRecord = Awaited<ReturnType<CostalyxClient['listCostRecords']>>['data'][number];
+const demoIngestionSourceUri =
+  import.meta.env.VITE_DEMO_INGESTION_SOURCE_URI ?? 'backend/test/fixtures/aws-cur-sample.csv';
 
 export function IngestionOverview({ client = costalyxClient }: IngestionOverviewProps) {
   const [state, setState] = useState<LoadState>('loading');
   const [records, setRecords] = useState<CostRecord[]>([]);
   const [error, setError] = useState('');
+  const [isIngesting, setIsIngesting] = useState(false);
 
   const loadRecords = useCallback(async () => {
     setState('loading');
@@ -28,9 +31,34 @@ export function IngestionOverview({ client = costalyxClient }: IngestionOverview
     }
   }, [client]);
 
+  const runIngestion = useCallback(async () => {
+    setIsIngesting(true);
+    try {
+      await client.createIngestionBatch({
+        provider: 'aws',
+        sourceUri: demoIngestionSourceUri,
+        idempotencyKey: createIdempotencyKey()
+      });
+      await loadRecords();
+    } catch (ingestionError) {
+      setError(ingestionError instanceof Error ? ingestionError.message : 'Unknown ingestion failure');
+      setState('error');
+    } finally {
+      setIsIngesting(false);
+    }
+  }, [client, loadRecords]);
+
   useEffect(() => {
     void loadRecords();
   }, [loadRecords]);
+
+  const ingestionButton = (
+    <PermissionGate requiredRole="admin" mode="hide">
+      <button type="button" onClick={runIngestion} disabled={isIngesting}>
+        {isIngesting ? 'Running ingestion' : 'Run ingestion'}
+      </button>
+    </PermissionGate>
+  );
 
   if (state === 'loading') {
     return (
@@ -53,11 +81,7 @@ export function IngestionOverview({ client = costalyxClient }: IngestionOverview
       <section className="panel">
         <EmptyState
           title="No cost records yet"
-          action={
-            <PermissionGate requiredRole="admin" mode="hide">
-              <button type="button">Run ingestion</button>
-            </PermissionGate>
-          }
+          action={ingestionButton}
         />
       </section>
     );
@@ -66,9 +90,7 @@ export function IngestionOverview({ client = costalyxClient }: IngestionOverview
   return (
     <section className="panel" aria-label="Normalized cost records">
       <div className="panel-toolbar">
-        <PermissionGate requiredRole="admin" mode="hide">
-          <button type="button">Run ingestion</button>
-        </PermissionGate>
+        {ingestionButton}
       </div>
       <table>
         <thead>
@@ -94,4 +116,11 @@ export function IngestionOverview({ client = costalyxClient }: IngestionOverview
       </table>
     </section>
   );
+}
+
+function createIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return `manual-ingestion-${crypto.randomUUID()}`;
+  }
+  return `manual-ingestion-${Date.now()}`;
 }

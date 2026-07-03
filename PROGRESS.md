@@ -5,13 +5,13 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-03 22:08:18 PKT_
+_Last updated: 2026-07-03 22:18:00 PKT_
 
 ## Milestone status
 
 | Milestone | Status | Test evidence | Notes |
 |---|---|---|---|
-| A — Ingestion & Core Cost Model | Blocked | `npm test` passed with local-network permission: backend 10 suites / 27 tests, frontend 6 files / 10 tests, static contract 1 file / 2 tests, migration additive check passed. `npm run ci:live-contract` passed: live backend contract 1 file / 4 tests, including after the process-cleanup patch. Live Postgres opt-in suite passed: 2 suites / 3 tests. `npm --workspace backend run build` passed. `npm --workspace frontend run build` passed. `npm --workspace backend run test:coverage` passed service/guard/pricing gates. `npm run test:e2e` reported 1 skipped Keycloak login test because credentials were not provided. `docker compose config`, `git diff --check`, and `npm audit --audit-level=high` passed. | AWS/Azure/GCP adapters, golden fixtures, PostgreSQL persistence, idempotency, duplicate prevention, backend bearer-token RBAC, frontend Keycloak provider, bearer-token client wiring, `<PermissionGate>`, live-backend contract script, CI workflow, builds, coverage, compose validation, whitespace check, and dependency audit are verified locally. A GitHub Actions hang was traced to the live-contract runner cleanup path and patched with process-group termination plus workflow timeouts. Still not `Done`: live browser E2E through Keycloak has not passed, and a fresh remote GitHub Actions result is not yet observed green. |
+| A — Ingestion & Core Cost Model | Blocked | `npm test` passed with local-network permission: backend 10 suites / 28 tests, frontend 6 files / 12 tests, static contract 1 file / 2 tests, migration additive check passed. `npm run ci:live-contract` passed: live backend contract 1 file / 4 tests. GitHub Actions `verify` passed on both push and PR runs for checkpoint `47cbbef`; stale hung runs were cancelled. Live Postgres opt-in suite passed earlier: 2 suites / 3 tests. `npm --workspace backend run build` passed. `npm --workspace frontend run build` passed. `npm --workspace backend run test:coverage` passed service/guard/pricing gates. `npm run test:e2e` reported 1 skipped Keycloak login test because no live Keycloak credentials/stack were available. `docker compose config`, `git diff --check`, and `npm audit --audit-level=high` passed. | AWS/Azure/GCP adapters, golden fixtures, PostgreSQL persistence, idempotency, duplicate prevention, backend bearer-token RBAC, frontend Keycloak provider, bearer-token client wiring, `<PermissionGate>`, admin-only UI ingestion trigger with `Idempotency-Key`, strict issuer validation with Docker JWKS override, live-backend contract script, CI workflow, builds, coverage, compose validation, whitespace check, and dependency audit are verified locally. Still not `Done`: live browser E2E through Keycloak has not passed because the local Docker Keycloak image pull failed twice with registry TLS handshake timeouts. |
 | B — RBAC & Trust Tiers | Not started | — | |
 | C — Allocation & Dynamic Tagging | Not started | — | |
 | D — Insights Surfaces | Not started | — | |
@@ -32,17 +32,20 @@ _Copy this block per feature; do not mark complete without linked evidence._
 - [x] OpenAPI spec updated + client regenerated (`npm run generate:client` completed and `contract/openapi.milestone-a.spec.ts` passed 2 tests)
 - [x] OpenAPI live-backend contract added and passing locally (`npm run ci:live-contract`: live backend contract 1 file / 4 tests passed)
 - [x] Frontend wired to generated client (React ingestion overview uses `CostalyxClient`; `createCostalyxClient` sends `Authorization: Bearer <token>` from the Keycloak session and no longer sends `x-costalyx-role`)
-- [x] Loading / populated / empty / error states implemented (`npm test`: frontend 6 files / 10 tests passed)
-- [ ] Auth/permission enforced + tested at both layers (backend bearer-token RBAC integration passed for Viewer→Admin `403`; frontend `<PermissionGate>` tests hide/admin-gate privileged UI; live browser Keycloak login remains skipped without external credentials)
-- [x] Contract test passing locally (`npm test`: static contract 1 file / 2 tests passed; `npm run ci:live-contract`: live backend contract 1 file / 4 tests passed; GitHub Actions workflow added but remote run not yet observed)
+- [x] Admin ingestion action wired end-to-end at the UI/client layer (`frontend/src/api/client.test.ts` proves `Idempotency-Key` + bearer auth; `frontend/src/features/ingestion/IngestionOverview.test.tsx` proves the button creates a batch and reloads records)
+- [x] Loading / populated / empty / error states implemented (`npm test`: frontend 6 files / 12 tests passed)
+- [ ] Auth/permission enforced + tested at both layers (backend bearer-token RBAC integration passed for Viewer→Admin `403`; frontend `<PermissionGate>` tests hide/admin-gate privileged UI; live browser Keycloak login remains skipped because Docker could not pull the Keycloak image in this environment)
+- [x] Contract test passing locally and in CI (`npm test`: static contract 1 file / 2 tests passed; `npm run ci:live-contract`: live backend contract 1 file / 4 tests passed; GitHub Actions `verify` passed on push and PR runs for checkpoint `47cbbef`)
 
 ## Blocked
 _Explicit, never silently skipped or worked around. State exactly what was
 and was not verifiable given the constraint._
 
 - **Blocker:** Live browser E2E with frontend + backend + Keycloak auth stack
-  did not execute to completion because no external Keycloak E2E username and
-  password were provided.
+  did not execute to completion. The browser test and runtime user-seeding
+  script now exist, but local `docker compose up -d --build` failed twice
+  while pulling `quay.io/keycloak/keycloak:26.2` with `net/http: TLS
+  handshake timeout`.
   **Impact:** Milestone A cannot move to `Done (evidence linked)` under
   `07-FRONTEND-BACKEND-WIRING.md` and `08-TESTING-STRATEGY.md`, even though
   backend bearer-token enforcement and frontend permission gating are now
@@ -52,21 +55,24 @@ and was not verifiable given the constraint._
   passed Viewer bearer token → Admin endpoint `403`; `frontend/src/auth/AuthProvider.test.tsx`
   passed Keycloak session role extraction and login redirect initiation;
   `frontend/src/auth/PermissionGate.test.tsx` passed insufficient-role UI
-  gating; `npm run test:e2e` discovered the Keycloak login test and reported
-  it as skipped due missing `E2E_KEYCLOAK_USERNAME`/`E2E_KEYCLOAK_PASSWORD`.
+  gating; `scripts/run-keycloak-e2e.mjs` now provisions an E2E admin user
+  without committing a credential value; `npm run test:e2e` discovered the
+  Keycloak login test and reported it as skipped without a live Keycloak
+  stack.
 
-- **Blocker:** Remote GitHub Actions result for the new live-backend contract
-  workflow has not yet been observed green on the PR. The first remote run
-  hung inside `npm run ci:live-contract`; the runner has now been patched to
-  terminate the full backend process group and the workflow has explicit
+- **Resolved blocker:** Remote GitHub Actions result for the live-backend
+  contract workflow was observed green after patching the live-contract
+  runner to terminate the full backend process group and adding workflow
   timeouts.
-  **Impact:** Local live-backend contract evidence exists, but the
-  `07-FRONTEND-BACKEND-WIRING.md` CI requirement cannot be claimed complete
-  until the PR checks run and pass remotely.
+  **Impact:** The CI contract gate for Milestone A is satisfied for
+  checkpoint `47cbbef`; the next pushed checkpoint must still be observed in
+  GitHub Actions before it can be treated as remote-verified.
   **What was verified instead:** `.github/workflows/ci.yml` now runs
   `npm test`, `npm run ci:live-contract`, builds, and `npm audit
   --audit-level=high`; local `npm run ci:live-contract` passed 4 live-backend
-  tests against a real Nest HTTP server after the cleanup patch.
+  tests against a real Nest HTTP server after the cleanup patch; GitHub
+  Actions `verify` passed on both the push and PR events for checkpoint
+  `47cbbef`.
 
 ## Ambiguities flagged for human review
 _Anything resolved by updating a source-of-truth doc gets annotated inline
@@ -82,5 +88,4 @@ _If the same request/feature appears again across turns or documents._
 
 ## Known deviations from spec (with justification)
 - (none yet — Milestone A is intentionally marked `Blocked`, not `Done`, for
-  the incomplete live Keycloak browser E2E and unobserved remote CI gates
-  above.)
+  the incomplete live Keycloak browser E2E above.)

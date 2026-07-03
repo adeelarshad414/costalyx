@@ -14,7 +14,11 @@ test.describe('Milestone A Keycloak login', () => {
     await page.getByLabel(/password/i).fill(process.env.E2E_KEYCLOAK_PASSWORD ?? '');
     await page.getByRole('button', { name: /sign in/i }).click();
 
-    await expect(page.getByRole('table')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+    const recordsTable = page.getByRole('table');
+    if (!(await recordsTable.isVisible().catch(() => false))) {
+      await page.getByRole('button', { name: 'Run ingestion' }).click();
+    }
+    await expect(recordsTable).toBeVisible();
   });
 });

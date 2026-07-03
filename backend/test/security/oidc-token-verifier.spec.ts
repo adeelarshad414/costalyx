@@ -1,5 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common';
-import { extractRoleFromClaims } from '../../src/security/oidc-token-verifier';
+import { extractRoleFromClaims, resolveJwksUrl } from '../../src/security/oidc-token-verifier';
 
 describe('extractRoleFromClaims', () => {
   it('selects the highest fixed Costalyx role from Keycloak realm roles', () => {
@@ -29,5 +29,14 @@ describe('extractRoleFromClaims', () => {
         realm_access: { roles: ['offline_access'] }
       })
     ).toThrow(UnauthorizedException);
+  });
+
+  it('can validate a public issuer while fetching JWKS through an internal Docker URL', () => {
+    expect(
+      resolveJwksUrl(
+        'http://localhost:8080/realms/costalyx-dev',
+        'http://keycloak:8080/realms/costalyx-dev/protocol/openid-connect/certs'
+      ).toString()
+    ).toBe('http://keycloak:8080/realms/costalyx-dev/protocol/openid-connect/certs');
   });
 });
