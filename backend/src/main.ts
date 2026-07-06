@@ -1,13 +1,15 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { createRuntimeLogger } from './common/json-logger';
 import { ProblemDetailsFilter } from './common/problem-details.filter';
 import { assertNoDummyValuesInNonLocalEnvironment } from './config/startup-secrets';
 
 async function bootstrap() {
   assertNoDummyValuesInNonLocalEnvironment();
 
-  const app = await NestFactory.create(AppModule);
+  const runtimeLogger = createRuntimeLogger();
+  const app = await NestFactory.create(AppModule, runtimeLogger ? { logger: runtimeLogger } : undefined);
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
