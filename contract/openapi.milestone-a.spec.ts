@@ -11,11 +11,14 @@ describe('Milestone A OpenAPI contract', () => {
   const spec = load(readFileSync('openapi.yaml', 'utf8')) as OpenApi;
 
   it('documents the ingestion and cost-record endpoints used by the implementation', () => {
+    expect(spec.paths['/healthz']).toHaveProperty('get');
+    expect(spec.paths['/metrics']).toHaveProperty('get');
     expect(spec.paths['/ingestion/batches']).toHaveProperty('post');
     expect(spec.paths['/ingestion/batches/{id}']).toHaveProperty('get');
     expect(spec.paths['/ingestion/batches/{id}/errors']).toHaveProperty('get');
     expect(spec.paths['/cost-records']).toHaveProperty('get');
     expect(spec.paths['/cost-records/summary']).toHaveProperty('get');
+    expect((spec.paths['/metrics'].get as { ['x-required-role']?: string })['x-required-role']).toBe('admin');
   });
 
   it('keeps generated-client response schemas and RFC 7807 problem responses available', () => {

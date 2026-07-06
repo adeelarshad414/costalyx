@@ -23,6 +23,20 @@ describeIfLive('Milestone A live backend contract', () => {
     await expect(response.json()).resolves.toEqual({ status: 'ok' });
   });
 
+  it('serves admin-gated Prometheus metrics from a real backend instance', async () => {
+    const viewer = await request('/metrics', { headers: authHeaders('viewer') });
+    expect(viewer.status).toBe(403);
+
+    const response = await request('/metrics', { headers: authHeaders('admin') });
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('text/plain');
+    expect(body).toContain('costalyx_build_info{version="0.1.0"} 1');
+    expect(body).toContain('costalyx_cloud_connections_total{provider="aws",status="pending_validation"}');
+    expect(body).toContain('costalyx_cloud_scheduler_enabled');
+  });
+
   it('returns the documented paginated cost-records shape', async () => {
     const response = await request('/api/v1/cost-records?page=1&pageSize=1', {
       headers: authHeaders('viewer')
