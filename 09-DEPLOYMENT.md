@@ -105,9 +105,11 @@ registered `billingExportUri` for each connection after validation. AWS CUR
 ingestion reads CSV or CSV.GZ objects directly from S3 by assuming the
 registered read-only role with the generated external ID; the requested
 `s3://` source must remain inside the registered billing export prefix.
-Azure Blob and GCP BigQuery scheduled export object readers remain future
-hardening items. When scheduled ingestion is unset, the worker still records
-validation evidence.
+Azure ingestion reads CSV/CSV.GZ Cost Management exports from the registered
+Blob prefix with the Costalyx broker identity, and GCP ingestion reads the
+registered BigQuery billing export table with row limits before converting
+rows into the normalized adapter CSV contract. When scheduled ingestion is
+unset, the worker still records validation evidence.
 
 Compose starts the worker with
 `npm --workspace backend run start:worker`. The Helm chart renders the worker
@@ -125,6 +127,8 @@ reported as `validated`.
 `COSTALYX_AWS_INGESTION_REGION` may be set separately for S3 CUR object
 reads; otherwise the ingestion path falls back to `COSTALYX_AWS_PROBE_REGION`,
 `AWS_REGION`, `AWS_DEFAULT_REGION`, or `us-east-1`.
+`COSTALYX_GCP_BIGQUERY_LOCATION` may be set for BigQuery export reads when the
+billing export dataset is pinned to a specific multi-region or region.
 
 Before marking the first real AWS customer connection validated, run the
 same STS/CUR path from the repo root with operator-provided references only:

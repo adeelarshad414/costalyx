@@ -25,7 +25,9 @@ principal that customers trust with the generated external ID. Set
 `config.liveCloudProbes=enabled` only when the backend pods have broker AWS
 credentials and network access to provider APIs. `config.awsProbeRegion`
 can override the AWS probe region, and `config.awsIngestionRegion` can
-override the region used for S3 CUR object reads.
+override the region used for S3 CUR object reads. `config.gcpBigQueryLocation`
+sets the BigQuery location for GCP billing export reads when the dataset
+requires it.
 
 ## Scheduler Worker
 

@@ -70,6 +70,7 @@ config:
   awsBrokerPrincipalArn: ""
   awsProbeRegion: ""
   awsIngestionRegion: ""
+  gcpBigQueryLocation: ""
   useMocks: "false"
   seedFixtureData: "false"
 

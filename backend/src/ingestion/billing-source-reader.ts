@@ -1,12 +1,19 @@
 import { GetObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
 import { AssumeRoleCommand, GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
+import { DefaultAzureCredential, type TokenCredential } from '@azure/identity';
+import { BlobServiceClient } from '@azure/storage-blob';
+import { BigQuery } from '@google-cloud/bigquery';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
 import type { CloudProvider } from '../cost-model/cost-record.types';
 import {
   buildCloudConnectionExternalId,
-  parseS3Uri
+  parseAzureBlobUri,
+  parseBigQueryUri,
+  parseS3Uri,
+  type AzureBlobExportLocation,
+  type BigQueryExportLocation
 } from '../governance/cloud-connection-probe';
 import type { CloudConnection } from '../governance/governance.types';
 
@@ -58,18 +65,48 @@ export interface AwsS3BillingSourceClient {
   }): Promise<{ body: Uint8Array | string | unknown; contentEncoding?: string }>;
 }
 
+export interface AzureBlobBillingSourceClient {
+  listObjects(input: AzureBlobExportLocation): Promise<Array<{ name: string; lastModified?: Date; contentLength?: number }>>;
+  getObject(input: AzureBlobExportLocation & { blobName: string }): Promise<{ body: Uint8Array | string | unknown; contentEncoding?: string }>;
+}
+
+export interface GcpBigQueryBillingSourceClient {
+  queryRows(input: BigQueryExportLocation & { location?: string; maxRows: number }): Promise<Array<Record<string, unknown>>>;
+}
+
 export class DefaultBillingSourceReader implements BillingSourceReader {
-  constructor(private readonly awsClient: AwsS3BillingSourceClient = new AwsSdkS3BillingSourceClient()) {}
+  constructor(
+    private readonly awsClient: AwsS3BillingSourceClient = new AwsSdkS3BillingSourceClient(),
+    private readonly azureClient: AzureBlobBillingSourceClient = new AzureSdkBlobBillingSourceClient(),
+    private readonly gcpClient: GcpBigQueryBillingSourceClient = new GcpSdkBigQueryBillingSourceClient()
+  ) {}
 
   async read(input: BillingSourceReadInput): Promise<BillingSourcePayload> {
     const s3Location = parseS3Uri(input.sourceUri);
-    if (!s3Location) {
-      return {
-        raw: readFileSync(resolve(process.cwd(), '..', input.sourceUri), 'utf8'),
-        resolvedSourceUri: input.sourceUri
-      };
+    if (s3Location) {
+      return this.readAwsS3(input, s3Location);
     }
 
+    const azureLocation = parseAzureBlobUri(input.sourceUri);
+    if (azureLocation) {
+      return this.readAzureBlob(input, azureLocation);
+    }
+
+    const gcpLocation = parseBigQueryUri(input.sourceUri);
+    if (gcpLocation) {
+      return this.readGcpBigQuery(input, gcpLocation);
+    }
+
+    return {
+      raw: readFileSync(resolve(process.cwd(), '..', input.sourceUri), 'utf8'),
+      resolvedSourceUri: input.sourceUri
+    };
+  }
+
+  private async readAwsS3(
+    input: BillingSourceReadInput,
+    s3Location: { bucket: string; prefix: string }
+  ): Promise<BillingSourcePayload> {
     if (input.provider !== 'aws') {
       throw new Error('S3 billing export ingestion is currently supported only for AWS CUR sources.');
     }
@@ -109,10 +146,74 @@ export class DefaultBillingSourceReader implements BillingSourceReader {
       region,
       credentials
     });
-    const raw = decodeObjectBody(await bodyToBuffer(object.body), key, object.contentEncoding);
+    const raw = decodeObjectBody(await bodyToBuffer(object.body, 'AWS S3'), key, object.contentEncoding);
     return {
       raw,
       resolvedSourceUri: `s3://${s3Location.bucket}/${key}`
+    };
+  }
+
+  private async readAzureBlob(
+    input: BillingSourceReadInput,
+    exportLocation: AzureBlobExportLocation
+  ): Promise<BillingSourcePayload> {
+    if (input.provider !== 'azure') {
+      throw new Error('Azure Blob billing export ingestion is currently supported only for Azure sources.');
+    }
+    if (!input.cloudConnection) {
+      throw new Error('Azure Blob billing export ingestion requires a registered cloud connection.');
+    }
+    const registeredLocation = parseAzureBlobUri(input.cloudConnection.billingExportUri);
+    if (
+      !registeredLocation ||
+      registeredLocation.accountName !== exportLocation.accountName ||
+      registeredLocation.containerName !== exportLocation.containerName ||
+      !exportLocation.prefix.startsWith(registeredLocation.prefix)
+    ) {
+      throw new Error('Azure Blob billing export ingestion must stay within the registered billing export prefix.');
+    }
+
+    const blobName = await this.resolveAzureBlobName(exportLocation);
+    const object = await this.azureClient.getObject({ ...exportLocation, blobName });
+    const raw = decodeObjectBody(await bodyToBuffer(object.body, 'Azure Blob'), blobName, object.contentEncoding);
+    return {
+      raw,
+      resolvedSourceUri: `${exportLocation.accountUrl}/${exportLocation.containerName}/${blobName}`
+    };
+  }
+
+  private async readGcpBigQuery(
+    input: BillingSourceReadInput,
+    exportLocation: BigQueryExportLocation
+  ): Promise<BillingSourcePayload> {
+    if (input.provider !== 'gcp') {
+      throw new Error('BigQuery billing export ingestion is currently supported only for GCP sources.');
+    }
+    if (!input.cloudConnection) {
+      throw new Error('GCP BigQuery billing export ingestion requires a registered cloud connection.');
+    }
+    const registeredLocation = parseBigQueryUri(input.cloudConnection.billingExportUri);
+    if (
+      !registeredLocation ||
+      registeredLocation.projectId !== exportLocation.projectId ||
+      registeredLocation.datasetId !== exportLocation.datasetId ||
+      registeredLocation.tableId !== exportLocation.tableId
+    ) {
+      throw new Error('GCP BigQuery billing export ingestion must use the registered billing export table.');
+    }
+
+    const env = input.env ?? process.env;
+    const rows = await this.gcpClient.queryRows({
+      ...exportLocation,
+      location: env.COSTALYX_GCP_BIGQUERY_LOCATION,
+      maxRows: 5000
+    });
+    if (rows.length === 0) {
+      throw new Error('GCP BigQuery billing export table did not return readable billing rows.');
+    }
+    return {
+      raw: recordsToCsv(rows, gcpBillingCsvHeaders),
+      resolvedSourceUri: input.sourceUri
     };
   }
 
@@ -139,6 +240,25 @@ export class DefaultBillingSourceReader implements BillingSourceReader {
     }
     return selected.key;
   }
+
+  private async resolveAzureBlobName(input: AzureBlobExportLocation): Promise<string> {
+    if (isDirectCsvObject(input.prefix)) {
+      return input.prefix;
+    }
+
+    const objects = await this.azureClient.listObjects(input);
+    const candidates = objects
+      .filter((object) => object.name && isDirectCsvObject(object.name) && object.contentLength !== 0)
+      .sort((a, b) => {
+        const modifiedDelta = (b.lastModified?.getTime() ?? 0) - (a.lastModified?.getTime() ?? 0);
+        return modifiedDelta || a.name.localeCompare(b.name);
+      });
+    const selected = candidates[0];
+    if (!selected) {
+      throw new Error('Azure Blob billing export prefix did not contain readable CSV or CSV.GZ export objects.');
+    }
+    return selected.name;
+  }
 }
 
 function isDirectCsvObject(key: string): boolean {
@@ -152,7 +272,7 @@ function decodeObjectBody(buffer: Buffer, key: string, contentEncoding?: string)
   return buffer.toString('utf8');
 }
 
-async function bodyToBuffer(body: unknown): Promise<Buffer> {
+async function bodyToBuffer(body: unknown, sourceLabel: string): Promise<Buffer> {
   if (typeof body === 'string') {
     return Buffer.from(body, 'utf8');
   }
@@ -174,7 +294,36 @@ async function bodyToBuffer(body: unknown): Promise<Buffer> {
       streamBody.on('end', () => resolveBuffer(Buffer.concat(chunks)));
     });
   }
-  throw new Error('AWS S3 billing export object returned an unreadable body.');
+  throw new Error(`${sourceLabel} billing export object returned an unreadable body.`);
+}
+
+const gcpBillingCsvHeaders = [
+  'billing_account_id',
+  'project_id',
+  'resource_name',
+  'service_description',
+  'sku_description',
+  'pricing_type',
+  'transaction_type',
+  'hourly_rate_usd',
+  'usage_hours',
+  'usage_start_time',
+  'usage_end_time'
+];
+
+function recordsToCsv(rows: Array<Record<string, unknown>>, headers: string[]): string {
+  return [
+    headers.join(','),
+    ...rows.map((row) => headers.map((header) => csvValue(row[header])).join(','))
+  ].join('\n');
+}
+
+function csvValue(value: unknown): string {
+  const stringValue = value instanceof Date ? value.toISOString() : value == null ? '' : String(value);
+  if (/[",\n\r]/.test(stringValue)) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+  return stringValue;
 }
 
 class AwsSdkS3BillingSourceClient implements AwsS3BillingSourceClient {
@@ -242,4 +391,72 @@ class AwsSdkS3BillingSourceClient implements AwsS3BillingSourceClient {
     const result = await s3.send(new GetObjectCommand({ Bucket: input.bucket, Key: input.key }));
     return { body: result.Body, contentEncoding: result.ContentEncoding };
   }
+}
+
+class AzureSdkBlobBillingSourceClient implements AzureBlobBillingSourceClient {
+  constructor(private readonly credential: TokenCredential = new DefaultAzureCredential()) {}
+
+  async listObjects(input: AzureBlobExportLocation): Promise<Array<{ name: string; lastModified?: Date; contentLength?: number }>> {
+    const container = new BlobServiceClient(input.accountUrl, this.credential).getContainerClient(input.containerName);
+    const objects: Array<{ name: string; lastModified?: Date; contentLength?: number }> = [];
+    for await (const blob of container.listBlobsFlat({ prefix: input.prefix || undefined })) {
+      objects.push({
+        name: blob.name,
+        lastModified: blob.properties.lastModified,
+        contentLength: blob.properties.contentLength
+      });
+      if (objects.length >= 50) {
+        break;
+      }
+    }
+    return objects;
+  }
+
+  async getObject(input: AzureBlobExportLocation & { blobName: string }): Promise<{ body: Uint8Array; contentEncoding?: string }> {
+    const blob = new BlobServiceClient(input.accountUrl, this.credential)
+      .getContainerClient(input.containerName)
+      .getBlobClient(input.blobName);
+    const body = await blob.downloadToBuffer();
+    const properties = await blob.getProperties();
+    return {
+      body,
+      contentEncoding: properties.contentEncoding
+    };
+  }
+}
+
+class GcpSdkBigQueryBillingSourceClient implements GcpBigQueryBillingSourceClient {
+  async queryRows(input: BigQueryExportLocation & { location?: string; maxRows: number }): Promise<Array<Record<string, unknown>>> {
+    const bigQuery = new BigQuery({ projectId: input.projectId });
+    const [rows] = await bigQuery.query({
+      query: buildGcpBillingExportQuery(input),
+      location: input.location,
+      params: { maxRows: input.maxRows }
+    });
+    return rows as Array<Record<string, unknown>>;
+  }
+}
+
+function buildGcpBillingExportQuery(input: BigQueryExportLocation): string {
+  return `
+SELECT
+  billing_account_id,
+  COALESCE(project.id, CAST(project.number AS STRING), '') AS project_id,
+  COALESCE(resource.name, resource.global_name, '') AS resource_name,
+  service.description AS service_description,
+  sku.description AS sku_description,
+  CASE
+    WHEN REGEXP_CONTAINS(LOWER(sku.description), r'(spot|preemptible)') THEN 'Preemptible'
+    WHEN REGEXP_CONTAINS(LOWER(sku.description), r'(commit|reserved)') THEN 'Committed'
+    ELSE 'OnDemand'
+  END AS pricing_type,
+  COALESCE(cost_type, 'Usage') AS transaction_type,
+  CAST(ROUND(SAFE_DIVIDE(CAST(cost AS NUMERIC), NULLIF(CAST(usage.amount AS NUMERIC), 0)), 8) AS STRING) AS hourly_rate_usd,
+  CAST(ROUND(CAST(usage.amount AS NUMERIC), 4) AS STRING) AS usage_hours,
+  FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%SZ', usage_start_time) AS usage_start_time,
+  FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%SZ', usage_end_time) AS usage_end_time
+FROM \`${input.projectId}.${input.datasetId}.${input.tableId}\`
+WHERE usage_start_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 90 DAY)
+ORDER BY usage_start_time DESC
+LIMIT @maxRows`.trim();
 }

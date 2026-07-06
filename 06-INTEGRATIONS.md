@@ -67,12 +67,16 @@ Every validation and ingestion attempt tied to a cloud connection writes a
 tenant-scoped `cloud_connection_runs` evidence row. The API and portfolio UI
 surface status, timestamps, validation codes/messages, ingestion batch IDs,
 row counts, and duplicate counts without exposing credential material.
-For AWS, ingestion can now read CUR CSV or CSV.GZ objects directly from S3
-by assuming the registered read-only role with the generated external ID.
-The requested `s3://` source must stay inside the registered billing export
-prefix, and the evidence stores the resolved object URI without credential
-material. `COSTALYX_AWS_INGESTION_REGION` can override the S3 read region;
-otherwise the AWS probe/runtime region fallback is used.
+Provider-native ingestion can now read billing exports through the registered
+read-only cloud connection: AWS CUR CSV/CSV.GZ from S3 by assuming the
+customer role with the generated external ID, Azure Cost Management CSV/CSV.GZ
+from Blob Storage with the Costalyx broker identity, and GCP BigQuery billing
+export rows converted into the adapter CSV contract. Requested source URIs
+must stay inside the registered export location, and evidence stores the
+resolved object/table URI without credential material. `COSTALYX_AWS_INGESTION_REGION`
+can override the S3 read region; otherwise the AWS probe/runtime region
+fallback is used. `COSTALYX_GCP_BIGQUERY_LOCATION` can pin the BigQuery query
+location for GCP export reads.
 Production deployments run scheduled cloud maintenance through a separate
 worker process, not through horizontally-scaled API pods. Set
 `COSTALYX_CLOUD_SCHEDULER_ENABLED=enabled` only on that single worker. The
