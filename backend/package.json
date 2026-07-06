@@ -10,6 +10,9 @@
     "test:coverage": "jest --coverage --runInBand --testPathIgnorePatterns=integration"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1079.0",
+    "@aws-sdk/client-sts": "^3.1079.0",
+    "@aws-sdk/credential-providers": "^3.1079.0",
     "@nestjs/common": "^11.1.27",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.27",

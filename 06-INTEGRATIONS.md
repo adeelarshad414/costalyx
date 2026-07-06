@@ -24,13 +24,20 @@ customer cloud account, then registered in Costalyx as a `cloud_connection`.
 
 | Provider | Customer grants | Costalyx stores |
 |---|---|---|
-| AWS | Read-only IAM role for billing/CUR access, assumable by the Costalyx-controlled principal with an external ID | Role ARN, payer/member account ID, optional CUR S3 URI |
+| AWS | Read-only IAM role for billing/CUR access, assumable by the Costalyx-controlled principal with the Costalyx-generated external ID | Role ARN, payer/member account ID, CUR S3 URI |
 | Azure | Reader/Cost Management Reader scope delegated to the Costalyx app registration or workload identity | Tenant/subscription ID, app/principal ID, optional export URI |
 | GCP | Billing Account Viewer / BigQuery read role through Workload Identity Federation | Billing account/project ID, workload identity provider/principal, BigQuery export reference |
 
 A tenant may register multiple AWS, Azure, and GCP connections. UI and API
 reads can show each connection separately, by account group, or collectively
 at the tenant level.
+
+AWS onboarding is two-step by design: register the role ARN/account/CUR URI,
+then configure the returned `externalId` (`costalyx:{tenant_id}:{connection_id}`)
+in the customer IAM trust policy. When `COSTALYX_LIVE_CLOUD_PROBES=enabled`
+and the Costalyx broker has AWS credentials, validation performs STS
+`AssumeRole`, verifies the assumed AWS account ID, and lists the CUR S3
+prefix before marking the connection `validated`.
 
 ## Keycloak (OIDC)
 - Costalyx is registered as a confidential OIDC client — it is never its own

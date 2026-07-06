@@ -8,14 +8,21 @@ const tenantB = '22222222-2222-4222-8222-222222222222';
 
 describe('Multi-tenant cloud portfolio', () => {
   let app: INestApplication;
+  const originalLiveProbeFlag = process.env.COSTALYX_LIVE_CLOUD_PROBES;
 
   beforeAll(async () => {
+    delete process.env.COSTALYX_LIVE_CLOUD_PROBES;
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
   });
 
   afterAll(async () => {
+    if (originalLiveProbeFlag) {
+      process.env.COSTALYX_LIVE_CLOUD_PROBES = originalLiveProbeFlag;
+    } else {
+      delete process.env.COSTALYX_LIVE_CLOUD_PROBES;
+    }
     await app.close();
   });
 
@@ -41,7 +48,11 @@ describe('Multi-tenant cloud portfolio', () => {
       .set('x-costalyx-tenant-id', tenantA)
       .set('Idempotency-Key', 'connection-validate')
       .expect(201)
-      .expect(({ body }) => expect(body.status).toBe('validated'));
+      .expect(({ body }) => {
+        expect(body.status).toBe('ready_for_live_probe');
+        expect(body.lastValidationCode).toBe('live_probes_disabled');
+        expect(body.externalId).toBe(`costalyx:${tenantA}:${createConnection.body.id}`);
+      });
 
     await request(app.getHttpServer())
       .get('/api/v1/cloud-connections')

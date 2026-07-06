@@ -610,6 +610,8 @@ export interface components {
             id: string;
             /** Format: uuid */
             tenantId: string;
+            /** @description Costalyx-generated external ID that the customer configures in their AWS role trust policy. Not a secret. */
+            externalId: string;
             provider: components["schemas"]["CloudProvider"];
             displayName: string;
             /** @description AWS account ID, Azure tenant/billing scope ID, or GCP billing account/project parent. */
@@ -620,9 +622,14 @@ export interface components {
             readOnlyPrincipal: string;
             billingExportUri: string | null;
             /** @enum {string} */
-            status: "pending_validation" | "validated" | "validation_failed";
+            status: "pending_validation" | "ready_for_live_probe" | "validated" | "validation_failed";
             /** Format: date-time */
             lastValidatedAt: string | null;
+            /** Format: date-time */
+            lastValidationAttemptedAt: string | null;
+            /** @enum {string|null} */
+            lastValidationCode: "shape_invalid" | "provider_probe_not_implemented" | "live_probes_disabled" | "aws_billing_export_required" | "aws_account_mismatch" | "aws_billing_export_empty" | "aws_probe_failed" | "aws_probe_passed" | null;
+            lastValidationMessage: string | null;
             /** Format: date-time */
             createdAt: string;
         };

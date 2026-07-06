@@ -6,7 +6,11 @@ import { stableId } from '../cost-model/stable-id';
 import type { Role } from '../security/roles';
 import { DEFAULT_TENANT_ID, type AuthenticatedUser } from '../security/token-verifier';
 import type { CreateAccountDto, CreateAccountGroupDto, PatchAccountGroupDto } from './dto/account.dto';
-import { validateCloudConnectionShape, type CreateCloudConnectionDto } from './dto/cloud-connection.dto';
+import {
+  buildCloudConnectionExternalId,
+  probeCloudConnection
+} from './cloud-connection-probe';
+import type { CreateCloudConnectionDto } from './dto/cloud-connection.dto';
 import type { CreateCloudCredentialDto, RotateCloudCredentialDto } from './dto/cloud-credential.dto';
 import type { CreateTenantDto } from './dto/tenant.dto';
 import type { CreateUserDto } from './dto/user.dto';
@@ -95,7 +99,8 @@ export class PostgresGovernanceRepository implements GovernanceRepository, OnMod
     const offset = (query.page - 1) * query.pageSize;
     const result = await this.pool.query(
       `SELECT id, tenant_id, provider, display_name, external_tenant_id, access_mode, read_only_principal,
-              billing_export_uri, status, last_validated_at, created_at
+              billing_export_uri, status, last_validated_at, last_validation_attempted_at,
+              last_validation_code, last_validation_message, created_at
        FROM cloud_connections
        WHERE tenant_id = $1
        ORDER BY created_at ASC, id ASC
@@ -127,9 +132,15 @@ export class PostgresGovernanceRepository implements GovernanceRepository, OnMod
            DO UPDATE SET display_name = EXCLUDED.display_name,
                          access_mode = EXCLUDED.access_mode,
                          read_only_principal = EXCLUDED.read_only_principal,
-                         billing_export_uri = EXCLUDED.billing_export_uri
+                         billing_export_uri = EXCLUDED.billing_export_uri,
+                         status = 'pending_validation',
+                         last_validated_at = NULL,
+                         last_validation_attempted_at = NULL,
+                         last_validation_code = NULL,
+                         last_validation_message = NULL
            RETURNING id, tenant_id, provider, display_name, external_tenant_id, access_mode, read_only_principal,
-                     billing_export_uri, status, last_validated_at, created_at`,
+                     billing_export_uri, status, last_validated_at, last_validation_attempted_at,
+                     last_validation_code, last_validation_message, created_at`,
           [
             stableId(`cloud-connection:${actor.tenantId}:${input.provider}:${input.externalTenantId}`),
             actor.tenantId,
@@ -154,7 +165,8 @@ export class PostgresGovernanceRepository implements GovernanceRepository, OnMod
       this.withIdempotency(client, actor.tenantId, idempotencyKey, async () => {
         const existing = await client.query(
           `SELECT id, tenant_id, provider, display_name, external_tenant_id, access_mode, read_only_principal,
-                  billing_export_uri, status, last_validated_at, created_at
+                  billing_export_uri, status, last_validated_at, last_validation_attempted_at,
+                  last_validation_code, last_validation_message, created_at
            FROM cloud_connections
            WHERE id = $1 AND tenant_id = $2`,
           [id, actor.tenantId]
@@ -163,21 +175,27 @@ export class PostgresGovernanceRepository implements GovernanceRepository, OnMod
           throw new NotFoundException(`Cloud connection ${id} was not found.`);
         }
         const current = mapCloudConnection(existing.rows[0] as PgRow);
-        const isValid = validateCloudConnectionShape({
-          provider: current.provider,
-          displayName: current.displayName,
-          externalTenantId: current.externalTenantId,
-          accessMode: current.accessMode,
-          readOnlyPrincipal: current.readOnlyPrincipal,
-          billingExportUri: current.billingExportUri ?? undefined
-        });
+        const validation = await probeCloudConnection(current);
         const saved = await client.query(
           `UPDATE cloud_connections
-           SET status = $1, last_validated_at = $2
-           WHERE id = $3 AND tenant_id = $4
+           SET status = $1,
+               last_validated_at = $2,
+               last_validation_attempted_at = $3,
+               last_validation_code = $4,
+               last_validation_message = $5
+           WHERE id = $6 AND tenant_id = $7
            RETURNING id, tenant_id, provider, display_name, external_tenant_id, access_mode, read_only_principal,
-                     billing_export_uri, status, last_validated_at, created_at`,
-          [isValid ? 'validated' : 'validation_failed', new Date().toISOString(), id, actor.tenantId]
+                     billing_export_uri, status, last_validated_at, last_validation_attempted_at,
+                     last_validation_code, last_validation_message, created_at`,
+          [
+            validation.status,
+            validation.validatedAt,
+            validation.attemptedAt,
+            validation.code,
+            validation.message,
+            id,
+            actor.tenantId
+          ]
         );
         const connection = mapCloudConnection(saved.rows[0] as PgRow);
         await this.appendAudit(client, actor, 'cloud_connection_validated', 'cloud_connection', id);
@@ -760,6 +778,7 @@ function mapCloudConnection(row: PgRow): CloudConnection {
   return {
     id: String(row.id),
     tenantId: String(row.tenant_id),
+    externalId: buildCloudConnectionExternalId({ id: String(row.id), tenantId: String(row.tenant_id) }),
     provider: row.provider as CloudProvider,
     displayName: String(row.display_name),
     externalTenantId: String(row.external_tenant_id),
@@ -768,6 +787,9 @@ function mapCloudConnection(row: PgRow): CloudConnection {
     billingExportUri: row.billing_export_uri ? String(row.billing_export_uri) : null,
     status: row.status as CloudConnection['status'],
     lastValidatedAt: row.last_validated_at ? toIso(row.last_validated_at) : null,
+    lastValidationAttemptedAt: row.last_validation_attempted_at ? toIso(row.last_validation_attempted_at) : null,
+    lastValidationCode: row.last_validation_code ? (String(row.last_validation_code) as CloudConnection['lastValidationCode']) : null,
+    lastValidationMessage: row.last_validation_message ? String(row.last_validation_message) : null,
     createdAt: toIso(row.created_at)
   };
 }

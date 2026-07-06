@@ -96,11 +96,29 @@ export interface TenantRecord {
   createdAt: string;
 }
 
-export type CloudConnectionStatus = 'pending_validation' | 'validated' | 'validation_failed';
+export type CloudConnectionStatus = 'pending_validation' | 'ready_for_live_probe' | 'validated' | 'validation_failed';
+export type CloudConnectionValidationCode =
+  | 'shape_invalid'
+  | 'provider_probe_not_implemented'
+  | 'live_probes_disabled'
+  | 'aws_billing_export_required'
+  | 'aws_account_mismatch'
+  | 'aws_billing_export_empty'
+  | 'aws_probe_failed'
+  | 'aws_probe_passed';
+
+export interface CloudConnectionValidationResult {
+  status: CloudConnectionStatus;
+  code: CloudConnectionValidationCode;
+  message: string;
+  attemptedAt: string;
+  validatedAt: string | null;
+}
 
 export interface CloudConnection {
   id: string;
   tenantId: string;
+  externalId: string;
   provider: CloudProvider;
   displayName: string;
   externalTenantId: string;
@@ -109,6 +127,9 @@ export interface CloudConnection {
   billingExportUri: string | null;
   status: CloudConnectionStatus;
   lastValidatedAt: string | null;
+  lastValidationAttemptedAt: string | null;
+  lastValidationCode: CloudConnectionValidationCode | null;
+  lastValidationMessage: string | null;
   createdAt: string;
 }
 

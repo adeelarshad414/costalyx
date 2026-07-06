@@ -20,14 +20,19 @@ function renderWithRole(ui: React.ReactElement, roles: string[]) {
 const connection = {
   id: '11111111-1111-4111-8111-111111111111',
   tenantId: '00000000-0000-4000-8000-000000000001',
+  externalId: 'costalyx:00000000-0000-4000-8000-000000000001:11111111-1111-4111-8111-111111111111',
   provider: 'aws',
   displayName: 'AWS production payer',
   externalTenantId: '123456789012',
   accessMode: 'aws_assume_role',
   readOnlyPrincipal: 'arn:aws:iam::123456789012:role/CostalyxReadOnlyBilling',
   billingExportUri: 's3://customer-cur/costalyx/',
-  status: 'validated',
-  lastValidatedAt: '2026-07-06T00:00:00.000Z',
+  status: 'ready_for_live_probe',
+  lastValidatedAt: null,
+  lastValidationAttemptedAt: '2026-07-06T00:00:00.000Z',
+  lastValidationCode: 'live_probes_disabled',
+  lastValidationMessage:
+    'Structural validation passed. Set COSTALYX_LIVE_CLOUD_PROBES=enabled in the Costalyx runtime to run AWS STS and CUR S3 probes.',
   createdAt: '2026-07-06T00:00:00.000Z'
 } as const;
 
@@ -116,7 +121,7 @@ describe('CloudPortfolioConsole', () => {
     expect(screen.getByText('default')).toHaveClass('font-mono-data');
     expect(await screen.findByText('USD 123.45000000')).toHaveClass('font-mono-data');
     expect(screen.getAllByText('AWS production payer').length).toBeGreaterThan(0);
-    expect(screen.getByText('validated')).toBeInTheDocument();
+    expect(screen.getByText('ready for probe')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add connection' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'AWS' }));
@@ -128,6 +133,8 @@ describe('CloudPortfolioConsole', () => {
         expect.objectContaining({ provider: 'aws', cloudConnectionId: connection.id })
       )
     );
+    expect(screen.getByText(connection.externalId)).toHaveClass('font-mono-data');
+    expect(screen.getByText(connection.lastValidationMessage)).toBeInTheDocument();
   });
 
   it('lets admins register and validate a read-only cloud connection', async () => {

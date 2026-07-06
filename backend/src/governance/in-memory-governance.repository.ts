@@ -4,7 +4,11 @@ import { InMemoryAuditLogStore, type AuditLogStore } from '../audit/audit-log.st
 import { stableId } from '../cost-model/stable-id';
 import { DEFAULT_TENANT_ID, type AuthenticatedUser } from '../security/token-verifier';
 import type { CreateAccountDto, CreateAccountGroupDto, PatchAccountGroupDto } from './dto/account.dto';
-import { validateCloudConnectionShape, type CreateCloudConnectionDto } from './dto/cloud-connection.dto';
+import {
+  buildCloudConnectionExternalId,
+  probeCloudConnection
+} from './cloud-connection-probe';
+import type { CreateCloudConnectionDto } from './dto/cloud-connection.dto';
 import type { CreateCloudCredentialDto, RotateCloudCredentialDto } from './dto/cloud-credential.dto';
 import type { CreateTenantDto } from './dto/tenant.dto';
 import type { CreateUserDto } from './dto/user.dto';
@@ -82,6 +86,7 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
       const connection: CloudConnection = {
         id: stableId(`cloud-connection:${actor.tenantId}:${input.provider}:${input.externalTenantId}`),
         tenantId: actor.tenantId,
+        externalId: '',
         provider: input.provider,
         displayName: input.displayName,
         externalTenantId: input.externalTenantId,
@@ -90,8 +95,12 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
         billingExportUri: input.billingExportUri ?? null,
         status: 'pending_validation',
         lastValidatedAt: null,
+        lastValidationAttemptedAt: null,
+        lastValidationCode: null,
+        lastValidationMessage: null,
         createdAt: new Date().toISOString()
       };
+      connection.externalId = buildCloudConnectionExternalId(connection);
       this.cloudConnections.set(connection.id, connection);
       void this.auditLog.append(actor, 'cloud_connection_created', 'cloud_connection', connection.id);
       return connection;
@@ -99,23 +108,19 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
   }
 
   async validateCloudConnection(id: string, actor: AuthenticatedUser, idempotencyKey: string): Promise<CloudConnection> {
-    return this.withIdempotency(actor, idempotencyKey, () => {
+    return this.withIdempotency(actor, idempotencyKey, async () => {
       const existing = this.cloudConnections.get(id);
       if (!existing || existing.tenantId !== actor.tenantId) {
         throw new NotFoundException(`Cloud connection ${id} was not found.`);
       }
-      const isValid = validateCloudConnectionShape({
-        provider: existing.provider,
-        displayName: existing.displayName,
-        externalTenantId: existing.externalTenantId,
-        accessMode: existing.accessMode,
-        readOnlyPrincipal: existing.readOnlyPrincipal,
-        billingExportUri: existing.billingExportUri ?? undefined
-      });
+      const validation = await probeCloudConnection(existing);
       const updated: CloudConnection = {
         ...existing,
-        status: isValid ? 'validated' : 'validation_failed',
-        lastValidatedAt: new Date().toISOString()
+        status: validation.status,
+        lastValidatedAt: validation.validatedAt,
+        lastValidationAttemptedAt: validation.attemptedAt,
+        lastValidationCode: validation.code,
+        lastValidationMessage: validation.message
       };
       this.cloudConnections.set(id, updated);
       void this.auditLog.append(actor, 'cloud_connection_validated', 'cloud_connection', id);
