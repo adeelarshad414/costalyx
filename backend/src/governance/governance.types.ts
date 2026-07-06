@@ -105,7 +105,15 @@ export type CloudConnectionValidationCode =
   | 'aws_account_mismatch'
   | 'aws_billing_export_empty'
   | 'aws_probe_failed'
-  | 'aws_probe_passed';
+  | 'aws_probe_passed'
+  | 'azure_billing_export_required'
+  | 'azure_billing_export_empty'
+  | 'azure_probe_failed'
+  | 'azure_probe_passed'
+  | 'gcp_billing_export_required'
+  | 'gcp_billing_export_empty'
+  | 'gcp_probe_failed'
+  | 'gcp_probe_passed';
 
 export interface CloudConnectionValidationResult {
   status: CloudConnectionStatus;

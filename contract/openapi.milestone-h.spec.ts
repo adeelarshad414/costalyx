@@ -54,6 +54,8 @@ describe('Milestone H OpenAPI contract', () => {
     );
     expect(responseProperties).toHaveProperty('externalId');
     expect(responseProperties).toHaveProperty('lastValidationCode');
+    expect(JSON.stringify(responseProperties.lastValidationCode)).toContain('azure_probe_passed');
+    expect(JSON.stringify(responseProperties.lastValidationCode)).toContain('gcp_probe_passed');
     expect(JSON.stringify(responseProperties.status)).toContain('ready_for_live_probe');
     expect(spec.components.schemas).toHaveProperty('CloudConnectionOnboarding');
     expect(spec.components.schemas.CloudConnectionOnboarding.required).toEqual(
