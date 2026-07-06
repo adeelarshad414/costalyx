@@ -15,6 +15,8 @@ type CloudConnectionCreateRequest =
   paths['/cloud-connections']['post']['requestBody']['content']['application/json'];
 type CloudConnectionResponse =
   paths['/cloud-connections']['post']['responses']['201']['content']['application/json'];
+type CloudConnectionOnboardingResponse =
+  paths['/cloud-connections/{id}/onboarding']['get']['responses']['200']['content']['application/json'];
 type AccountsResponse = paths['/accounts']['get']['responses']['200']['content']['application/json'];
 type AccountGroupsResponse = paths['/account-groups']['get']['responses']['200']['content']['application/json'];
 type RolesResponse = paths['/roles']['get']['responses']['200']['content']['application/json'];
@@ -121,6 +123,7 @@ export interface CostalyxClient {
     input: CloudConnectionCreateRequest & { idempotencyKey: string }
   ): Promise<CloudConnectionResponse>;
   validateCloudConnection?(input: { id: string; idempotencyKey: string }): Promise<CloudConnectionResponse>;
+  getCloudConnectionOnboarding?(input: { id: string }): Promise<CloudConnectionOnboardingResponse>;
   listAccounts?(query?: { page?: number; pageSize?: number }): Promise<AccountsResponse>;
   listAccountGroups?(query?: { page?: number; pageSize?: number }): Promise<AccountGroupsResponse>;
   listRoles(): Promise<RolesResponse>;
@@ -304,6 +307,19 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
         throw new Error(`Cloud connection validation request failed with ${response.status}`);
       }
       return response.json() as Promise<CloudConnectionResponse>;
+    },
+
+    async getCloudConnectionOnboarding({ id }) {
+      const response = await fetch(`${baseUrl}/cloud-connections/${id}/onboarding`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Cloud connection onboarding request failed with ${response.status}`);
+      }
+      return response.json() as Promise<CloudConnectionOnboardingResponse>;
     },
 
     async listAccounts(query) {

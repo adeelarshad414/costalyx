@@ -115,6 +115,25 @@ export interface CloudConnectionValidationResult {
   validatedAt: string | null;
 }
 
+export type CloudConnectionOnboardingStatus =
+  | 'ready'
+  | 'broker_principal_missing'
+  | 'broker_principal_invalid'
+  | 'billing_export_missing'
+  | 'provider_not_implemented';
+
+export interface CloudConnectionOnboarding {
+  provider: CloudProvider;
+  connectionId: string;
+  externalId: string;
+  status: CloudConnectionOnboardingStatus;
+  brokerPrincipalArn: string | null;
+  billingExportUri: string | null;
+  trustPolicy: Record<string, unknown> | null;
+  permissionsPolicy: Record<string, unknown> | null;
+  customerSteps: string[];
+}
+
 export interface CloudConnection {
   id: string;
   tenantId: string;

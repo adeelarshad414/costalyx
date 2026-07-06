@@ -116,6 +116,21 @@ export class PostgresGovernanceRepository implements GovernanceRepository, OnMod
     };
   }
 
+  async getCloudConnection(id: string, actor: AuthenticatedUser): Promise<CloudConnection> {
+    const result = await this.pool.query(
+      `SELECT id, tenant_id, provider, display_name, external_tenant_id, access_mode, read_only_principal,
+              billing_export_uri, status, last_validated_at, last_validation_attempted_at,
+              last_validation_code, last_validation_message, created_at
+       FROM cloud_connections
+       WHERE id = $1 AND tenant_id = $2`,
+      [id, actor.tenantId]
+    );
+    if (!result.rows[0]) {
+      throw new NotFoundException(`Cloud connection ${id} was not found.`);
+    }
+    return mapCloudConnection(result.rows[0] as PgRow);
+  }
+
   async createCloudConnection(
     input: CreateCloudConnectionDto,
     actor: AuthenticatedUser,

@@ -74,6 +74,12 @@ export class GovernanceController {
     return this.governance.validateCloudConnection(id, request.user, requireIdempotencyKey(idempotencyKey));
   }
 
+  @Get('cloud-connections/:id/onboarding')
+  @RequiredRole('admin')
+  getCloudConnectionOnboarding(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.governance.getCloudConnectionOnboarding(id, request.user);
+  }
+
   @Get('accounts')
   @RequiredRole('viewer')
   listAccounts(@Query() query: PageQueryDto, @Req() request: AuthenticatedRequest) {

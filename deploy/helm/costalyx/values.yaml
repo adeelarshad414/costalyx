@@ -51,6 +51,9 @@ config:
   keycloakJwksUrl: https://auth.example.test/realms/costalyx/protocol/openid-connect/certs
   vaultAddr: https://vault.example.test
   redpandaBrokers: ""
+  liveCloudProbes: ""
+  awsBrokerPrincipalArn: ""
+  awsProbeRegion: ""
   useMocks: "false"
   seedFixtureData: "false"
 

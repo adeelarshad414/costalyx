@@ -136,6 +136,17 @@ describe('createCostalyxClient', () => {
         'Structural validation passed. Set COSTALYX_LIVE_CLOUD_PROBES=enabled in the Costalyx runtime to run AWS STS and CUR S3 probes.',
       createdAt: '2026-07-06T00:00:00.000Z'
     };
+    const onboarding = {
+      provider: 'aws',
+      connectionId: cloudConnection.id,
+      externalId: cloudConnection.externalId,
+      status: 'ready',
+      brokerPrincipalArn: 'arn:aws:iam::999999999999:role/CostalyxBroker',
+      billingExportUri: cloudConnection.billingExportUri,
+      trustPolicy: { Version: '2012-10-17', Statement: [] },
+      permissionsPolicy: { Version: '2012-10-17', Statement: [] },
+      customerSteps: ['Create or update the AWS IAM role trust policy with the generated external ID.']
+    };
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({
@@ -152,6 +163,7 @@ describe('createCostalyxClient', () => {
       })
       .mockResolvedValueOnce({ ok: true, json: async () => cloudConnection })
       .mockResolvedValueOnce({ ok: true, json: async () => cloudConnection })
+      .mockResolvedValueOnce({ ok: true, json: async () => onboarding })
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 1 } })
@@ -180,6 +192,7 @@ describe('createCostalyxClient', () => {
       idempotencyKey: 'connection-key-1'
     });
     await client.validateCloudConnection?.({ id: cloudConnection.id, idempotencyKey: 'validation-key-1' });
+    await client.getCloudConnectionOnboarding?.({ id: cloudConnection.id });
     await client.listAccounts?.({ page: 1, pageSize: 1 });
     await client.listAccountGroups?.({ page: 1, pageSize: 1 });
 
@@ -233,13 +246,23 @@ describe('createCostalyxClient', () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       6,
+      `http://api.test/api/v1/cloud-connections/${cloudConnection.id}/onboarding`,
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Accept: 'application/json',
+          Authorization: 'Bearer signed-keycloak-token'
+        })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      7,
       'http://api.test/api/v1/accounts?page=1&pageSize=1',
       expect.objectContaining({
         headers: expect.objectContaining({ Authorization: 'Bearer signed-keycloak-token' })
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      7,
+      8,
       'http://api.test/api/v1/account-groups?page=1&pageSize=1',
       expect.objectContaining({
         headers: expect.objectContaining({ Authorization: 'Bearer signed-keycloak-token' })

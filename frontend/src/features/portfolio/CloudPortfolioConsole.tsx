@@ -14,6 +14,8 @@ type CloudProvider = 'all' | 'aws' | 'azure' | 'gcp';
 type ListTenants = NonNullable<CostalyxClient['listTenants']>;
 type ListCloudConnections = NonNullable<CostalyxClient['listCloudConnections']>;
 type CloudConnection = Awaited<ReturnType<ListCloudConnections>>['data'][number];
+type GetCloudConnectionOnboarding = NonNullable<CostalyxClient['getCloudConnectionOnboarding']>;
+type CloudConnectionOnboarding = Awaited<ReturnType<GetCloudConnectionOnboarding>>;
 type AccessMode = 'aws_assume_role' | 'azure_delegated_app' | 'gcp_workload_identity';
 
 interface CloudConnectionForm {
@@ -65,6 +67,8 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
   const [connectionId, setConnectionId] = useState('');
   const [totalCostUsd, setTotalCostUsd] = useState('0.00000000');
   const [form, setForm] = useState<CloudConnectionForm>(connectionDefaults.aws);
+  const [onboarding, setOnboarding] = useState<CloudConnectionOnboarding | null>(null);
+  const [onboardingError, setOnboardingError] = useState('');
 
   const selectedConnection = useMemo(
     () => connections.find((connection) => connection.id === connectionId) ?? null,
@@ -118,6 +122,11 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
     }
   }, [loadSummary, state]);
 
+  useEffect(() => {
+    setOnboarding(null);
+    setOnboardingError('');
+  }, [connectionId]);
+
   const createConnection = useCallback(async () => {
     try {
       const { createCloudConnection, validateCloudConnection } = client;
@@ -139,6 +148,24 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
       setState('error');
     }
   }, [client, form, loadPortfolio]);
+
+  const loadOnboarding = useCallback(async () => {
+    if (!selectedConnection) {
+      return;
+    }
+    try {
+      const { getCloudConnectionOnboarding } = client;
+      if (!getCloudConnectionOnboarding) {
+        throw new Error('Cloud portfolio client is unavailable');
+      }
+      setOnboarding(await getCloudConnectionOnboarding({ id: selectedConnection.id }));
+      setOnboardingError('');
+    } catch (onboardingLoadError) {
+      setOnboardingError(
+        onboardingLoadError instanceof Error ? onboardingLoadError.message : 'Unknown onboarding request failure'
+      );
+    }
+  }, [client, selectedConnection]);
 
   if (state === 'loading') {
     return (
@@ -303,6 +330,43 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
             <dd>{selectedConnection.lastValidationMessage ?? statusLabel(selectedConnection.status)}</dd>
           </div>
         </dl>
+      ) : null}
+
+      {selectedConnection ? (
+        <PermissionGate requiredRole="admin" mode="hide">
+          <section className="onboarding-panel" aria-label={`${selectedConnection.provider.toUpperCase()} onboarding`}>
+            <div className="panel-toolbar portfolio-toolbar">
+              <h2>{selectedConnection.provider.toUpperCase()} onboarding</h2>
+              <button type="button" onClick={loadOnboarding}>
+                <ShieldCheck aria-hidden="true" size={16} />
+                Load policies
+              </button>
+            </div>
+            {onboardingError ? <p role="alert">{onboardingError}</p> : null}
+            {onboarding ? (
+              <div className="onboarding-grid">
+                <dl>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{onboarding.status}</dd>
+                  </div>
+                  <div>
+                    <dt>Broker principal</dt>
+                    <dd className="font-mono-data">{onboarding.brokerPrincipalArn ?? 'not configured'}</dd>
+                  </div>
+                </dl>
+                <div>
+                  <h3>Trust policy</h3>
+                  <pre className="policy-json">{JSON.stringify(onboarding.trustPolicy, null, 2)}</pre>
+                </div>
+                <div>
+                  <h3>Permissions policy</h3>
+                  <pre className="policy-json">{JSON.stringify(onboarding.permissionsPolicy, null, 2)}</pre>
+                </div>
+              </div>
+            ) : null}
+          </section>
+        </PermissionGate>
       ) : null}
     </section>
   );

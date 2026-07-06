@@ -77,6 +77,14 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
     );
   }
 
+  async getCloudConnection(id: string, actor: AuthenticatedUser): Promise<CloudConnection> {
+    const connection = this.cloudConnections.get(id);
+    if (!connection || connection.tenantId !== actor.tenantId) {
+      throw new NotFoundException(`Cloud connection ${id} was not found.`);
+    }
+    return connection;
+  }
+
   async createCloudConnection(
     input: CreateCloudConnectionDto,
     actor: AuthenticatedUser,

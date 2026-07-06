@@ -10,5 +10,8 @@ data:
   KEYCLOAK_JWKS_URL: {{ .Values.config.keycloakJwksUrl | quote }}
   VAULT_ADDR: {{ .Values.config.vaultAddr | quote }}
   REDPANDA_BROKERS: {{ .Values.config.redpandaBrokers | quote }}
+  COSTALYX_LIVE_CLOUD_PROBES: {{ .Values.config.liveCloudProbes | quote }}
+  COSTALYX_AWS_BROKER_PRINCIPAL_ARN: {{ .Values.config.awsBrokerPrincipalArn | quote }}
+  COSTALYX_AWS_PROBE_REGION: {{ .Values.config.awsProbeRegion | quote }}
   USE_MOCKS: {{ .Values.config.useMocks | quote }}
   SEED_FIXTURE_DATA: {{ .Values.config.seedFixtureData | quote }}

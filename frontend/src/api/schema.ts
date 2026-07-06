@@ -210,6 +210,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cloud-connections/{id}/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get provider-specific read-only onboarding policy templates */
+        get: operations["getCloudConnectionOnboarding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/accounts": {
         parameters: {
             query?: never;
@@ -642,6 +659,24 @@ export interface components {
             /** @description Read-only delegated principal reference only. */
             readOnlyPrincipal: string;
             billingExportUri?: string;
+        };
+        CloudConnectionOnboarding: {
+            provider: components["schemas"]["CloudProvider"];
+            /** Format: uuid */
+            connectionId: string;
+            /** @description Costalyx-generated external ID used in the customer trust policy. Not a secret. */
+            externalId: string;
+            /** @enum {string} */
+            status: "ready" | "broker_principal_missing" | "broker_principal_invalid" | "billing_export_missing" | "provider_not_implemented";
+            brokerPrincipalArn: string | null;
+            billingExportUri: string | null;
+            trustPolicy: {
+                [key: string]: unknown;
+            } | null;
+            permissionsPolicy: {
+                [key: string]: unknown;
+            } | null;
+            customerSteps: string[];
         };
         /** @example 1234.5600 */
         MoneyString: string;
@@ -1502,6 +1537,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CloudConnection"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getCloudConnectionOnboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cloud connection onboarding template */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudConnectionOnboarding"];
                 };
             };
             401: components["responses"]["Unauthorized"];

@@ -9,9 +9,11 @@ const tenantB = '22222222-2222-4222-8222-222222222222';
 describe('Multi-tenant cloud portfolio', () => {
   let app: INestApplication;
   const originalLiveProbeFlag = process.env.COSTALYX_LIVE_CLOUD_PROBES;
+  const originalBrokerPrincipal = process.env.COSTALYX_AWS_BROKER_PRINCIPAL_ARN;
 
   beforeAll(async () => {
     delete process.env.COSTALYX_LIVE_CLOUD_PROBES;
+    process.env.COSTALYX_AWS_BROKER_PRINCIPAL_ARN = 'arn:aws:iam::999999999999:role/CostalyxBroker';
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
@@ -22,6 +24,11 @@ describe('Multi-tenant cloud portfolio', () => {
       process.env.COSTALYX_LIVE_CLOUD_PROBES = originalLiveProbeFlag;
     } else {
       delete process.env.COSTALYX_LIVE_CLOUD_PROBES;
+    }
+    if (originalBrokerPrincipal) {
+      process.env.COSTALYX_AWS_BROKER_PRINCIPAL_ARN = originalBrokerPrincipal;
+    } else {
+      delete process.env.COSTALYX_AWS_BROKER_PRINCIPAL_ARN;
     }
     await app.close();
   });
@@ -53,6 +60,25 @@ describe('Multi-tenant cloud portfolio', () => {
         expect(body.lastValidationCode).toBe('live_probes_disabled');
         expect(body.externalId).toBe(`costalyx:${tenantA}:${createConnection.body.id}`);
       });
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/cloud-connections/${createConnection.body.id}/onboarding`)
+      .set('x-costalyx-role', 'admin')
+      .set('x-costalyx-tenant-id', tenantA)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.status).toBe('ready');
+        expect(body.externalId).toBe(`costalyx:${tenantA}:${createConnection.body.id}`);
+        expect(body.trustPolicy.Statement[0].Principal.AWS).toBe('arn:aws:iam::999999999999:role/CostalyxBroker');
+        expect(body.trustPolicy.Statement[0].Condition.StringEquals['sts:ExternalId']).toBe(body.externalId);
+        expect(JSON.stringify(body.permissionsPolicy)).not.toContain('secret');
+      });
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/cloud-connections/${createConnection.body.id}/onboarding`)
+      .set('x-costalyx-role', 'viewer')
+      .set('x-costalyx-tenant-id', tenantA)
+      .expect(403);
 
     await request(app.getHttpServer())
       .get('/api/v1/cloud-connections')

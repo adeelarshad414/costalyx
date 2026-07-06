@@ -37,6 +37,9 @@
         "keycloakJwksUrl": { "type": "string", "minLength": 1 },
         "vaultAddr": { "type": "string", "minLength": 1 },
         "redpandaBrokers": { "type": "string" },
+        "liveCloudProbes": { "type": "string" },
+        "awsBrokerPrincipalArn": { "type": "string" },
+        "awsProbeRegion": { "type": "string" },
         "useMocks": { "type": "string", "enum": ["false"] },
         "seedFixtureData": { "type": "string", "enum": ["false"] }
       }

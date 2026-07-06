@@ -92,6 +92,13 @@ to override the default probe region; otherwise `AWS_REGION`,
 valid AWS connections remain `ready_for_live_probe` and are not falsely
 reported as `validated`.
 
+To generate customer-ready AWS onboarding templates, set
+`COSTALYX_AWS_BROKER_PRINCIPAL_ARN` to the IAM role/account principal that
+will assume customer read-only roles. `GET /api/v1/cloud-connections/{id}/onboarding`
+then returns the trust policy and least-privilege CUR S3 read policy. If the
+variable is missing or malformed, the endpoint returns an explicit
+configuration status instead of a placeholder policy.
+
 ## Observability hook (future integration point with Lumen)
 Backend exposes Prometheus-compatible `/metrics` and structured JSON logs
 from day one, even before a Lumen integration is wired, so the two open

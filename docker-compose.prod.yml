@@ -37,6 +37,9 @@ services:
       VAULT_ADDR: ${VAULT_ADDR:?Set production Vault address}
       VAULT_TOKEN: ${VAULT_TOKEN:?Set runtime Vault token or workload identity token}
       REDPANDA_BROKERS: ${REDPANDA_BROKERS:-}
+      COSTALYX_LIVE_CLOUD_PROBES: ${COSTALYX_LIVE_CLOUD_PROBES:-}
+      COSTALYX_AWS_BROKER_PRINCIPAL_ARN: ${COSTALYX_AWS_BROKER_PRINCIPAL_ARN:-}
+      COSTALYX_AWS_PROBE_REGION: ${COSTALYX_AWS_PROBE_REGION:-}
       USE_MOCKS: "false"
       SEED_FIXTURE_DATA: ${SEED_FIXTURE_DATA:-false}
     ports:
