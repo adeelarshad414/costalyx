@@ -1379,6 +1379,7 @@ components:
       required:
         - id
         - tenantId
+        - externalId
         - provider
         - displayName
         - externalTenantId
@@ -1387,6 +1388,9 @@ components:
         - billingExportUri
         - status
         - lastValidatedAt
+        - lastValidationAttemptedAt
+        - lastValidationCode
+        - lastValidationMessage
         - createdAt
       properties:
         id:
@@ -1395,6 +1399,9 @@ components:
         tenantId:
           type: string
           format: uuid
+        externalId:
+          type: string
+          description: Costalyx-generated external ID that the customer configures in their AWS role trust policy. Not a secret.
         provider:
           $ref: "#/components/schemas/CloudProvider"
         displayName:
@@ -1412,10 +1419,27 @@ components:
           type: ["string", "null"]
         status:
           type: string
-          enum: [pending_validation, validated, validation_failed]
+          enum: [pending_validation, ready_for_live_probe, validated, validation_failed]
         lastValidatedAt:
           type: ["string", "null"]
           format: date-time
+        lastValidationAttemptedAt:
+          type: ["string", "null"]
+          format: date-time
+        lastValidationCode:
+          type: ["string", "null"]
+          enum:
+            - shape_invalid
+            - provider_probe_not_implemented
+            - live_probes_disabled
+            - aws_billing_export_required
+            - aws_account_mismatch
+            - aws_billing_export_empty
+            - aws_probe_failed
+            - aws_probe_passed
+            - null
+        lastValidationMessage:
+          type: ["string", "null"]
         createdAt:
           type: string
           format: date-time

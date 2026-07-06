@@ -75,7 +75,7 @@ references, not secret material.
 
 | Provider | Required production input | Verification |
 |---|---|---|
-| AWS | Role ARN, external ID, payer/member account ID, CUR S3 URI or equivalent export URI | Assume role, list/read billing export location, ingest a small CUR fixture/export sample |
+| AWS | Role ARN, Costalyx-generated external ID copied into the customer trust policy, payer/member account ID, CUR S3 URI | Assume role, verify account ID, list the CUR S3 prefix, ingest a small CUR export sample |
 | Azure | Tenant ID, subscription or management-group scope, delegated app/workload identity principal, Cost Management export URI when used | Token acquisition, Reader/Cost Management Reader scope check, export read test |
 | GCP | Billing account or project ID, Workload Identity Federation provider/principal, BigQuery billing export dataset/table | Federated token exchange, billing export read query with row limit |
 
@@ -83,6 +83,14 @@ Each connected account must be associated with the authenticated tenant and
 may be grouped into account groups for separate and collective portfolio
 views. Production validation must never require customer-owned long-lived
 access keys.
+
+To enable live AWS validation, the backend runtime must set
+`COSTALYX_LIVE_CLOUD_PROBES=enabled` and run with AWS credentials for the
+Costalyx-controlled broker principal. `COSTALYX_AWS_PROBE_REGION` may be set
+to override the default probe region; otherwise `AWS_REGION`,
+`AWS_DEFAULT_REGION`, or `us-east-1` is used. If live probes are not enabled,
+valid AWS connections remain `ready_for_live_probe` and are not falsely
+reported as `validated`.
 
 ## Observability hook (future integration point with Lumen)
 Backend exposes Prometheus-compatible `/metrics` and structured JSON logs

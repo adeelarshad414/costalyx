@@ -42,11 +42,18 @@ describe('Milestone H OpenAPI contract', () => {
 
   it('keeps cloud onboarding read-only and free of secret material', () => {
     const createProperties = spec.components.schemas.CloudConnectionCreate.properties ?? {};
+    const responseProperties = spec.components.schemas.CloudConnection.properties ?? {};
     expect(spec.components.schemas).toHaveProperty('Tenant');
     expect(spec.components.schemas).toHaveProperty('CloudConnection');
     expect(spec.components.schemas.CloudConnectionCreate.required).toEqual(
       expect.arrayContaining(['provider', 'displayName', 'externalTenantId', 'accessMode', 'readOnlyPrincipal'])
     );
+    expect(spec.components.schemas.CloudConnection.required).toEqual(
+      expect.arrayContaining(['externalId', 'lastValidationAttemptedAt', 'lastValidationCode', 'lastValidationMessage'])
+    );
+    expect(responseProperties).toHaveProperty('externalId');
+    expect(responseProperties).toHaveProperty('lastValidationCode');
+    expect(JSON.stringify(responseProperties.status)).toContain('ready_for_live_probe');
     expect(createProperties).not.toHaveProperty('accessKeyId');
     expect(createProperties).not.toHaveProperty('secretAccessKey');
     expect(createProperties).not.toHaveProperty('clientSecret');

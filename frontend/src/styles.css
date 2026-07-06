@@ -203,6 +203,35 @@ td {
   color: var(--status-warning);
 }
 
+.status-danger {
+  color: var(--status-danger);
+}
+
+.connection-detail {
+  border-top: 1px solid var(--border-subtle);
+  display: grid;
+  gap: 12px;
+  margin: 18px 0 0;
+  padding-top: 16px;
+}
+
+.connection-detail div {
+  display: grid;
+  gap: 6px;
+}
+
+.connection-detail dt {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 6px;
+}
+
+.connection-detail dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .allocation-grid {
   display: grid;
   gap: 20px;

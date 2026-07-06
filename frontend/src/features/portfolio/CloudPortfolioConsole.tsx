@@ -1,4 +1,4 @@
-import { Cloud, Plus, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Cloud, KeyRound, Plus, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
@@ -226,9 +226,7 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
                   <Cloud aria-hidden="true" size={18} />
                   <span>{connection.displayName}</span>
                   <span>{connection.provider.toUpperCase()}</span>
-                  <span className={connection.status === 'validated' ? 'status-success' : 'status-warning'}>
-                    {connection.status}
-                  </span>
+                  <span className={statusClass(connection.status)}>{statusLabel(connection.status)}</span>
                 </li>
               ))}
             </ul>
@@ -287,7 +285,48 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
         </PermissionGate>
       </div>
 
-      {selectedConnection ? <p className="font-mono-data">{selectedConnection.readOnlyPrincipal}</p> : null}
+      {selectedConnection ? (
+        <dl className="connection-detail" aria-label="Selected cloud connection details">
+          <div>
+            <dt>
+              <KeyRound aria-hidden="true" size={16} />
+              External ID
+            </dt>
+            <dd className="font-mono-data">{selectedConnection.externalId}</dd>
+          </div>
+          <div>
+            <dt>Principal</dt>
+            <dd className="font-mono-data">{selectedConnection.readOnlyPrincipal}</dd>
+          </div>
+          <div>
+            <dt>Probe result</dt>
+            <dd>{selectedConnection.lastValidationMessage ?? statusLabel(selectedConnection.status)}</dd>
+          </div>
+        </dl>
+      ) : null}
     </section>
   );
+}
+
+function statusLabel(status: CloudConnection['status']): string {
+  if (status === 'validated') {
+    return 'validated';
+  }
+  if (status === 'validation_failed') {
+    return 'validation failed';
+  }
+  if (status === 'ready_for_live_probe') {
+    return 'ready for probe';
+  }
+  return 'pending validation';
+}
+
+function statusClass(status: CloudConnection['status']): string {
+  if (status === 'validated') {
+    return 'status-success';
+  }
+  if (status === 'validation_failed') {
+    return 'status-danger';
+  }
+  return 'status-warning';
 }

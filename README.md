@@ -13,6 +13,9 @@ The product is tenant-first: a customer can connect multiple AWS, Azure, and
 GCP accounts with read-only roles/federated principals, inspect each
 connection separately, group accounts for ownership views, and roll
 everything up into one portfolio.
+For AWS, Costalyx returns a tenant-scoped external ID that the customer
+places in their IAM role trust policy; live validation then assumes the role
+and checks the CUR S3 export before the connection is marked validated.
 
 ## Status
 🚧 Pre-release. See [`PROGRESS.md`](./PROGRESS.md) for live build status —
