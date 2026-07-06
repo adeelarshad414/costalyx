@@ -19,12 +19,23 @@ default tenant only when the local header/test path is active.
 ### `cloud_connections`
 `id, tenant_id, provider, display_name, external_tenant_id, access_mode,
 read_only_principal, billing_export_uri, status, last_validated_at,
+last_validation_attempted_at, last_validation_code, last_validation_message,
 created_at`
 
 This table models customer-owned cloud estates. It stores only identifiers
 and read-only trust references: AWS role ARN, Azure delegated application
 identifier, or GCP Workload Identity provider/principal. It never stores
 cloud access keys, client secrets, service-account keys, or passwords.
+
+### `cloud_connection_runs`
+`id, tenant_id, cloud_connection_id, run_type, status, started_at,
+completed_at, evidence_json, created_at`
+
+Tenant-scoped validation and ingestion run ledger for each cloud connection.
+`run_type` is `validation` or `ingestion`; `status` is `succeeded` or
+`failed`. `evidence_json` stores sanitized operational facts only, such as
+validation code/message, ingestion batch ID, row counts, and duplicate counts.
+It must never contain cloud credential material.
 
 ### `cost_records` (append-only, temporal)
 | Column | Type | Notes |
@@ -107,6 +118,8 @@ here.
 - `cost_records`: tenant/provider/service and tenant/fingerprint indexes for
   multi-tenant Resource Inventory, Explorer, and duplicate detection
 - `cloud_connections`: tenant/provider index for portfolio switchers
+- `cloud_connection_runs`: tenant/connection/completed_at index for latest
+  run evidence panels
 - `resource_tags`: index on `(tag_key, tag_value)` for dimension mapping joins
 
 ## Migration discipline

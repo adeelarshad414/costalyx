@@ -43,7 +43,8 @@ describeIfPostgres('Milestone E optimization API with PostgreSQL persistence', (
       '006_optimization.sql',
       '007_reporting_views.sql',
       '008_multitenant_cloud_portfolio.sql',
-      '009_cloud_connection_probe_evidence.sql'
+      '009_cloud_connection_probe_evidence.sql',
+      '010_cloud_connection_runs.sql'
     ]) {
       const sql = readFileSync(join(process.cwd(), 'migrations', migration), 'utf8');
       await pool.query(sql);

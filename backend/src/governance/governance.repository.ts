@@ -8,11 +8,13 @@ import type {
   AccountReference,
   AuditLogEntry,
   CloudConnection,
+  CloudConnectionRun,
   CloudCredentialReference,
   CreateViewInput,
   FixedRoleRecord,
   PageQuery,
   Paginated,
+  RecordCloudConnectionRunInput,
   SavedView,
   TenantRecord,
   UserRecord
@@ -38,6 +40,8 @@ export interface GovernanceRepository {
     idempotencyKey: string
   ): Promise<CloudConnection>;
   validateCloudConnection(id: string, actor: AuthenticatedUser, idempotencyKey: string): Promise<CloudConnection>;
+  listCloudConnectionRuns(id: string, query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<CloudConnectionRun>>;
+  recordCloudConnectionRun(input: RecordCloudConnectionRunInput, actor: AuthenticatedUser): Promise<CloudConnectionRun>;
   listAccounts(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<Omit<AccountReference, 'vaultCredentialPath'>>>;
   createAccount(
     input: CreateAccountDto,

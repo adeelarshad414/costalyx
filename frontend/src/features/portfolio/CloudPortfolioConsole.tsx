@@ -1,4 +1,4 @@
-import { Cloud, KeyRound, Plus, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Activity, Cloud, KeyRound, Plus, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
@@ -16,6 +16,8 @@ type ListCloudConnections = NonNullable<CostalyxClient['listCloudConnections']>;
 type CloudConnection = Awaited<ReturnType<ListCloudConnections>>['data'][number];
 type GetCloudConnectionOnboarding = NonNullable<CostalyxClient['getCloudConnectionOnboarding']>;
 type CloudConnectionOnboarding = Awaited<ReturnType<GetCloudConnectionOnboarding>>;
+type ListCloudConnectionRuns = NonNullable<CostalyxClient['listCloudConnectionRuns']>;
+type CloudConnectionRun = Awaited<ReturnType<ListCloudConnectionRuns>>['data'][number];
 type AccessMode = 'aws_assume_role' | 'azure_delegated_app' | 'gcp_workload_identity';
 
 interface CloudConnectionForm {
@@ -69,6 +71,8 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
   const [form, setForm] = useState<CloudConnectionForm>(connectionDefaults.aws);
   const [onboarding, setOnboarding] = useState<CloudConnectionOnboarding | null>(null);
   const [onboardingError, setOnboardingError] = useState('');
+  const [connectionRuns, setConnectionRuns] = useState<CloudConnectionRun[]>([]);
+  const [runError, setRunError] = useState('');
 
   const selectedConnection = useMemo(
     () => connections.find((connection) => connection.id === connectionId) ?? null,
@@ -166,6 +170,29 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
       );
     }
   }, [client, selectedConnection]);
+
+  const loadConnectionRuns = useCallback(async () => {
+    if (!selectedConnection) {
+      setConnectionRuns([]);
+      return;
+    }
+    try {
+      const { listCloudConnectionRuns } = client;
+      if (!listCloudConnectionRuns) {
+        throw new Error('Cloud portfolio client is unavailable');
+      }
+      const response = await listCloudConnectionRuns({ id: selectedConnection.id, page: 1, pageSize: 5 });
+      setConnectionRuns(response.data);
+      setRunError('');
+    } catch (runsLoadError) {
+      setConnectionRuns([]);
+      setRunError(runsLoadError instanceof Error ? runsLoadError.message : 'Unknown run evidence request failure');
+    }
+  }, [client, selectedConnection]);
+
+  useEffect(() => {
+    void loadConnectionRuns();
+  }, [loadConnectionRuns]);
 
   if (state === 'loading') {
     return (
@@ -333,6 +360,36 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
       ) : null}
 
       {selectedConnection ? (
+        <section className="run-evidence" aria-label="Cloud connection run evidence">
+          <div className="panel-toolbar portfolio-toolbar">
+            <div className="connection-form-header">
+              <Activity aria-hidden="true" size={18} />
+              <h2>Run evidence</h2>
+            </div>
+            <button type="button" onClick={loadConnectionRuns}>
+              <RefreshCw aria-hidden="true" size={16} />
+              Refresh
+            </button>
+          </div>
+          {runError ? <p role="alert">{runError}</p> : null}
+          {connectionRuns.length === 0 && !runError ? (
+            <EmptyState title="No run evidence" />
+          ) : (
+            <ul className="run-list">
+              {connectionRuns.map((run) => (
+                <li key={run.id}>
+                  <span>{run.runType}</span>
+                  <span className={run.status === 'succeeded' ? 'status-success' : 'status-danger'}>{run.status}</span>
+                  <span className="font-mono-data">{formatRunTime(run.completedAt)}</span>
+                  <span className="font-mono-data">{runEvidenceSummary(run)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
+
+      {selectedConnection ? (
         <PermissionGate requiredRole="admin" mode="hide">
           <section className="onboarding-panel" aria-label={`${selectedConnection.provider.toUpperCase()} onboarding`}>
             <div className="panel-toolbar portfolio-toolbar">
@@ -398,4 +455,20 @@ function statusClass(status: CloudConnection['status']): string {
     return 'status-danger';
   }
   return 'status-warning';
+}
+
+function runEvidenceSummary(run: CloudConnectionRun): string {
+  if (run.runType === 'ingestion') {
+    return `${Number(run.evidence.ingestedRows ?? 0)} rows, ${Number(run.evidence.duplicateRows ?? 0)} duplicates`;
+  }
+  return String(run.evidence.code ?? run.evidence.message ?? run.status);
+}
+
+function formatRunTime(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(new Date(value));
 }

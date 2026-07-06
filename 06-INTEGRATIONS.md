@@ -60,6 +60,10 @@ launch with `npm run probe:aws-live`, `npm run probe:azure-live`, and
 `npm run probe:gcp-live`. These commands accept provider references and rely
 on Costalyx-controlled broker credentials from the normal cloud SDK runtime;
 they do not accept customer secrets.
+Every validation and ingestion attempt tied to a cloud connection writes a
+tenant-scoped `cloud_connection_runs` evidence row. The API and portfolio UI
+surface status, timestamps, validation codes/messages, ingestion batch IDs,
+row counts, and duplicate counts without exposing credential material.
 
 ## Keycloak (OIDC)
 - Costalyx is registered as a confidential OIDC client — it is never its own

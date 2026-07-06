@@ -20,10 +20,12 @@ import type {
   AccountReference,
   AuditLogEntry,
   CloudConnection,
+  CloudConnectionRun,
   CloudCredentialReference,
   CreateViewInput,
   PageQuery,
   Paginated,
+  RecordCloudConnectionRunInput,
   SavedView,
   TenantRecord,
   UserRecord
@@ -213,10 +215,85 @@ export class PostgresGovernanceRepository implements GovernanceRepository, OnMod
           ]
         );
         const connection = mapCloudConnection(saved.rows[0] as PgRow);
+        await this.insertCloudConnectionRun(client, actor, {
+          cloudConnectionId: id,
+          runType: 'validation',
+          status: validation.status === 'validation_failed' ? 'failed' : 'succeeded',
+          startedAt: validation.attemptedAt,
+          completedAt: validation.attemptedAt,
+          evidence: {
+            provider: current.provider,
+            connectionStatus: validation.status,
+            code: validation.code,
+            message: validation.message
+          }
+        });
         await this.appendAudit(client, actor, 'cloud_connection_validated', 'cloud_connection', id);
         return connection;
       })
     );
+  }
+
+  async listCloudConnectionRuns(
+    id: string,
+    query: PageQuery,
+    actor: AuthenticatedUser
+  ): Promise<Paginated<CloudConnectionRun>> {
+    const connection = await this.getCloudConnection(id, actor);
+    const { page, pageSize } = normalizePageQuery(query);
+    const offset = (page - 1) * pageSize;
+    const result = await this.pool.query(
+      `SELECT id, tenant_id, cloud_connection_id, run_type, status, started_at, completed_at, evidence_json, created_at
+       FROM cloud_connection_runs
+       WHERE tenant_id = $1 AND cloud_connection_id = $2
+       ORDER BY completed_at DESC, id DESC
+       LIMIT $3 OFFSET $4`,
+      [actor.tenantId, id, pageSize, offset]
+    );
+    const total = await this.pool.query(
+      `SELECT COUNT(id)::int AS total
+       FROM cloud_connection_runs
+       WHERE tenant_id = $1 AND cloud_connection_id = $2`,
+      [actor.tenantId, id]
+    );
+    const persistedValidationRun = await this.pool.query(
+      `SELECT 1
+       FROM cloud_connection_runs
+       WHERE tenant_id = $1 AND cloud_connection_id = $2 AND run_type = 'validation'
+       LIMIT 1`,
+      [actor.tenantId, id]
+    );
+    const runs = result.rows.map((row) => mapCloudConnectionRun(row as PgRow));
+    const syntheticValidationRun = buildSyntheticValidationRun(connection);
+    const shouldAddSyntheticValidationRun = syntheticValidationRun && !persistedValidationRun.rows[0];
+    if (shouldAddSyntheticValidationRun) {
+      runs.push(syntheticValidationRun);
+      runs.sort((a, b) => b.completedAt.localeCompare(a.completedAt) || b.id.localeCompare(a.id));
+    }
+    return {
+      data: runs,
+      meta: {
+        total: Number((total.rows[0] as PgRow | undefined)?.total ?? 0) + (shouldAddSyntheticValidationRun ? 1 : 0),
+        page,
+        pageSize
+      }
+    };
+  }
+
+  async recordCloudConnectionRun(
+    input: RecordCloudConnectionRunInput,
+    actor: AuthenticatedUser
+  ): Promise<CloudConnectionRun> {
+    return this.withTransaction(async (client) => {
+      const connection = await client.query('SELECT id FROM cloud_connections WHERE id = $1 AND tenant_id = $2', [
+        input.cloudConnectionId,
+        actor.tenantId
+      ]);
+      if (!connection.rows[0]) {
+        throw new NotFoundException(`Cloud connection ${input.cloudConnectionId} was not found.`);
+      }
+      return this.insertCloudConnectionRun(client, actor, input);
+    });
   }
 
   async listAccounts(
@@ -655,6 +732,32 @@ export class PostgresGovernanceRepository implements GovernanceRepository, OnMod
     return mapAccountGroup(result.rows[0] as PgRow);
   }
 
+  private async insertCloudConnectionRun(
+    client: PoolClient,
+    actor: AuthenticatedUser,
+    input: RecordCloudConnectionRunInput
+  ): Promise<CloudConnectionRun> {
+    const saved = await client.query(
+      `INSERT INTO cloud_connection_runs
+         (id, tenant_id, cloud_connection_id, run_type, status, started_at, completed_at, evidence_json, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, tenant_id, cloud_connection_id, run_type, status, started_at, completed_at, evidence_json, created_at`,
+      [
+        randomUUID(),
+        actor.tenantId,
+        input.cloudConnectionId,
+        input.runType,
+        input.status,
+        input.startedAt,
+        input.completedAt,
+        JSON.stringify(input.evidence),
+        new Date().toISOString()
+      ]
+    );
+    await this.appendAudit(client, actor, 'cloud_connection_run_recorded', 'cloud_connection', input.cloudConnectionId);
+    return mapCloudConnectionRun(saved.rows[0] as PgRow);
+  }
+
   private async appendAudit(
     client: PoolClient,
     actor: AuthenticatedUser,
@@ -809,6 +912,20 @@ function mapCloudConnection(row: PgRow): CloudConnection {
   };
 }
 
+function mapCloudConnectionRun(row: PgRow): CloudConnectionRun {
+  return {
+    id: String(row.id),
+    tenantId: String(row.tenant_id),
+    cloudConnectionId: String(row.cloud_connection_id),
+    runType: row.run_type as CloudConnectionRun['runType'],
+    status: row.status as CloudConnectionRun['status'],
+    startedAt: toIso(row.started_at),
+    completedAt: toIso(row.completed_at),
+    evidence: toObject(row.evidence_json),
+    createdAt: toIso(row.created_at)
+  };
+}
+
 function toObject(value: unknown): Record<string, unknown> {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     return value as Record<string, unknown>;
@@ -858,4 +975,35 @@ function decodeTenantScopedStorageValue(tenantId: string, value: string): string
 
 function tenantStorageCandidates(tenantId: string, value: string): string[] {
   return [tenantScopedStorageValue(tenantId, value), value];
+}
+
+function normalizePageQuery(query: PageQuery): PageQuery {
+  return {
+    page: Number.isFinite(Number(query.page)) && Number(query.page) > 0 ? Number(query.page) : 1,
+    pageSize: Number.isFinite(Number(query.pageSize)) && Number(query.pageSize) > 0 ? Number(query.pageSize) : 25
+  };
+}
+
+function buildSyntheticValidationRun(connection: CloudConnection): CloudConnectionRun | null {
+  if (!connection.lastValidationAttemptedAt || !connection.lastValidationCode || !connection.lastValidationMessage) {
+    return null;
+  }
+  return {
+    id: stableId(
+      `cloud-connection-run:${connection.tenantId}:${connection.id}:validation:${connection.lastValidationAttemptedAt}`
+    ),
+    tenantId: connection.tenantId,
+    cloudConnectionId: connection.id,
+    runType: 'validation',
+    status: connection.status === 'validation_failed' ? 'failed' : 'succeeded',
+    startedAt: connection.lastValidationAttemptedAt,
+    completedAt: connection.lastValidationAttemptedAt,
+    evidence: {
+      provider: connection.provider,
+      connectionStatus: connection.status,
+      code: connection.lastValidationCode,
+      message: connection.lastValidationMessage
+    },
+    createdAt: connection.lastValidationAttemptedAt
+  };
 }

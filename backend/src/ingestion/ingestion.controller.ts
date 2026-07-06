@@ -23,7 +23,7 @@ export class IngestionController {
     if (!idempotencyKey) {
       throw new BadRequestException('Idempotency-Key header is required.');
     }
-    return this.ingestionService.createBatch({ ...body, tenantId: request.user.tenantId, idempotencyKey });
+    return this.ingestionService.createBatch({ ...body, tenantId: request.user.tenantId, idempotencyKey, actor: request.user });
   }
 
   @Get(':id')

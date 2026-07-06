@@ -49,11 +49,15 @@ GET/POST /api/v1/tenants                    tenant membership/admin surface
 GET/POST /api/v1/cloud-connections          read-only AWS/Azure/GCP
                                              connection references
 POST     /api/v1/cloud-connections/:id/validation
+GET      /api/v1/cloud-connections/:id/runs validation/ingestion run
+                                             evidence for the connection
 ```
 
 Cloud connection requests store only a read-only principal reference and an
 optional billing export URI. No access keys, client secrets, passwords, or
 base64 credential blobs are accepted.
+Connection run evidence is tenant-scoped and contains sanitized operational
+facts only, never cloud credentials or signed export URLs.
 
 ### Accounts & Groups
 ```

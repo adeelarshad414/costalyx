@@ -17,10 +17,12 @@ import type {
   AccountGroup,
   AccountReference,
   CloudConnection,
+  CloudConnectionRun,
   CloudCredentialReference,
   CreateViewInput,
   PageQuery,
   Paginated,
+  RecordCloudConnectionRunInput,
   SavedView,
   TenantRecord,
   UserRecord
@@ -41,6 +43,7 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
     ]
   ]);
   private readonly cloudConnections = new Map<string, CloudConnection>();
+  private readonly cloudConnectionRuns = new Map<string, CloudConnectionRun>();
   private readonly accounts = new Map<string, AccountReference>();
   private readonly accountGroups = new Map<string, AccountGroup>();
   private readonly credentials = new Map<string, CloudCredentialReference>();
@@ -131,9 +134,68 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
         lastValidationMessage: validation.message
       };
       this.cloudConnections.set(id, updated);
+      await this.recordCloudConnectionRun(
+        {
+          cloudConnectionId: id,
+          runType: 'validation',
+          status: validation.status === 'validation_failed' ? 'failed' : 'succeeded',
+          startedAt: validation.attemptedAt,
+          completedAt: validation.attemptedAt,
+          evidence: {
+            provider: existing.provider,
+            connectionStatus: validation.status,
+            code: validation.code,
+            message: validation.message
+          }
+        },
+        actor
+      );
       void this.auditLog.append(actor, 'cloud_connection_validated', 'cloud_connection', id);
       return updated;
     });
+  }
+
+  async listCloudConnectionRuns(
+    id: string,
+    query: PageQuery,
+    actor: AuthenticatedUser
+  ): Promise<Paginated<CloudConnectionRun>> {
+    const connection = await this.getCloudConnection(id, actor);
+    const runs = [...this.cloudConnectionRuns.values()].filter(
+      (run) => run.tenantId === actor.tenantId && run.cloudConnectionId === id
+    );
+    const syntheticValidationRun = buildSyntheticValidationRun(connection);
+    if (syntheticValidationRun && !runs.some((run) => run.runType === 'validation')) {
+      runs.push(syntheticValidationRun);
+    }
+    return paginate(
+      runs.sort((a, b) => b.completedAt.localeCompare(a.completedAt) || b.id.localeCompare(a.id)),
+      query
+    );
+  }
+
+  async recordCloudConnectionRun(
+    input: RecordCloudConnectionRunInput,
+    actor: AuthenticatedUser
+  ): Promise<CloudConnectionRun> {
+    const connection = this.cloudConnections.get(input.cloudConnectionId);
+    if (!connection || connection.tenantId !== actor.tenantId) {
+      throw new NotFoundException(`Cloud connection ${input.cloudConnectionId} was not found.`);
+    }
+    const run: CloudConnectionRun = {
+      id: randomUUID(),
+      tenantId: actor.tenantId,
+      cloudConnectionId: input.cloudConnectionId,
+      runType: input.runType,
+      status: input.status,
+      startedAt: input.startedAt,
+      completedAt: input.completedAt,
+      evidence: { ...input.evidence },
+      createdAt: new Date().toISOString()
+    };
+    this.cloudConnectionRuns.set(run.id, run);
+    void this.auditLog.append(actor, 'cloud_connection_run_recorded', 'cloud_connection', input.cloudConnectionId);
+    return run;
   }
 
   async listAccounts(
@@ -367,9 +429,35 @@ function slugify(value: string): string {
 }
 
 function paginate<T>(items: T[], query: PageQuery): Paginated<T> {
-  const start = (query.page - 1) * query.pageSize;
+  const page = Number.isFinite(Number(query.page)) && Number(query.page) > 0 ? Number(query.page) : 1;
+  const pageSize = Number.isFinite(Number(query.pageSize)) && Number(query.pageSize) > 0 ? Number(query.pageSize) : 25;
+  const start = (page - 1) * pageSize;
   return {
-    data: items.slice(start, start + query.pageSize),
-    meta: { total: items.length, page: query.page, pageSize: query.pageSize }
+    data: items.slice(start, start + pageSize),
+    meta: { total: items.length, page, pageSize }
+  };
+}
+
+function buildSyntheticValidationRun(connection: CloudConnection): CloudConnectionRun | null {
+  if (!connection.lastValidationAttemptedAt || !connection.lastValidationCode || !connection.lastValidationMessage) {
+    return null;
+  }
+  return {
+    id: stableId(
+      `cloud-connection-run:${connection.tenantId}:${connection.id}:validation:${connection.lastValidationAttemptedAt}`
+    ),
+    tenantId: connection.tenantId,
+    cloudConnectionId: connection.id,
+    runType: 'validation',
+    status: connection.status === 'validation_failed' ? 'failed' : 'succeeded',
+    startedAt: connection.lastValidationAttemptedAt,
+    completedAt: connection.lastValidationAttemptedAt,
+    evidence: {
+      provider: connection.provider,
+      connectionStatus: connection.status,
+      code: connection.lastValidationCode,
+      message: connection.lastValidationMessage
+    },
+    createdAt: connection.lastValidationAttemptedAt
   };
 }

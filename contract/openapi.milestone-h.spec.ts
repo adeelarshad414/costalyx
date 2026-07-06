@@ -33,6 +33,7 @@ describe('Milestone H OpenAPI contract', () => {
     expect(spec.paths['/cloud-connections'].post['x-required-role']).toBe('admin');
     expect(spec.paths['/cloud-connections/{id}/validation'].post['x-required-role']).toBe('admin');
     expect(spec.paths['/cloud-connections/{id}/onboarding'].get['x-required-role']).toBe('admin');
+    expect(spec.paths['/cloud-connections/{id}/runs'].get['x-required-role']).toBe('viewer');
     expect(spec.paths['/cloud-connections'].post.parameters).toContainEqual(
       expect.objectContaining({ $ref: '#/components/parameters/IdempotencyKey' })
     );
@@ -61,6 +62,12 @@ describe('Milestone H OpenAPI contract', () => {
     expect(spec.components.schemas.CloudConnectionOnboarding.required).toEqual(
       expect.arrayContaining(['externalId', 'trustPolicy', 'permissionsPolicy', 'customerSteps'])
     );
+    expect(spec.components.schemas).toHaveProperty('CloudConnectionRun');
+    expect(spec.components.schemas.CloudConnectionRun.required).toEqual(
+      expect.arrayContaining(['cloudConnectionId', 'runType', 'status', 'startedAt', 'completedAt', 'evidence'])
+    );
+    expect(JSON.stringify(spec.components.schemas.CloudConnectionRun.properties?.runType)).toContain('ingestion');
+    expect(JSON.stringify(spec.components.schemas.CloudConnectionRun.properties?.status)).toContain('failed');
     expect(createProperties).not.toHaveProperty('accessKeyId');
     expect(createProperties).not.toHaveProperty('secretAccessKey');
     expect(createProperties).not.toHaveProperty('clientSecret');

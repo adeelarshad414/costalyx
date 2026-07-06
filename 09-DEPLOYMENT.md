@@ -83,6 +83,10 @@ Each connected account must be associated with the authenticated tenant and
 may be grouped into account groups for separate and collective portfolio
 views. Production validation must never require customer-owned long-lived
 access keys.
+Validation and ingestion attempts tied to a cloud connection are recorded in
+`cloud_connection_runs`; production operators should use the portfolio UI or
+`GET /api/v1/cloud-connections/{id}/runs` to inspect last success/failure
+evidence without exposing cloud credential material.
 
 To enable live AWS validation, the backend runtime must set
 `COSTALYX_LIVE_CLOUD_PROBES=enabled` and run with AWS credentials for the
