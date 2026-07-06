@@ -69,7 +69,11 @@ The frontend and API support:
    validation. With `COSTALYX_LIVE_CLOUD_PROBES=enabled` and broker AWS
    credentials configured, AWS validation runs STS `AssumeRole`, verifies the
    assumed account ID, and lists the CUR S3 prefix before marking the
-   connection `validated`.
+   connection `validated`. Operators can run the same AWS path before or
+   during customer launch with `npm run probe:aws-live` by supplying only the
+   tenant ID, customer account ID, read-only role ARN, and unsigned CUR S3
+   URI; the command prints the generated external ID and sanitized validation
+   evidence, not credential material.
 6. Billing exports are ingested with `tenant_id` and `cloud_connection_id`.
 7. Cost, reports, recommendations, savings, and audit rows stay tenant scoped.
 

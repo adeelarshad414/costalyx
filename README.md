@@ -16,6 +16,9 @@ everything up into one portfolio.
 For AWS, Costalyx returns a tenant-scoped external ID that the customer
 places in their IAM role trust policy; live validation then assumes the role
 and checks the CUR S3 export before the connection is marked validated.
+Operators can preflight a real AWS read-only role with `npm run probe:aws-live`
+using only tenant/account/role/CUR references and the Costalyx broker AWS
+profile.
 
 ## Status
 🚧 Pre-release. See [`PROGRESS.md`](./PROGRESS.md) for live build status —
