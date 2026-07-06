@@ -1,0 +1,10 @@
+DROP INDEX IF EXISTS audit_log_created_at_idx;
+DROP INDEX IF EXISTS cloud_credentials_account_id_idx;
+DROP INDEX IF EXISTS account_group_members_account_id_idx;
+DROP TABLE IF EXISTS audit_log;
+DROP TABLE IF EXISTS user_roles;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS cloud_credentials;
+DROP TABLE IF EXISTS account_group_members;
+DROP TABLE IF EXISTS account_groups;

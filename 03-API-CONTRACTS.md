@@ -33,6 +33,7 @@ GET  /api/v1/cost-records                   filterable by provider, account,
                                              service, date range, dimension
 GET  /api/v1/cost-records/summary           pre-aggregated totals (used by
                                              Resource Inventory KPI cards)
+GET  /api/v1/cost-records/export            authenticated CSV export
 GET  /api/v1/cost-explorer/flow             Sankey-shaped response:
                                              { nodes: [], links: [] }
 ```
@@ -42,6 +43,8 @@ GET  /api/v1/cost-explorer/flow             Sankey-shaped response:
 GET/POST     /api/v1/accounts
 GET/POST     /api/v1/account-groups
 PATCH/DELETE /api/v1/account-groups/:id
+GET/POST     /api/v1/cloud-credentials      Vault/OpenBao path references only
+PATCH        /api/v1/cloud-credentials/:id/rotation
 ```
 
 ### Dimensions & Tags
@@ -49,7 +52,12 @@ PATCH/DELETE /api/v1/account-groups/:id
 GET/POST     /api/v1/dimensions             unbounded — no fixed count
 POST         /api/v1/dimensions/:id/mappings
 GET          /api/v1/resource-tags?resourceId=
+POST         /api/v1/resource-tags          upsert a manual/inferred tag
 ```
+
+Milestone C manual resource re-tags are synchronously reflected on the next
+`/api/v1/cost-records/summary?dimension=` read in v1. A future async
+propagation pipeline must document its SLA before replacing this behavior.
 
 ### Optimization
 ```
@@ -79,6 +87,12 @@ GET/POST /api/v1/users
 GET/POST /api/v1/roles
 GET      /api/v1/audit-log                  admin-only, paginated, immutable
 ```
+
+**Milestone B resolution (2026-07-03):** `POST /api/v1/roles` exists only
+as an admin-gated contract placeholder and returns a validation error for
+custom roles in v1. `05-RBAC-TRUST-TIERS.md` is authoritative here: Milestone
+B ships the fixed `viewer` / `analyst` / `admin` roles only, and org-defined
+custom roles arrive additively in a later milestone.
 
 ## Versioning & deprecation policy
 - Breaking changes require a new version path (`/api/v2/...`); `v1` stays

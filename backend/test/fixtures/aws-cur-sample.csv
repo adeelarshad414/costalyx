@@ -1,0 +1,4 @@
+lineItem/UsageAccountId,lineItem/ResourceId,product/ProductName,lineItem/UsageType,lineItem/LineItemType,lineItem/UsageAmount,pricing/publicOnDemandRate,lineItem/UsageStartDate,lineItem/UsageEndDate
+123456789012,i-aws-prod-001,Amazon EC2,BoxUsage:t3.medium,Usage,10,0.0416,2026-06-01T00:00:00Z,2026-06-01T10:00:00Z
+123456789012,i-aws-spot-002,Amazon EC2,SpotUsage:t3.small,Usage,20,0.0050,2026-06-01T00:00:00Z,2026-06-01T20:00:00Z
+123456789012,db-prod-001,Amazon RDS,InstanceUsage:db.t4g.medium,RecurringFee,730,0.0680,2026-06-01T00:00:00Z,2026-07-01T00:00:00Z

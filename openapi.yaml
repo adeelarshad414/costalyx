@@ -22,6 +22,7 @@ tags:
   - name: accounts
   - name: dimensions
   - name: optimization
+  - name: executive
   - name: reporting
   - name: tco
   - name: admin
@@ -151,6 +152,7 @@ paths:
       operationId: listCostRecords
       x-required-role: viewer
       parameters:
+        - $ref: "#/components/parameters/ActiveViewId"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
         - $ref: "#/components/parameters/Provider"
@@ -190,6 +192,7 @@ paths:
       operationId: getCostRecordsSummary
       x-required-role: viewer
       parameters:
+        - $ref: "#/components/parameters/ActiveViewId"
         - $ref: "#/components/parameters/Provider"
         - name: accountId
           in: query
@@ -216,6 +219,26 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /cost-records/export:
+    get:
+      tags: [cost-data]
+      summary: Export normalized cost records as CSV
+      operationId: exportCostRecords
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/ActiveViewId"
+      responses:
+        "200":
+          description: CSV export of normalized cost records
+          content:
+            text/csv:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /cost-explorer/flow:
     get:
       tags: [cost-data]
@@ -223,6 +246,7 @@ paths:
       operationId: getCostExplorerFlow
       x-required-role: viewer
       parameters:
+        - $ref: "#/components/parameters/ActiveViewId"
         - $ref: "#/components/parameters/Provider"
         - $ref: "#/components/parameters/DateFrom"
         - $ref: "#/components/parameters/DateTo"
@@ -398,6 +422,84 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /cloud-credentials:
+    get:
+      tags: [accounts]
+      summary: List cloud credential Vault references
+      operationId: listCloudCredentials
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated credential references
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedCloudCredentials"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [accounts]
+      summary: Register a cloud credential Vault reference
+      operationId: createCloudCredential
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloudCredentialCreate"
+      responses:
+        "201":
+          description: Credential reference registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloudCredential"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /cloud-credentials/{id}/rotation:
+    patch:
+      tags: [accounts]
+      summary: Rotate a cloud credential Vault reference
+      operationId: rotateCloudCredential
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloudCredentialRotation"
+      responses:
+        "200":
+          description: Credential reference rotated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloudCredential"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /dimensions:
     get:
       tags: [dimensions]
@@ -499,6 +601,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PaginatedResourceTags"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [dimensions]
+      summary: Upsert a manual or inferred resource tag
+      operationId: upsertResourceTag
+      x-required-role: analyst
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceTagUpsert"
+      responses:
+        "201":
+          description: Resource tag upserted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceTag"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -616,6 +744,7 @@ paths:
       x-required-role: viewer
       parameters:
         - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/ActiveViewId"
         - $ref: "#/components/parameters/DateFrom"
         - $ref: "#/components/parameters/DateTo"
       responses:
@@ -682,6 +811,56 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+
+  /executive-summary:
+    get:
+      tags: [executive]
+      summary: Get executive spend summary
+      operationId: getExecutiveSummary
+      x-required-role: viewer
+      parameters:
+        - name: revenueBaselineUsd
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/MoneyString"
+        - name: budgetBaselineUsd
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/MoneyString"
+      responses:
+        "200":
+          description: Executive spend summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutiveSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /executive-summary/export:
+    get:
+      tags: [executive]
+      summary: Export executive spend summary as PDF
+      operationId: exportExecutiveSummary
+      x-required-role: viewer
+      responses:
+        "200":
+          description: Executive summary PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /tco/estimate:
     post:
@@ -785,7 +964,7 @@ paths:
           $ref: "#/components/responses/Forbidden"
     post:
       tags: [admin]
-      summary: Create role
+      summary: Reject custom role creation until the custom-role milestone
       operationId: createRole
       x-required-role: admin
       parameters:
@@ -797,12 +976,6 @@ paths:
             schema:
               $ref: "#/components/schemas/RoleCreate"
       responses:
-        "201":
-          description: Role created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Role"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -858,6 +1031,14 @@ components:
         type: string
         minLength: 16
         maxLength: 128
+    ActiveViewId:
+      name: X-Costalyx-View-Id
+      in: header
+      required: false
+      description: Optional saved View applied as a session-wide data scope.
+      schema:
+        type: string
+        format: uuid
     Page:
       name: page
       in: query
@@ -1085,6 +1266,55 @@ components:
             type: string
             format: uuid
 
+    CloudCredential:
+      type: object
+      required: [id, provider, accountId, displayName, vaultPath, createdAt, rotatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        provider:
+          $ref: "#/components/schemas/CloudProvider"
+        accountId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        vaultPath:
+          type: string
+          description: Vault/OpenBao path reference only; never a plaintext or base64 credential.
+        createdAt:
+          type: string
+          format: date-time
+        rotatedAt:
+          type: ["string", "null"]
+          format: date-time
+
+    CloudCredentialCreate:
+      type: object
+      required: [provider, accountId, displayName, vaultPath]
+      additionalProperties: false
+      properties:
+        provider:
+          $ref: "#/components/schemas/CloudProvider"
+        accountId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        vaultPath:
+          type: string
+          description: Vault/OpenBao path reference only; plaintext credential fields are rejected.
+
+    CloudCredentialRotation:
+      type: object
+      required: [vaultPath]
+      additionalProperties: false
+      properties:
+        vaultPath:
+          type: string
+          description: New Vault/OpenBao path reference only.
+
     CostRecord:
       type: object
       required:
@@ -1252,9 +1482,23 @@ components:
           type: string
           enum: [native, manual, inferred]
 
+    ResourceTagUpsert:
+      type: object
+      required: [resourceId, tagKey, tagValue, source]
+      properties:
+        resourceId:
+          type: string
+        tagKey:
+          type: string
+        tagValue:
+          type: string
+        source:
+          type: string
+          enum: [native, manual, inferred]
+
     IngestionBatch:
       type: object
-      required: [id, provider, status, createdAt]
+      required: [id, provider, status, createdAt, ingestedRows, duplicateRows]
       properties:
         id:
           type: string
@@ -1272,6 +1516,12 @@ components:
         completedAt:
           type: ["string", "null"]
           format: date-time
+        ingestedRows:
+          type: integer
+          minimum: 0
+        duplicateRows:
+          type: integer
+          minimum: 0
 
     IngestionBatchCreate:
       type: object
@@ -1432,6 +1682,57 @@ components:
           items:
             $ref: "#/components/schemas/RoleName"
 
+    ExecutiveSummary:
+      type: object
+      required:
+        - totalSpendUsd
+        - revenueBaselineUsd
+        - spendAsRevenuePercent
+        - budgetBaselineUsd
+        - budgetUsedPercent
+        - trend
+        - topMovers
+      properties:
+        totalSpendUsd:
+          $ref: "#/components/schemas/MoneyString"
+        revenueBaselineUsd:
+          $ref: "#/components/schemas/MoneyString"
+        spendAsRevenuePercent:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]{1,4})?$'
+        budgetBaselineUsd:
+          $ref: "#/components/schemas/MoneyString"
+        budgetUsedPercent:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]{1,4})?$'
+        trend:
+          $ref: "#/components/schemas/ExecutiveTrend"
+        topMovers:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExecutiveTopMover"
+
+    ExecutiveTrend:
+      type: object
+      required: [direction, deltaUsd]
+      properties:
+        direction:
+          type: string
+          enum: [up, down, flat]
+        deltaUsd:
+          $ref: "#/components/schemas/MoneyString"
+
+    ExecutiveTopMover:
+      type: object
+      required: [resourceId, serviceName, deltaUsd]
+      properties:
+        resourceId:
+          type: string
+        serviceName:
+          type: string
+        deltaUsd:
+          $ref: "#/components/schemas/MoneyString"
+
     TcoEstimateRequest:
       type: object
       required: [workloadSpec]
@@ -1568,6 +1869,15 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/AccountGroup"
+    PaginatedCloudCredentials:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/CloudCredential"
     PaginatedDimensions:
       allOf:
         - $ref: "#/components/schemas/PaginatedResponse"

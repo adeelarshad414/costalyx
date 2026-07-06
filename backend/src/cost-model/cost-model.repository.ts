@@ -1,0 +1,60 @@
+import type {
+  CloudProvider,
+  CostExplorerDimension,
+  CostExplorerFlow,
+  IngestionBatch,
+  NormalizedCostRecord
+} from './cost-record.types';
+
+export const COST_MODEL_REPOSITORY = Symbol('COST_MODEL_REPOSITORY');
+
+export interface CostModelRepository {
+  saveIngestion(input: {
+    provider: CloudProvider;
+    sourceUri: string;
+    idempotencyKey: string;
+    rows: NormalizedCostRecord[];
+  }): Promise<IngestionBatch>;
+
+  getBatch(id: string): Promise<IngestionBatch>;
+
+  listRecords(query: {
+    provider?: CloudProvider;
+    accountId?: string;
+    service?: string;
+    dimension?: string;
+    from?: string;
+    to?: string;
+    page: number;
+    pageSize: number;
+  }): Promise<{
+    data: NormalizedCostRecord[];
+    meta: { total: number; page: number; pageSize: number };
+  }>;
+
+  getSummary(query?: {
+    provider?: CloudProvider;
+    accountId?: string;
+    service?: string;
+    dimension?: string;
+    from?: string;
+    to?: string;
+  }): Promise<{
+    totalCostUsd: string;
+    resourceCount: number;
+    untaggedCount: number;
+    inactiveCount: number;
+    isEstimate: boolean;
+  }>;
+
+  getExplorerFlow(query?: {
+    provider?: CloudProvider;
+    accountId?: string;
+    service?: string;
+    dimension?: string;
+    from?: string;
+    to?: string;
+    dimensions?: CostExplorerDimension[];
+    costFloorUsd?: string;
+  }): Promise<CostExplorerFlow>;
+}

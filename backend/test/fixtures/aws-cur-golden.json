@@ -1,0 +1,50 @@
+[
+  {
+    "provider": "aws",
+    "accountExternalId": "123456789012",
+    "resourceId": "i-aws-prod-001",
+    "serviceName": "Amazon EC2",
+    "usageFamily": "BoxUsage:t3.medium",
+    "leaseType": "on_demand",
+    "transactionType": "usage",
+    "hourlyRateUsd": "0.04160000",
+    "usageHours": "10.0000",
+    "costTotalUsd": "0.41600000",
+    "costTotalUsdRoundedToCent": "0.42",
+    "isEstimate": false,
+    "validFrom": "2026-06-01T00:00:00.000Z",
+    "validTo": "2026-06-01T10:00:00.000Z"
+  },
+  {
+    "provider": "aws",
+    "accountExternalId": "123456789012",
+    "resourceId": "i-aws-spot-002",
+    "serviceName": "Amazon EC2",
+    "usageFamily": "SpotUsage:t3.small",
+    "leaseType": "spot",
+    "transactionType": "usage",
+    "hourlyRateUsd": "0.00500000",
+    "usageHours": "20.0000",
+    "costTotalUsd": "0.10000000",
+    "costTotalUsdRoundedToCent": "0.10",
+    "isEstimate": true,
+    "validFrom": "2026-06-01T00:00:00.000Z",
+    "validTo": "2026-06-01T20:00:00.000Z"
+  },
+  {
+    "provider": "aws",
+    "accountExternalId": "123456789012",
+    "resourceId": "db-prod-001",
+    "serviceName": "Amazon RDS",
+    "usageFamily": "InstanceUsage:db.t4g.medium",
+    "leaseType": "on_demand",
+    "transactionType": "recurring_charge",
+    "hourlyRateUsd": "0.06800000",
+    "usageHours": "730.0000",
+    "costTotalUsd": "49.64000000",
+    "costTotalUsdRoundedToCent": "49.64",
+    "isEstimate": false,
+    "validFrom": "2026-06-01T00:00:00.000Z",
+    "validTo": "2026-07-01T00:00:00.000Z"
+  }
+]

@@ -1,0 +1,34 @@
+[
+  {
+    "provider": "azure",
+    "accountExternalId": "sub-prod-001",
+    "resourceId": "/subscriptions/sub-prod-001/resourceGroups/rg-prod/providers/Microsoft.Compute/virtualMachines/vm-prod-001",
+    "serviceName": "Azure Virtual Machines",
+    "usageFamily": "Virtual Machines",
+    "leaseType": "on_demand",
+    "transactionType": "usage",
+    "hourlyRateUsd": "0.09600000",
+    "usageHours": "3.0000",
+    "costTotalUsd": "0.28800000",
+    "costTotalUsdRoundedToCent": "0.29",
+    "isEstimate": false,
+    "validFrom": "2026-06-01T00:00:00.000Z",
+    "validTo": "2026-06-01T03:00:00.000Z"
+  },
+  {
+    "provider": "azure",
+    "accountExternalId": "sub-prod-001",
+    "resourceId": "/subscriptions/sub-prod-001/resourceGroups/rg-prod/providers/Microsoft.Compute/virtualMachines/vm-spot-002",
+    "serviceName": "Azure Virtual Machines",
+    "usageFamily": "Virtual Machines",
+    "leaseType": "spot",
+    "transactionType": "usage",
+    "hourlyRateUsd": "0.01200000",
+    "usageHours": "10.0000",
+    "costTotalUsd": "0.12000000",
+    "costTotalUsdRoundedToCent": "0.12",
+    "isEstimate": true,
+    "validFrom": "2026-06-01T00:00:00.000Z",
+    "validTo": "2026-06-01T10:00:00.000Z"
+  }
+]

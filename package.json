@@ -1,0 +1,36 @@
+{
+  "name": "costalyx",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "overrides": {
+    "multer": "^2.2.0"
+  },
+  "scripts": {
+    "generate:client": "openapi-typescript openapi.yaml -o frontend/src/api/schema.ts",
+    "test": "npm run test:backend && npm run test:frontend && npm run test:contract && npm run migration:check",
+    "test:backend": "npm --workspace backend test",
+    "test:frontend": "npm --workspace frontend test -- --run",
+    "test:contract": "vitest run contract",
+    "test:contract:live": "vitest run contract/live",
+    "ci:live-contract": "node scripts/run-live-contract.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:keycloak": "node scripts/run-keycloak-e2e.mjs",
+    "migration:check": "node scripts/check-additive-migrations.mjs",
+    "dev-up": "docker compose up -d",
+    "dev-down": "docker compose down"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.10.2",
+    "js-yaml": "^4.1.0",
+    "openapi-typescript": "^7.6.1",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.9"
+  }
+}

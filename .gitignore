@@ -4,3 +4,11 @@
 !.env.example
 node_modules/
 work/
+dist/
+coverage/
+.vite/
+frontend/dist/
+backend/dist/
+*.tsbuildinfo
+playwright-report/
+test-results/

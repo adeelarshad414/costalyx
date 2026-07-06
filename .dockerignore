@@ -1,0 +1,17 @@
+node_modules
+.git
+.github
+.env
+.env.*
+coverage
+playwright-report
+test-results
+work
+outputs
+backend/dist
+frontend/dist
+backend/coverage
+frontend/coverage
+*.log
+Dockerfile*
+docker-compose*.yml

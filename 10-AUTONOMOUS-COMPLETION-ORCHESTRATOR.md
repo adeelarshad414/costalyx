@@ -63,9 +63,11 @@ in order: 00-BRANDING-PERSONAS-MASTER-PROMPT.md, 01-SPEC.md,
    migration-safety checks) rather than stopping entirely. Never claim an
    unexecuted test passed.
 
-10. **Commit** using conventional commits, on the feature branch for this
-    milestone. Do not squash away the audit trail of what was tried and
-    what failed along the way.
+10. **Commit, push, and open/update the milestone PR** using conventional
+    commits on the feature branch for this milestone. Do not squash away the
+    audit trail of what was tried and what failed along the way. Each
+    milestone gets its own PR/checkpoint, including milestones that are
+    Blocked after a complete attempted pass.
 
 11. **Return to step 1** for the next milestone.
 
@@ -82,8 +84,9 @@ Stop and produce the single end-of-run report when either:
 Include: final milestone status table, full-stack wiring checklist
 completion summary, test suite results (with counts, not just "passed"),
 all Blocked entries, all Ambiguities and how they were resolved, all
-Duplicate-work flags, and a diff/PR summary. Open the PR at this point, not
-before.
+Duplicate-work flags, and a diff/PR summary. Reference the milestone PRs
+opened during the loop; open only a final roll-up PR here if the run produced
+additional unreviewed end-of-run changes.
 
 ## Hard constraints carried over from all prior docs (do not violate)
 - Additive-only schema/API changes
