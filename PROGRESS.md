@@ -5,7 +5,7 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-06 13:15:52 PKT_
+_Last updated: 2026-07-06 13:22:57 PKT_
 
 ## Milestone status
 
@@ -26,11 +26,21 @@ Definition of Done is satisfied.
 
 ## Latest cross-milestone verification
 
+- `npm --workspace backend test -- --runTestsByPath test/config/startup-secrets.spec.ts`: 1 suite / 4 tests passed.
 - `npm --workspace frontend test -- --run src/auth/AuthProvider.test.tsx`: 1 file / 4 tests passed.
-- `npm test`: backend 23 suites passed / 6 skipped, 67 tests passed / 8 skipped; frontend 12 files passed, 37 tests passed; contract 7 files passed / 7 skipped, 16 tests passed / 12 skipped; additive migration check passed for 7 files.
-- `npm run ci:live-contract`: 7 live contract files / 12 tests passed.
+- `npm test`: backend 24 suites passed / 6 skipped, 71 tests passed / 8 skipped; frontend 12 files passed, 37 tests passed; contract 7 files passed / 7 skipped, 16 tests passed / 12 skipped; additive migration check passed for 7 files.
+- `npm run ci:live-contract`: initial sandboxed run hit `listen EPERM` binding `127.0.0.1`; rerun with localhost permission passed 7 live contract files / 12 tests.
+- `npm --workspace backend run build`: passed.
+- `docker compose config`: passed.
 - `npm run test:e2e`: 1 skipped when live Keycloak credentials are intentionally absent.
 - `env E2E_KEYCLOAK_URL=http://127.0.0.1:55880 E2E_API_BASE_URL=http://127.0.0.1:43101/api/v1 E2E_BASE_URL=http://localhost:5173 npm run test:e2e:keycloak`: seeded `costalyx-e2e-admin`; Playwright reported 1 Chromium test passed in 2.1s.
+
+## Production hardening status
+
+| Item | Status | Evidence | Notes |
+|---|---|---|---|
+| Dummy value go-live swap list | Done (evidence linked) | `DUMMY-VALUES.md` enumerates the local dev stand-ins, production replacements, and secret/config homes for Postgres, Keycloak, Vault, local URLs, fixture ingestion data, and demo-only settings. | Created because the goal-driven run requires every credential/endpoint stand-in to be operator-visible before launch. |
+| Non-local dummy-secret startup guard | Done (evidence linked) | `npm --workspace backend test -- --runTestsByPath test/config/startup-secrets.spec.ts`: 1 suite / 4 tests passed. | `backend/src/main.ts` calls `assertNoDummyValuesInNonLocalEnvironment()` before Nest starts; any `CHANGE_ME_DEV_ONLY` value fails startup outside `APP_ENV=local` or when `NODE_ENV=production`. |
 
 ## Full-stack wiring checklist (per feature, filled in as work proceeds)
 _Copy this block per feature; do not mark complete without linked evidence._

@@ -2,8 +2,11 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ProblemDetailsFilter } from './common/problem-details.filter';
+import { assertNoDummyValuesInNonLocalEnvironment } from './config/startup-secrets';
 
 async function bootstrap() {
+  assertNoDummyValuesInNonLocalEnvironment();
+
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(
     new ValidationPipe({
