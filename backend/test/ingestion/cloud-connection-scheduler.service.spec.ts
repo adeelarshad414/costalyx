@@ -1,5 +1,6 @@
 import { CloudConnectionSchedulerService } from '../../src/ingestion/cloud-connection-scheduler.service';
 import type { ConfigService } from '@nestjs/config';
+import type { BillingAgentService } from '../../src/billing-agent/billing-agent.service';
 import type { CloudConnection } from '../../src/governance/governance.types';
 import type { GovernanceService } from '../../src/governance/governance.service';
 import type { IngestionService } from '../../src/ingestion/ingestion.service';
@@ -177,5 +178,76 @@ describe('CloudConnectionSchedulerService', () => {
       },
       `scheduler-validation-${secondConnection.id}-2026-07-06T12:15:00.000Z`
     );
+  });
+
+  it('runs billing-agent anomaly and statement cycles in the existing worker when enabled', async () => {
+    const governance = {
+      listCloudConnectionsForScheduler: jest.fn(async () => [connection]),
+      validateCloudConnection: jest.fn(async () => connection),
+      recordCloudConnectionRun: jest.fn()
+    };
+    const ingestion = { createBatch: jest.fn() };
+    const billingAgent = {
+      runAgentCycle: jest
+        .fn()
+        .mockResolvedValueOnce({ id: 'anomaly-run', runType: 'anomaly_scan' })
+        .mockResolvedValueOnce({ id: 'statement-run', runType: 'statement_generation' })
+        .mockResolvedValueOnce({ id: 'send-run', runType: 'statement_send' })
+    };
+    const scheduler = new CloudConnectionSchedulerService(
+      governance as unknown as GovernanceService,
+      ingestion as unknown as IngestionService,
+      createConfig({
+        COSTALYX_BILLING_AGENT_ANOMALY_SCAN_ENABLED: 'enabled',
+        COSTALYX_BILLING_AGENT_STATEMENT_GENERATION_ENABLED: 'enabled',
+        COSTALYX_BILLING_AGENT_STATEMENT_SEND_ENABLED: 'enabled',
+        COSTALYX_BILLING_AGENT_STATEMENT_SEND_LIMIT: '2',
+        COSTALYX_BILLING_AGENT_PERIOD_START: '2026-06-01T00:00:00.000Z',
+        COSTALYX_BILLING_AGENT_PERIOD_END: '2026-06-30T23:59:59.000Z'
+      }) as unknown as ConfigService,
+      billingAgent as unknown as BillingAgentService
+    );
+
+    await expect(scheduler.runOnce({ now: () => '2026-07-06T12:45:00.000Z' })).resolves.toEqual({
+      scanned: 1,
+      validated: 1,
+      ingested: 0,
+      failed: 0
+    });
+
+    expect(billingAgent.runAgentCycle).toHaveBeenCalledTimes(3);
+    expect(billingAgent.runAgentCycle).toHaveBeenNthCalledWith(1, {
+      tenantId: connection.tenantId,
+      runType: 'anomaly_scan',
+      actor: {
+        subject: 'costalyx-cloud-scheduler',
+        role: 'admin',
+        tenantId: connection.tenantId
+      },
+      startedAt: '2026-07-06T12:45:00.000Z'
+    });
+    expect(billingAgent.runAgentCycle).toHaveBeenNthCalledWith(2, {
+      tenantId: connection.tenantId,
+      runType: 'statement_generation',
+      actor: {
+        subject: 'costalyx-cloud-scheduler',
+        role: 'admin',
+        tenantId: connection.tenantId
+      },
+      startedAt: '2026-07-06T12:45:00.000Z',
+      periodStart: '2026-06-01T00:00:00.000Z',
+      periodEnd: '2026-06-30T23:59:59.000Z'
+    });
+    expect(billingAgent.runAgentCycle).toHaveBeenNthCalledWith(3, {
+      tenantId: connection.tenantId,
+      runType: 'statement_send',
+      actor: {
+        subject: 'costalyx-cloud-scheduler',
+        role: 'admin',
+        tenantId: connection.tenantId
+      },
+      startedAt: '2026-07-06T12:45:00.000Z',
+      sendLimit: 2
+    });
   });
 });

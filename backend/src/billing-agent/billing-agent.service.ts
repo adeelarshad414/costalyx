@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { connect } from 'node:net';
 import { CostModelService } from '../cost-model/cost-model.service';
 import type { NormalizedCostRecord } from '../cost-model/cost-record.types';
@@ -11,7 +12,12 @@ import {
   type BillingAgentEventPublisher
 } from './billing-agent-event.publisher';
 import { BILLING_AGENT_REPOSITORY, type BillingAgentRepository } from './billing-agent.repository';
+import { NarrativeGeneratorService } from './narrative-generator.service';
 import type {
+  AgentRun,
+  AgentRunActionSummary,
+  AgentRunQuery,
+  AgentRunType,
   AnomalyEvidence,
   AnomalySeverity,
   AnomalyType,
@@ -50,7 +56,8 @@ export class BillingAgentService {
   constructor(
     private readonly costModel: CostModelService,
     @Inject(BILLING_AGENT_REPOSITORY) private readonly repository: BillingAgentRepository,
-    @Inject(BILLING_AGENT_EVENT_PUBLISHER) private readonly events: BillingAgentEventPublisher
+    @Inject(BILLING_AGENT_EVENT_PUBLISHER) private readonly events: BillingAgentEventPublisher,
+    private readonly narratives: NarrativeGeneratorService = new NarrativeGeneratorService(new ConfigService())
   ) {}
 
   async scanAnomalies(tenantId: string, config: Partial<DetectionConfig> = {}): Promise<BillingAnomalyScanResult> {
@@ -238,11 +245,28 @@ export class BillingAgentService {
 
     const reconciliation = buildReconciliation(tenantRecords, assignmentCounts, recordCostCents);
     const scopeWarnings = buildScopeWarnings(tenantRecords, assignmentCounts, recordCostCents, reconciliation.unallocatedUsd);
-    const statements = statementsWithoutReconciliation.map((statement) => ({
-      ...statement,
-      reconciliation,
-      scopeWarnings
-    }));
+    const statements = await Promise.all(
+      statementsWithoutReconciliation.map(async (statement) => {
+        const reconciled = {
+          ...statement,
+          reconciliation,
+          scopeWarnings
+        };
+        return {
+          ...reconciled,
+          narrativeMd: await this.narratives.generateStatementNarrative({
+            stakeholderName: reconciled.stakeholderName,
+            totalUsd: reconciled.totalUsd,
+            periodStart: reconciled.periodStart,
+            periodEnd: reconciled.periodEnd,
+            openAnomalyCount: reconciled.openAnomalyCount,
+            varianceTopMovers: reconciled.varianceTopMovers,
+            reconciliation,
+            scopeWarnings
+          })
+        };
+      })
+    );
 
     return this.repository.saveGeneratedStatements(
       {
@@ -330,6 +354,121 @@ export class BillingAgentService {
 
   async exportStatementPdf(id: string, tenantId: string): Promise<Buffer> {
     return renderStatementPdf(await this.repository.getStatement(id, tenantId));
+  }
+
+  listAgentRuns(query: AgentRunQuery) {
+    return this.repository.listAgentRuns(query);
+  }
+
+  async runAgentCycle(input: {
+    tenantId: string;
+    runType: AgentRunType;
+    actor: AuthenticatedUser;
+    startedAt?: string;
+    periodStart?: string;
+    periodEnd?: string;
+    sendLimit?: number;
+    notificationLimit?: number;
+  }): Promise<AgentRun> {
+    const startedAt = input.startedAt ?? new Date().toISOString();
+    const actionsTaken: AgentRunActionSummary[] = [];
+    const actionsProposed: AgentRunActionSummary[] = [];
+    const errors: string[] = [];
+    const inputsSummary: Record<string, unknown> = {
+      runType: input.runType
+    };
+    try {
+      if (input.runType === 'anomaly_scan') {
+        const notificationLimit = capValue(input.notificationLimit, 'COSTALYX_BILLING_AGENT_NOTIFICATION_LIMIT', 25);
+        inputsSummary.notificationLimit = notificationLimit;
+        const result = await this.scanAnomalies(input.tenantId);
+        actionsTaken.push({
+          action: 'anomaly_scan',
+          count: result.created.length,
+          capped: false,
+          anomalyIds: result.created.map((anomaly) => anomaly.id)
+        });
+        const skipped = Math.max(0, result.created.length - notificationLimit);
+        if (skipped > 0) {
+          actionsProposed.push({
+            action: 'anomaly_notification_skipped',
+            count: skipped,
+            capped: true,
+            cap: notificationLimit,
+            anomalyIds: result.created.slice(notificationLimit).map((anomaly) => anomaly.id)
+          });
+        }
+      } else if (input.runType === 'statement_generation') {
+        const period = runtimePeriod(input);
+        inputsSummary.periodStart = period.periodStart;
+        inputsSummary.periodEnd = period.periodEnd;
+        const generated = await this.generateStatements(
+          { periodStart: period.periodStart, periodEnd: period.periodEnd },
+          input.actor,
+          `agent-statement-generation-${startedAt}`
+        );
+        actionsProposed.push({
+          action: 'statement_generation',
+          count: generated.statements.length,
+          capped: false,
+          statementIds: generated.statements.map((statement) => statement.id)
+        });
+      } else {
+        const sendLimit = capValue(input.sendLimit, 'COSTALYX_BILLING_AGENT_STATEMENT_SEND_LIMIT', 10);
+        inputsSummary.sendLimit = sendLimit;
+        const approved = await this.repository.listStatements({
+          tenantId: input.tenantId,
+          status: 'approved',
+          page: 1,
+          pageSize: Math.max(sendLimit + 1, 25)
+        });
+        const toSend = approved.data.slice(0, sendLimit);
+        const sentIds: string[] = [];
+        for (const statement of toSend) {
+          try {
+            const sent = await this.sendStatement(statement.id, input.actor, `agent-statement-send-${statement.id}-${startedAt}`);
+            sentIds.push(sent.id);
+          } catch (error) {
+            errors.push(redactRuntimeError(error));
+          }
+        }
+        actionsTaken.push({
+          action: 'statement_send',
+          count: sentIds.length,
+          capped: approved.meta.total > sendLimit,
+          cap: sendLimit,
+          statementIds: sentIds
+        });
+        const skipped = Math.max(0, approved.meta.total - sendLimit);
+        if (skipped > 0) {
+          actionsProposed.push({
+            action: 'statement_send_skipped',
+            count: skipped,
+            capped: true,
+            cap: sendLimit,
+            statementIds: approved.data.slice(sendLimit).map((statement) => statement.id)
+          });
+        }
+      }
+    } catch (error) {
+      errors.push(redactRuntimeError(error));
+    }
+
+    const finishedAt = new Date().toISOString();
+    return this.repository.createAgentRun(
+      {
+        id: stableId(`agent-run:${input.tenantId}:${input.runType}:${startedAt}`),
+        tenantId: input.tenantId,
+        runType: input.runType,
+        startedAt,
+        finishedAt,
+        inputsSummary,
+        actionsTaken,
+        actionsProposed,
+        errors
+      },
+      input.actor
+    );
   }
 
   async updateAnomalyStatus(
@@ -622,6 +761,29 @@ function buildStatementNarrative(stakeholderName: string, totalUsd: string, peri
     0,
     10
   )}. Totals are computed from hourly_rate_usd multiplied by usage_hours.`;
+}
+
+function runtimePeriod(input: { periodStart?: string; periodEnd?: string }): { periodStart: string; periodEnd: string } {
+  if (input.periodStart && input.periodEnd) {
+    return { periodStart: input.periodStart, periodEnd: input.periodEnd };
+  }
+  const now = new Date();
+  const periodEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 0));
+  const periodStart = new Date(Date.UTC(periodEnd.getUTCFullYear(), periodEnd.getUTCMonth(), 1, 0, 0, 0, 0));
+  return { periodStart: periodStart.toISOString(), periodEnd: periodEnd.toISOString() };
+}
+
+function capValue(input: number | undefined, envKey: string, fallback: number): number {
+  const configured = input ?? Number(process.env[envKey]);
+  return Number.isFinite(configured) && configured > 0 ? Math.floor(configured) : fallback;
+}
+
+function redactRuntimeError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/(secret|token|password|credential|access[_ -]?key|private[_ -]?key)/i.test(message)) {
+    return '[redacted]';
+  }
+  return message.slice(0, 300);
 }
 
 function groupCostBy(records: NormalizedCostRecord[], keyForRecord: (record: NormalizedCostRecord) => string): Map<string, bigint> {

@@ -35,11 +35,29 @@
         "replicaCount": { "type": "integer", "minimum": 1, "maximum": 1 },
         "scheduler": {
           "type": "object",
-          "required": ["enabled", "intervalMs", "ingestionEnabled"],
+          "required": [
+            "enabled",
+            "intervalMs",
+            "ingestionEnabled",
+            "billingAgentTenantIds",
+            "billingAgentAnomalyScanEnabled",
+            "billingAgentStatementGenerationEnabled",
+            "billingAgentStatementSendEnabled",
+            "billingAgentStatementSendLimit",
+            "billingAgentPeriodStart",
+            "billingAgentPeriodEnd"
+          ],
           "properties": {
             "enabled": { "type": "string", "enum": ["enabled"] },
             "intervalMs": { "type": "string", "pattern": "^[0-9]+$" },
-            "ingestionEnabled": { "type": "string", "enum": ["", "enabled"] }
+            "ingestionEnabled": { "type": "string", "enum": ["", "enabled"] },
+            "billingAgentTenantIds": { "type": "string" },
+            "billingAgentAnomalyScanEnabled": { "type": "string", "enum": ["", "enabled"] },
+            "billingAgentStatementGenerationEnabled": { "type": "string", "enum": ["", "enabled"] },
+            "billingAgentStatementSendEnabled": { "type": "string", "enum": ["", "enabled"] },
+            "billingAgentStatementSendLimit": { "type": "string", "pattern": "^[0-9]+$" },
+            "billingAgentPeriodStart": { "type": "string" },
+            "billingAgentPeriodEnd": { "type": "string" }
           }
         }
       }
@@ -66,6 +84,9 @@
         "awsBrokerPrincipalArn": { "type": "string" },
         "awsProbeRegion": { "type": "string" },
         "awsIngestionRegion": { "type": "string" },
+        "gcpBigQueryLocation": { "type": "string" },
+        "llmNarrativesEnabled": { "type": "string", "enum": ["disabled", "enabled"] },
+        "llmProviderKeyVaultPath": { "type": "string" },
         "useMocks": { "type": "string", "enum": ["false"] },
         "seedFixtureData": { "type": "string", "enum": ["false"] }
       }

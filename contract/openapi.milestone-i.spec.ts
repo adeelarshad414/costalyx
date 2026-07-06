@@ -84,4 +84,22 @@ describe('Milestone I OpenAPI contract', () => {
       expect.arrayContaining(['tenantTotalUsd', 'allocatedUniqueUsd', 'unallocatedUsd', 'overlapUsd'])
     );
   });
+
+  it('documents the agent-run ledger used by the billing runtime', () => {
+    expect(spec.paths['/agent-runs'].get['x-required-role']).toBe('admin');
+    expect(spec.components.schemas.AgentRun.required).toEqual(
+      expect.arrayContaining([
+        'id',
+        'tenantId',
+        'runType',
+        'startedAt',
+        'finishedAt',
+        'inputsSummary',
+        'actionsTaken',
+        'actionsProposed',
+        'errors'
+      ])
+    );
+    expect(spec.components.schemas.AgentRunType.enum).toEqual(['anomaly_scan', 'statement_generation', 'statement_send']);
+  });
 });

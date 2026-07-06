@@ -23,6 +23,7 @@ import {
   CreateStatementStakeholderDto,
   DisputeStatementDto,
   GenerateStatementsDto,
+  ListAgentRunsQueryDto,
   ListStatementsQueryDto
 } from './dto/statement.dto';
 
@@ -107,6 +108,12 @@ export class BillingAgentController {
   @RequiredRole('viewer')
   listStatements(@Query() query: ListStatementsQueryDto, @Req() request: AuthenticatedRequest) {
     return this.billingAgent.listStatements({ ...query, tenantId: request.user.tenantId });
+  }
+
+  @Get('agent-runs')
+  @RequiredRole('admin')
+  listAgentRuns(@Query() query: ListAgentRunsQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.billingAgent.listAgentRuns({ ...query, tenantId: request.user.tenantId });
   }
 
   @Get('billing-statements/:id/export.csv')

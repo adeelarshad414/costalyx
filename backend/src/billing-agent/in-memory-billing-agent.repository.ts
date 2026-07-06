@@ -5,6 +5,9 @@ import { stableId } from '../cost-model/stable-id';
 import type { AuthenticatedUser } from '../security/token-verifier';
 import type { BillingAgentRepository } from './billing-agent.repository';
 import type {
+  AgentRun,
+  AgentRunCreateInput,
+  AgentRunQuery,
   BillingScope,
   BillingAnomaly,
   BillingAnomalyCandidate,
@@ -27,6 +30,7 @@ export class InMemoryBillingAgentRepository implements BillingAgentRepository {
   private readonly stakeholders = new Map<string, StatementStakeholder>();
   private readonly scopes = new Map<string, BillingScope>();
   private readonly statements = new Map<string, BillingStatement>();
+  private readonly agentRuns = new Map<string, AgentRun>();
 
   constructor(private readonly auditLog: AuditLogStore = new InMemoryAuditLogStore()) {}
 
@@ -254,6 +258,20 @@ export class InMemoryBillingAgentRepository implements BillingAgentRepository {
       await this.auditLog.append(actor, auditActionForStatementStatus(input.status), 'billing_statement', input.id);
       return updated;
     });
+  }
+
+  async createAgentRun(input: AgentRunCreateInput, actor: AuthenticatedUser): Promise<AgentRun> {
+    this.agentRuns.set(input.id, input);
+    await this.auditLog.append(actor, 'agent_run_recorded', 'agent_run', input.id);
+    return input;
+  }
+
+  async listAgentRuns(query: AgentRunQuery) {
+    const items = [...this.agentRuns.values()]
+      .filter((run) => run.tenantId === query.tenantId)
+      .filter((run) => !query.runType || run.runType === query.runType)
+      .sort((left, right) => right.startedAt.localeCompare(left.startedAt) || left.id.localeCompare(right.id));
+    return paginate(items, query);
   }
 
   private async withIdempotency<T>(tenantId: string, idempotencyKey: string, create: () => Promise<T>): Promise<T> {

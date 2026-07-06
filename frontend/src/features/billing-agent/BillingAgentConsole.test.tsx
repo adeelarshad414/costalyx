@@ -85,6 +85,18 @@ const statement = {
   sendEvidence: null
 };
 
+const agentRun = {
+  id: '77777777-7777-4777-8777-777777777777',
+  tenantId: '00000000-0000-4000-8000-000000000001',
+  runType: 'statement_generation' as const,
+  startedAt: '2026-07-06T13:00:00.000Z',
+  finishedAt: '2026-07-06T13:00:01.000Z',
+  inputsSummary: { periodStart: '2026-06-01T00:00:00.000Z', periodEnd: '2026-06-30T23:59:59.000Z' },
+  actionsTaken: [],
+  actionsProposed: [{ action: 'statement_generation', count: 1, capped: false, statementIds: [statement.id] }],
+  errors: []
+};
+
 function createClient(overrides: Partial<CostalyxClient> = {}): CostalyxClient {
   return {
     listCostRecords: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
@@ -120,6 +132,7 @@ function createClient(overrides: Partial<CostalyxClient> = {}): CostalyxClient {
     scanBillingAnomalies: async () => ({ created: [anomaly], totalOpen: 1 }),
     listAnomalies: async () => ({ data: [anomaly], meta: { total: 1, page: 1, pageSize: 50 } }),
     updateAnomalyStatus: async () => ({ ...anomaly, status: 'false_positive' }),
+    listAgentRuns: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 5 } }),
     getExecutiveSummary: async () => ({
       totalSpendUsd: '0.00000000',
       revenueBaselineUsd: '1000.00000000',
@@ -155,6 +168,7 @@ describe('BillingAgentConsole', () => {
     expect(screen.getByText('2026-07-06')).toHaveClass('font-mono-data');
     expect(screen.queryByRole('button', { name: /Run scan/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /False positive/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Agent Runs' })).not.toBeInTheDocument();
   });
 
   it('lets analysts scan and mark anomalies as false positive with a reason code', async () => {
@@ -205,6 +219,7 @@ describe('BillingAgentConsole', () => {
     const exportBillingStatementCsv = vi.fn(async () => 'statement_id,total\n');
     const exportBillingStatementPdf = vi.fn(async () => '%PDF-1.4');
     const listBillingStatements = vi.fn(async () => ({ data: [statement], meta: { total: 1, page: 1, pageSize: 50 } }));
+    const listAgentRuns = vi.fn(async () => ({ data: [agentRun], meta: { total: 1, page: 1, pageSize: 5 } }));
 
     renderWithRole(
       <BillingAgentConsole
@@ -216,7 +231,8 @@ describe('BillingAgentConsole', () => {
           sendBillingStatement,
           disputeBillingStatement,
           exportBillingStatementCsv,
-          exportBillingStatementPdf
+          exportBillingStatementPdf,
+          listAgentRuns
         })}
       />,
       ['admin']
@@ -224,6 +240,8 @@ describe('BillingAgentConsole', () => {
 
     await waitFor(() => expect(screen.getByText('Finance Partner')).toBeInTheDocument());
     expect(screen.getByText('$10.00')).toHaveClass('font-mono-data');
+    expect(screen.getByText('Statement Generation')).toBeInTheDocument();
+    expect(screen.getByText('2026-07-06')).toHaveClass('font-mono-data');
 
     await user.click(screen.getByRole('button', { name: 'CSV' }));
     await user.click(screen.getByRole('button', { name: 'PDF' }));
@@ -245,6 +263,7 @@ describe('BillingAgentConsole', () => {
     expect(disputeBillingStatement).toHaveBeenCalledWith(
       expect.objectContaining({ id: statement.id, note: 'Stakeholder requested allocation review.' })
     );
+    expect(listAgentRuns).toHaveBeenCalledWith({ pageSize: 5 });
   });
 
   it('renders empty and error states', async () => {

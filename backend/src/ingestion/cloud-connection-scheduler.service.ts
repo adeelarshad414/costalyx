@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { BillingAgentService } from '../billing-agent/billing-agent.service';
 import type { CloudConnection } from '../governance/governance.types';
 import { GovernanceService } from '../governance/governance.service';
 import type { AuthenticatedUser } from '../security/token-verifier';
@@ -25,7 +26,8 @@ export class CloudConnectionSchedulerService implements OnModuleInit, OnModuleDe
   constructor(
     private readonly governance: GovernanceService,
     private readonly ingestion: IngestionService,
-    private readonly config: ConfigService
+    private readonly config: ConfigService,
+    private readonly billingAgent?: BillingAgentService
   ) {}
 
   onModuleInit(): void {
@@ -85,6 +87,7 @@ export class CloudConnectionSchedulerService implements OnModuleInit, OnModuleDe
           this.logger.warn(`Cloud connection scheduler skipped ${connection.id}: ${redactError(error)}`);
         }
       }
+      await this.runBillingAgentCycles(connections, now());
       return result;
     } finally {
       this.running = false;
@@ -152,6 +155,46 @@ export class CloudConnectionSchedulerService implements OnModuleInit, OnModuleDe
     }
     return 900000;
   }
+
+  private async runBillingAgentCycles(connections: CloudConnection[], startedAt: string): Promise<void> {
+    if (!this.billingAgent) {
+      return;
+    }
+    const tenantIds = tenantIdsForBillingAgent(connections, this.config.get<string>('COSTALYX_BILLING_AGENT_TENANT_IDS'));
+    for (const tenantId of tenantIds) {
+      const actor = schedulerActor(tenantId);
+      if (this.config.get<string>('COSTALYX_BILLING_AGENT_ANOMALY_SCAN_ENABLED') === 'enabled') {
+        await this.runBillingAgentCycleSafely({ tenantId, runType: 'anomaly_scan', actor, startedAt });
+      }
+      if (this.config.get<string>('COSTALYX_BILLING_AGENT_STATEMENT_GENERATION_ENABLED') === 'enabled') {
+        await this.runBillingAgentCycleSafely({
+          tenantId,
+          runType: 'statement_generation',
+          actor,
+          startedAt,
+          periodStart: this.config.get<string>('COSTALYX_BILLING_AGENT_PERIOD_START'),
+          periodEnd: this.config.get<string>('COSTALYX_BILLING_AGENT_PERIOD_END')
+        });
+      }
+      if (this.config.get<string>('COSTALYX_BILLING_AGENT_STATEMENT_SEND_ENABLED') === 'enabled') {
+        await this.runBillingAgentCycleSafely({
+          tenantId,
+          runType: 'statement_send',
+          actor,
+          startedAt,
+          sendLimit: configuredPositiveInt(this.config.get<string>('COSTALYX_BILLING_AGENT_STATEMENT_SEND_LIMIT'))
+        });
+      }
+    }
+  }
+
+  private async runBillingAgentCycleSafely(input: Parameters<BillingAgentService['runAgentCycle']>[0]): Promise<void> {
+    try {
+      await this.billingAgent?.runAgentCycle(input);
+    } catch (error) {
+      this.logger.warn(`Billing agent scheduler skipped ${input.runType} for tenant ${input.tenantId}: ${redactError(error)}`);
+    }
+  }
 }
 
 function schedulerActor(tenantId: string): AuthenticatedUser {
@@ -168,4 +211,17 @@ function redactError(error: unknown): string {
     return '[redacted]';
   }
   return message.slice(0, 300);
+}
+
+function tenantIdsForBillingAgent(connections: CloudConnection[], configured: string | undefined): string[] {
+  const configuredIds = (configured ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return [...new Set([...connections.map((connection) => connection.tenantId), ...configuredIds])].sort();
+}
+
+function configuredPositiveInt(value: string | undefined): number | undefined {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : undefined;
 }

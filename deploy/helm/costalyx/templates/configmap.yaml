@@ -16,5 +16,7 @@ data:
   COSTALYX_AWS_PROBE_REGION: {{ .Values.config.awsProbeRegion | quote }}
   COSTALYX_AWS_INGESTION_REGION: {{ .Values.config.awsIngestionRegion | quote }}
   COSTALYX_GCP_BIGQUERY_LOCATION: {{ .Values.config.gcpBigQueryLocation | quote }}
+  COSTALYX_LLM_NARRATIVES_ENABLED: {{ .Values.config.llmNarrativesEnabled | quote }}
+  COSTALYX_LLM_PROVIDER_KEY_VAULT_PATH: {{ .Values.config.llmProviderKeyVaultPath | quote }}
   USE_MOCKS: {{ .Values.config.useMocks | quote }}
   SEED_FIXTURE_DATA: {{ .Values.config.seedFixtureData | quote }}

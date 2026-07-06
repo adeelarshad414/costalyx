@@ -186,3 +186,35 @@ export interface BillingStatementQuery {
   page: number;
   pageSize: number;
 }
+
+export type AgentRunType = 'anomaly_scan' | 'statement_generation' | 'statement_send';
+
+export interface AgentRunActionSummary {
+  action: string;
+  count: number;
+  capped: boolean;
+  cap?: number;
+  statementIds?: string[];
+  anomalyIds?: string[];
+}
+
+export interface AgentRun {
+  id: string;
+  tenantId: string;
+  runType: AgentRunType;
+  startedAt: string;
+  finishedAt: string;
+  inputsSummary: Record<string, unknown>;
+  actionsTaken: AgentRunActionSummary[];
+  actionsProposed: AgentRunActionSummary[];
+  errors: string[];
+}
+
+export interface AgentRunQuery {
+  tenantId: string;
+  runType?: AgentRunType;
+  page: number;
+  pageSize: number;
+}
+
+export interface AgentRunCreateInput extends AgentRun {}

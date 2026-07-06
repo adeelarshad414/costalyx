@@ -50,6 +50,20 @@ spec:
               value: {{ .Values.worker.scheduler.intervalMs | quote }}
             - name: COSTALYX_CLOUD_SCHEDULER_INGESTION_ENABLED
               value: {{ .Values.worker.scheduler.ingestionEnabled | quote }}
+            - name: COSTALYX_BILLING_AGENT_TENANT_IDS
+              value: {{ .Values.worker.scheduler.billingAgentTenantIds | quote }}
+            - name: COSTALYX_BILLING_AGENT_ANOMALY_SCAN_ENABLED
+              value: {{ .Values.worker.scheduler.billingAgentAnomalyScanEnabled | quote }}
+            - name: COSTALYX_BILLING_AGENT_STATEMENT_GENERATION_ENABLED
+              value: {{ .Values.worker.scheduler.billingAgentStatementGenerationEnabled | quote }}
+            - name: COSTALYX_BILLING_AGENT_STATEMENT_SEND_ENABLED
+              value: {{ .Values.worker.scheduler.billingAgentStatementSendEnabled | quote }}
+            - name: COSTALYX_BILLING_AGENT_STATEMENT_SEND_LIMIT
+              value: {{ .Values.worker.scheduler.billingAgentStatementSendLimit | quote }}
+            - name: COSTALYX_BILLING_AGENT_PERIOD_START
+              value: {{ .Values.worker.scheduler.billingAgentPeriodStart | quote }}
+            - name: COSTALYX_BILLING_AGENT_PERIOD_END
+              value: {{ .Values.worker.scheduler.billingAgentPeriodEnd | quote }}
           envFrom:
             - configMapRef:
                 name: {{ include "costalyx.fullname" . }}-config

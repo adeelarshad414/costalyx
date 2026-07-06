@@ -558,6 +558,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List billing agent decision-cycle runs */
+        get: operations["listAgentRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/billing-statements/{id}": {
         parameters: {
             query?: never;
@@ -1367,6 +1384,33 @@ export interface components {
             reconciliation: components["schemas"]["BillingStatementReconciliation"];
             scopeWarnings: components["schemas"]["BillingStatementScopeWarning"][];
         };
+        /** @enum {string} */
+        AgentRunType: "anomaly_scan" | "statement_generation" | "statement_send";
+        AgentRunActionSummary: {
+            action: string;
+            count: number;
+            capped: boolean;
+            cap?: number;
+            statementIds?: string[];
+            anomalyIds?: string[];
+        };
+        AgentRun: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tenantId: string;
+            runType: components["schemas"]["AgentRunType"];
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            finishedAt: string;
+            inputsSummary: {
+                [key: string]: unknown;
+            };
+            actionsTaken: components["schemas"]["AgentRunActionSummary"][];
+            actionsProposed: components["schemas"]["AgentRunActionSummary"][];
+            errors: string[];
+        };
         RealizedSaving: {
             /** Format: uuid */
             id: string;
@@ -1530,6 +1574,9 @@ export interface components {
         };
         PaginatedBillingStatements: components["schemas"]["PaginatedResponse"] & {
             data?: components["schemas"]["BillingStatement"][];
+        };
+        PaginatedAgentRuns: components["schemas"]["PaginatedResponse"] & {
+            data?: components["schemas"]["AgentRun"][];
         };
         PaginatedRealizedSavings: components["schemas"]["PaginatedResponse"] & {
             data?: components["schemas"]["RealizedSaving"][];
@@ -2813,6 +2860,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedBillingStatements"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listAgentRuns: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                pageSize?: components["parameters"]["PageSize"];
+                runType?: components["schemas"]["AgentRunType"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated agent-run ledger */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAgentRuns"];
                 };
             };
             401: components["responses"]["Unauthorized"];

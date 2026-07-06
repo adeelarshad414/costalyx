@@ -8,12 +8,14 @@ import { InMemoryBillingAgentEventPublisher, BILLING_AGENT_EVENT_PUBLISHER } fro
 import { BILLING_AGENT_REPOSITORY } from './billing-agent.repository';
 import { BillingAgentService } from './billing-agent.service';
 import { InMemoryBillingAgentRepository } from './in-memory-billing-agent.repository';
+import { NarrativeGeneratorService } from './narrative-generator.service';
 import { PostgresBillingAgentRepository } from './postgres-billing-agent.repository';
 
 @Module({
   imports: [CostModelModule, AuditLogModule],
   controllers: [BillingAgentController],
   providers: [
+    NarrativeGeneratorService,
     BillingAgentService,
     {
       provide: BILLING_AGENT_REPOSITORY,

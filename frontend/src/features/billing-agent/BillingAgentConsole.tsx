@@ -1,7 +1,9 @@
-import { AlertTriangle, CheckCircle2, FileDown, Radar, Send, ShieldCheck } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, FileDown, Radar, Send, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
+import { useAuth } from '../../auth/AuthProvider';
 import { PermissionGate } from '../../auth/PermissionGate';
+import { hasRequiredRole } from '../../auth/roles';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 
@@ -12,6 +14,7 @@ interface BillingAgentConsoleProps {
 type LoadState = 'loading' | 'loaded' | 'error';
 type Anomaly = Awaited<ReturnType<NonNullable<CostalyxClient['listAnomalies']>>>['data'][number];
 type BillingStatement = Awaited<ReturnType<NonNullable<CostalyxClient['listBillingStatements']>>>['data'][number];
+type AgentRun = Awaited<ReturnType<NonNullable<CostalyxClient['listAgentRuns']>>>['data'][number];
 type FalsePositiveReason = NonNullable<
   Parameters<NonNullable<CostalyxClient['updateAnomalyStatus']>>[0]['falsePositiveReason']
 >;
@@ -19,29 +22,39 @@ type FalsePositiveReason = NonNullable<
 const falsePositiveReasons: FalsePositiveReason[] = ['seasonal', 'planned_change', 'known_migration', 'other'];
 
 export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
+  const auth = useAuth();
   const [state, setState] = useState<LoadState>('loading');
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [statements, setStatements] = useState<BillingStatement[]>([]);
+  const [agentRuns, setAgentRuns] = useState<AgentRun[]>([]);
   const [error, setError] = useState('');
   const [isMutating, setIsMutating] = useState(false);
   const [reasonById, setReasonById] = useState<Record<string, FalsePositiveReason>>({});
   const [period, setPeriod] = useState(defaultStatementPeriod);
 
   const loadConsole = useCallback(async () => {
+    if (auth.status === 'loading') {
+      return;
+    }
     setState('loading');
     try {
-      const [anomalyResponse, statementResponse] = await Promise.all([
+      const canListAgentRuns = hasRequiredRole(auth.role, 'admin');
+      const [anomalyResponse, statementResponse, agentRunResponse] = await Promise.all([
         requireListAnomalies(client)({ status: 'open', pageSize: 50 }),
-        client.listBillingStatements?.({ pageSize: 50 }) ?? Promise.resolve({ data: [], meta: { total: 0, page: 1, pageSize: 50 } })
+        client.listBillingStatements?.({ pageSize: 50 }) ?? Promise.resolve({ data: [], meta: { total: 0, page: 1, pageSize: 50 } }),
+        canListAgentRuns && client.listAgentRuns
+          ? client.listAgentRuns({ pageSize: 5 })
+          : Promise.resolve({ data: [], meta: { total: 0, page: 1, pageSize: 5 } })
       ]);
       setAnomalies(anomalyResponse.data);
       setStatements(statementResponse.data);
+      setAgentRuns(agentRunResponse.data);
       setState('loaded');
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unknown billing-agent request failure');
       setState('error');
     }
-  }, [client]);
+  }, [auth.role, auth.status, client]);
 
   useEffect(() => {
     void loadConsole();
@@ -332,6 +345,44 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
           ))}
         </ul>
       )}
+
+      <PermissionGate requiredRole="admin" mode="hide">
+        <div className="panel-toolbar anomaly-toolbar statement-toolbar">
+          <h3>Agent Runs</h3>
+        </div>
+        {agentRuns.length === 0 ? (
+          <EmptyState title="No agent runs" detail="Scheduled decision cycles will appear here with their actions and guardrails." />
+        ) : (
+          <ul className="anomaly-list agent-run-list">
+            {agentRuns.map((run) => (
+              <li key={run.id}>
+                <Activity aria-hidden="true" size={20} />
+                <div className="anomaly-body">
+                  <div className="anomaly-title-row">
+                    <strong>{labelForRunType(run.runType)}</strong>
+                    <span className={`status-chip ${run.errors.length ? 'severity-high' : 'severity-low'}`}>
+                      {run.errors.length ? 'error' : 'recorded'}
+                    </span>
+                  </div>
+                  <p>
+                    Took <strong className="font-mono-data">{sumActionCounts(run.actionsTaken)}</strong> actions and proposed{' '}
+                    <strong className="font-mono-data">{sumActionCounts(run.actionsProposed)}</strong> follow-ups.
+                  </p>
+                  <div className="anomaly-evidence">
+                    <span className="font-mono-data">{run.startedAt.slice(0, 10)}</span>
+                    <span>
+                      Caps <strong className="font-mono-data">{run.actionsTaken.filter((action) => action.capped).length + run.actionsProposed.filter((action) => action.capped).length}</strong>
+                    </span>
+                    <span>
+                      Errors <strong className="font-mono-data">{run.errors.length}</strong>
+                    </span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </PermissionGate>
     </section>
   );
 }
@@ -411,6 +462,17 @@ function reasonLabel(reason: FalsePositiveReason): string {
     .split('_')
     .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
     .join(' ');
+}
+
+function labelForRunType(type: AgentRun['runType']): string {
+  return type
+    .split('_')
+    .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
+    .join(' ');
+}
+
+function sumActionCounts(actions: AgentRun['actionsTaken']): number {
+  return actions.reduce((sum, action) => sum + Number(action.count ?? 0), 0);
 }
 
 function createIdempotencyKey(scope: string): string {

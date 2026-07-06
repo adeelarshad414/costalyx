@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
+import { BillingAgentService } from '../../src/billing-agent/billing-agent.service';
 import { ProblemDetailsFilter } from '../../src/common/problem-details.filter';
 import { CostModelService } from '../../src/cost-model/cost-model.service';
 import type { NormalizedCostRecord } from '../../src/cost-model/cost-record.types';
@@ -196,6 +197,33 @@ describe('Milestone I.2 stakeholder statement API', () => {
     const approvedAudit = transitions.find((entry: { action: string }) => entry.action === 'billing_statement_approved');
     expect(disputedAudit.prevHash).toBe(sentAudit.hash);
     expect(sentAudit.prevHash).toBe(approvedAudit.hash);
+  });
+
+  it('exposes the agent-run ledger to admins only', async () => {
+    const billingAgent = app.get(BillingAgentService);
+    const run = await billingAgent.runAgentCycle({
+      tenantId: DEFAULT_TENANT_ID,
+      runType: 'anomaly_scan',
+      actor: { subject: 'system-admin', role: 'admin', tenantId: DEFAULT_TENANT_ID },
+      startedAt: '2026-07-06T13:00:00.000Z',
+      notificationLimit: 1
+    });
+
+    await request(app.getHttpServer()).get('/api/v1/agent-runs').set('x-costalyx-role', 'viewer').expect(403);
+
+    await request(app.getHttpServer())
+      .get('/api/v1/agent-runs?runType=anomaly_scan')
+      .set('x-costalyx-role', 'admin')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data).toContainEqual(
+          expect.objectContaining({
+            id: run.id,
+            runType: 'anomaly_scan',
+            inputsSummary: expect.objectContaining({ notificationLimit: 1 })
+          })
+        );
+      });
   });
 
   async function createAccount(externalAccountId: string, displayName: string) {
