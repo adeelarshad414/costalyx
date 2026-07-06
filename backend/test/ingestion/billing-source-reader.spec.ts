@@ -1,6 +1,8 @@
 import { gzipSync } from 'node:zlib';
 import {
+  buildGcpBillingExportQuery,
   DefaultBillingSourceReader,
+  detectGcpBillingExportSchema,
   type AwsS3BillingSourceClient,
   type AzureBlobBillingSourceClient,
   type GcpBigQueryBillingSourceClient
@@ -204,5 +206,72 @@ describe('DefaultBillingSourceReader', () => {
       location: 'US',
       maxRows: 5000
     });
+  });
+
+  it('uses detailed GCP billing-export resource fields when the table has them', () => {
+    const query = buildGcpBillingExportQuery({
+      projectId: 'billing-project',
+      datasetId: 'billing_export',
+      tableId: 'gcp_billing_export_resource_v1'
+    });
+
+    expect(query).toContain('COALESCE(resource.name, resource.global_name');
+    expect(query).toContain('//cloudbilling.googleapis.com/projects/');
+  });
+
+  it('falls back to project and SKU resource IDs for standard GCP billing exports', () => {
+    const query = buildGcpBillingExportQuery(
+      {
+        projectId: 'billing-project',
+        datasetId: 'billing_export',
+        tableId: 'gcp_billing_export_v1'
+      },
+      { hasResourceColumn: false }
+    );
+
+    expect(query).not.toContain('resource.name');
+    expect(query).not.toContain('resource.global_name');
+    expect(query).toContain(
+      "CONCAT('//cloudbilling.googleapis.com/projects/', COALESCE(project.id, CAST(project.number AS STRING), 'unknown-project'), '/skus/'"
+    );
+  });
+
+  it('detects whether the GCP billing export table has detailed resource columns', async () => {
+    const query = jest.fn(async (): Promise<[Array<Record<string, unknown>>]> => [[{ columnName: 'resource' }]]);
+
+    await expect(
+      detectGcpBillingExportSchema(
+        { query },
+        {
+          projectId: 'billing-project',
+          datasetId: 'billing_export',
+          tableId: 'gcp_billing_export_resource_v1',
+          location: 'US'
+        }
+      )
+    ).resolves.toEqual({ hasResourceColumn: true });
+
+    expect(query).toHaveBeenCalledWith({
+      query:
+        'SELECT column_name AS columnName\n' +
+        'FROM `billing-project.billing_export.INFORMATION_SCHEMA.COLUMNS`\n' +
+        'WHERE table_name = @tableId\n' +
+        "  AND column_name = 'resource'\n" +
+        'LIMIT 1',
+      location: 'US',
+      params: { tableId: 'gcp_billing_export_resource_v1' }
+    });
+
+    const standardExportQuery = jest.fn(async (): Promise<[Array<Record<string, unknown>>]> => [[]]);
+    await expect(
+      detectGcpBillingExportSchema(
+        { query: standardExportQuery },
+        {
+          projectId: 'billing-project',
+          datasetId: 'billing_export',
+          tableId: 'gcp_billing_export_v1'
+        }
+      )
+    ).resolves.toEqual({ hasResourceColumn: false });
   });
 });

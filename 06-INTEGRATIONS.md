@@ -71,9 +71,12 @@ Provider-native ingestion can now read billing exports through the registered
 read-only cloud connection: AWS CUR CSV/CSV.GZ from S3 by assuming the
 customer role with the generated external ID, Azure Cost Management CSV/CSV.GZ
 from Blob Storage with the Costalyx broker identity, and GCP BigQuery billing
-export rows converted into the adapter CSV contract. Requested source URIs
-must stay inside the registered export location, and evidence stores the
-resolved object/table URI without credential material. `COSTALYX_AWS_INGESTION_REGION`
+export rows converted into the adapter CSV contract. GCP ingestion detects
+whether the registered table is a detailed/resource-level export or the
+standard export and falls back to a deterministic project/SKU resource ID
+when the `resource` column is absent. Requested source URIs must stay inside
+the registered export location, and evidence stores the resolved object/table
+URI without credential material. `COSTALYX_AWS_INGESTION_REGION`
 can override the S3 read region; otherwise the AWS probe/runtime region
 fallback is used. `COSTALYX_GCP_BIGQUERY_LOCATION` can pin the BigQuery query
 location for GCP export reads.
