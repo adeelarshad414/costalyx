@@ -96,7 +96,9 @@ The frontend and API support:
    through the customer read-only role and generated external ID; Azure
    ingestion reads CSV/CSV.GZ Cost Management exports from the registered Blob
    prefix; GCP ingestion reads rows from the registered BigQuery billing export
-   table and converts them into the normalized adapter CSV contract.
+   table and converts them into the normalized adapter CSV contract. Detailed
+   GCP exports keep provider resource names; standard exports without the
+   `resource` column use a stable project/SKU fallback resource ID.
 8. Billing exports are ingested with `tenant_id` and `cloud_connection_id`.
 9. Cost, reports, recommendations, savings, and audit rows stay tenant scoped.
 

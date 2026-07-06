@@ -74,6 +74,10 @@ export interface GcpBigQueryBillingSourceClient {
   queryRows(input: BigQueryExportLocation & { location?: string; maxRows: number }): Promise<Array<Record<string, unknown>>>;
 }
 
+export interface GcpBillingExportSchema {
+  hasResourceColumn: boolean;
+}
+
 export class DefaultBillingSourceReader implements BillingSourceReader {
   constructor(
     private readonly awsClient: AwsS3BillingSourceClient = new AwsSdkS3BillingSourceClient(),
@@ -428,8 +432,9 @@ class AzureSdkBlobBillingSourceClient implements AzureBlobBillingSourceClient {
 class GcpSdkBigQueryBillingSourceClient implements GcpBigQueryBillingSourceClient {
   async queryRows(input: BigQueryExportLocation & { location?: string; maxRows: number }): Promise<Array<Record<string, unknown>>> {
     const bigQuery = new BigQuery({ projectId: input.projectId });
+    const schema = await detectGcpBillingExportSchema(bigQuery as unknown as BigQueryQueryRunner, input);
     const [rows] = await bigQuery.query({
-      query: buildGcpBillingExportQuery(input),
+      query: buildGcpBillingExportQuery(input, schema),
       location: input.location,
       params: { maxRows: input.maxRows }
     });
@@ -437,12 +442,43 @@ class GcpSdkBigQueryBillingSourceClient implements GcpBigQueryBillingSourceClien
   }
 }
 
-function buildGcpBillingExportQuery(input: BigQueryExportLocation): string {
+interface BigQueryQueryRunner {
+  query(input: { query: string; location?: string; params?: Record<string, unknown> }): Promise<[Array<Record<string, unknown>>]>;
+}
+
+export async function detectGcpBillingExportSchema(
+  bigQuery: BigQueryQueryRunner,
+  input: BigQueryExportLocation & { location?: string }
+): Promise<GcpBillingExportSchema> {
+  const [rows] = await bigQuery.query({
+    query: `
+SELECT column_name AS columnName
+FROM \`${input.projectId}.${input.datasetId}.INFORMATION_SCHEMA.COLUMNS\`
+WHERE table_name = @tableId
+  AND column_name = 'resource'
+LIMIT 1`.trim(),
+    location: input.location,
+    params: { tableId: input.tableId }
+  });
+  return { hasResourceColumn: rows.length > 0 };
+}
+
+export function buildGcpBillingExportQuery(
+  input: BigQueryExportLocation,
+  schema: GcpBillingExportSchema = { hasResourceColumn: true }
+): string {
+  const projectExpression = "COALESCE(project.id, CAST(project.number AS STRING), 'unknown-project')";
+  const skuExpression = "REGEXP_REPLACE(COALESCE(sku.id, sku.description, 'unknown-sku'), r'[^A-Za-z0-9._/-]+', '_')";
+  const standardResourceExpression = `CONCAT('//cloudbilling.googleapis.com/projects/', ${projectExpression}, '/skus/', ${skuExpression})`;
+  const resourceExpression = schema.hasResourceColumn
+    ? `COALESCE(resource.name, resource.global_name, ${standardResourceExpression})`
+    : standardResourceExpression;
+
   return `
 SELECT
   billing_account_id,
-  COALESCE(project.id, CAST(project.number AS STRING), '') AS project_id,
-  COALESCE(resource.name, resource.global_name, '') AS resource_name,
+  ${projectExpression} AS project_id,
+  ${resourceExpression} AS resource_name,
   service.description AS service_description,
   sku.description AS sku_description,
   CASE
