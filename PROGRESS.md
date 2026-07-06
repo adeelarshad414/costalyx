@@ -5,7 +5,7 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-06 13:33:08 PKT_
+_Last updated: 2026-07-06 13:35:17 PKT_
 
 ## Milestone status
 
@@ -37,6 +37,7 @@ Definition of Done is satisfied.
 - `docker build -f frontend/Dockerfile -t costalyx-frontend:local-check --build-arg VITE_API_BASE_URL=https://api.example.test/api/v1 --build-arg VITE_KEYCLOAK_URL=https://auth.example.test --build-arg VITE_KEYCLOAK_REALM=costalyx --build-arg VITE_KEYCLOAK_CLIENT_ID=costalyx-web .`: passed with Docker socket escalation; Vite production build completed inside the image.
 - `helm lint deploy/helm/costalyx`: 1 chart linted, 0 failed.
 - `helm template costalyx deploy/helm/costalyx --namespace costalyx`: rendered successfully.
+- GitHub Actions `Costalyx CI` passed on `e668960` for both push run `28778574733` and PR run `28778577545`; `verify` succeeded and the opt-in `e2e` job was skipped by repository configuration.
 - `npm run test:e2e`: 1 skipped when live Keycloak credentials are intentionally absent.
 - `env E2E_KEYCLOAK_URL=http://127.0.0.1:55880 E2E_API_BASE_URL=http://127.0.0.1:43101/api/v1 E2E_BASE_URL=http://localhost:5173 npm run test:e2e:keycloak`: seeded `costalyx-e2e-admin`; Playwright reported 1 Chromium test passed in 2.1s.
 
@@ -50,6 +51,7 @@ Definition of Done is satisfied.
 | Production Dockerfiles | Done (evidence linked) | Backend and frontend production images built successfully as `costalyx-backend:local-check` and `costalyx-frontend:local-check`. | Both use pinned Node 22.12.0 Alpine, non-root `costalyx` users, and container health checks. |
 | Production compose path | Done (evidence linked) | `docker compose -f docker-compose.prod.yml config` passed with explicit operator-supplied placeholder env. | The file has no `CHANGE_ME_DEV_ONLY` defaults; required production env values use Compose `:?` guards. |
 | Helm/Kubernetes production manifests | Done (evidence linked) | `helm lint deploy/helm/costalyx`: 1 chart linted, 0 failed. `helm template costalyx deploy/helm/costalyx --namespace costalyx`: rendered successfully. | Chart includes backend/frontend Deployments, Services, ServiceAccounts, HPA, optional Ingress, ConfigMap, external Secret references, pod security contexts, resource requests/limits, health probes, and NetworkPolicies. |
+| Remote CI gate | Done (evidence linked) | GitHub Actions `Costalyx CI` passed on `e668960` for push run `28778574733` and PR run `28778577545`. | `verify` ran install, `npm test`, live contract, backend build, frontend build, and high-severity audit; repo-level opt-in E2E stayed skipped while local live Keycloak E2E evidence is recorded above. |
 
 ## Full-stack wiring checklist (per feature, filled in as work proceeds)
 _Copy this block per feature; do not mark complete without linked evidence._
