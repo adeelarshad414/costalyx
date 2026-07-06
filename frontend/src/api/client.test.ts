@@ -74,6 +74,86 @@ describe('createCostalyxClient', () => {
     );
   });
 
+  it('runs anomaly scans and updates anomaly status with bearer auth and idempotency keys', async () => {
+    const anomaly = {
+      id: '11111111-1111-4111-8111-111111111111',
+      tenantId: '00000000-0000-4000-8000-000000000001',
+      type: 'usage',
+      severity: 'medium',
+      status: 'open',
+      detectedAt: '2026-07-06T00:00:00.000Z',
+      windowStart: '2026-07-01T00:00:00.000Z',
+      windowEnd: '2026-07-06T00:00:00.000Z',
+      evidence: {
+        fingerprint: 'usage:row-1',
+        costRecordIds: ['22222222-2222-4222-8222-222222222222'],
+        pricingRows: [
+          {
+            costRecordId: '22222222-2222-4222-8222-222222222222',
+            resourceId: 's3-usage-001',
+            hourlyRateUsd: '0.01000000',
+            usageHours: '50.0000',
+            validFrom: '2026-07-06T00:00:00.000Z',
+            validTo: null
+          }
+        ],
+        metrics: { ratioPercent: '500.00' }
+      },
+      explanationMd: 'Usage reached 50.0000 hours, 500.00% of the trailing median 10.0000 hours.',
+      assignedOwnerId: null
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ created: [anomaly], totalOpen: 1 }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [anomaly], meta: { total: 1, page: 1, pageSize: 50 } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ...anomaly, status: 'false_positive' }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createCostalyxClient({
+      baseUrl: 'http://api.test/api/v1',
+      getAccessToken: async () => 'signed-keycloak-token'
+    });
+
+    await client.scanBillingAnomalies?.();
+    await client.listAnomalies?.({ status: 'open', type: 'usage', pageSize: 50 });
+    await client.updateAnomalyStatus?.({
+      id: anomaly.id,
+      status: 'false_positive',
+      falsePositiveReason: 'seasonal',
+      idempotencyKey: 'anomaly-key-1'
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'http://api.test/api/v1/billing-agent/anomaly-scan',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { Accept: 'application/json', Authorization: 'Bearer signed-keycloak-token' }
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'http://api.test/api/v1/anomalies?type=usage&status=open&pageSize=50',
+      expect.objectContaining({
+        headers: { Accept: 'application/json', Authorization: 'Bearer signed-keycloak-token' }
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      `http://api.test/api/v1/anomalies/${anomaly.id}`,
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: {
+          Accept: 'application/json',
+          Authorization: 'Bearer signed-keycloak-token',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'anomaly-key-1'
+        },
+        body: JSON.stringify({ status: 'false_positive', falsePositiveReason: 'seasonal' })
+      })
+    );
+  });
+
   it('loads fixed roles and exports cost records with bearer auth', async () => {
     const fetchMock = vi
       .fn()

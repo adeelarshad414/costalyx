@@ -437,6 +437,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/billing-agent/anomaly-scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run deterministic billing anomaly detection */
+        post: operations["scanBillingAnomalies"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/anomalies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List billing anomalies */
+        get: operations["listAnomalies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/anomalies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update billing anomaly status */
+        patch: operations["updateAnomalyStatus"];
+        trace?: never;
+    };
     "/reports": {
         parameters: {
             query?: never;
@@ -947,6 +998,61 @@ export interface components {
             /** @enum {string} */
             status: "applied" | "dismissed";
         };
+        /** @enum {string} */
+        AnomalyType: "unit_price" | "usage" | "new_spend" | "coverage";
+        /** @enum {string} */
+        AnomalySeverity: "low" | "medium" | "high";
+        /** @enum {string} */
+        AnomalyStatus: "open" | "acknowledged" | "resolved" | "false_positive";
+        /** @enum {string} */
+        FalsePositiveReason: "seasonal" | "planned_change" | "known_migration" | "other";
+        AnomalyPricingRow: {
+            /** Format: uuid */
+            costRecordId: string;
+            resourceId: string;
+            hourlyRateUsd: components["schemas"]["MoneyString"];
+            usageHours: string;
+            /** Format: date-time */
+            validFrom: string;
+            /** Format: date-time */
+            validTo: string | null;
+        };
+        AnomalyEvidence: {
+            fingerprint: string;
+            costRecordIds: string[];
+            pricingRows: components["schemas"]["AnomalyPricingRow"][];
+            metrics: {
+                [key: string]: string | number | boolean | null;
+            };
+        };
+        BillingAnomaly: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tenantId: string;
+            type: components["schemas"]["AnomalyType"];
+            severity: components["schemas"]["AnomalySeverity"];
+            status: components["schemas"]["AnomalyStatus"];
+            /** Format: date-time */
+            detectedAt: string;
+            /** Format: date-time */
+            windowStart: string;
+            /** Format: date-time */
+            windowEnd: string;
+            evidence: components["schemas"]["AnomalyEvidence"];
+            explanationMd: string;
+            /** Format: uuid */
+            assignedOwnerId: string | null;
+        };
+        AnomalyStatusPatch: {
+            status: components["schemas"]["AnomalyStatus"];
+            falsePositiveReason?: components["schemas"]["FalsePositiveReason"];
+            falsePositiveNote?: string;
+        };
+        AnomalyScanResult: {
+            created: components["schemas"]["BillingAnomaly"][];
+            totalOpen: number;
+        };
         RealizedSaving: {
             /** Format: uuid */
             id: string;
@@ -1104,6 +1210,9 @@ export interface components {
         };
         PaginatedRecommendations: components["schemas"]["PaginatedResponse"] & {
             data?: components["schemas"]["Recommendation"][];
+        };
+        PaginatedAnomalies: components["schemas"]["PaginatedResponse"] & {
+            data?: components["schemas"]["BillingAnomaly"][];
         };
         PaginatedRealizedSavings: components["schemas"]["PaginatedResponse"] & {
             data?: components["schemas"]["RealizedSaving"][];
@@ -2147,6 +2256,88 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    scanBillingAnomalies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Anomaly scan completed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyScanResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listAnomalies: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                pageSize?: components["parameters"]["PageSize"];
+                type?: components["schemas"]["AnomalyType"];
+                status?: components["schemas"]["AnomalyStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated anomalies */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAnomalies"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    updateAnomalyStatus: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required on every mutating request; duplicate keys return the original result. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnomalyStatusPatch"];
+            };
+        };
+        responses: {
+            /** @description Anomaly status updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingAnomaly"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     listReports: {

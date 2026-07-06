@@ -1,0 +1,11 @@
+lineItem/UsageAccountId,lineItem/ResourceId,product/ProductName,lineItem/UsageType,lineItem/LineItemType,lineItem/UsageAmount,pricing/publicOnDemandRate,lineItem/UsageStartDate,lineItem/UsageEndDate
+123456789012,i-price-001,Amazon EC2,BoxUsage:t3.medium,Usage,1,0.1000,2026-06-01T00:00:00Z,2026-06-01T01:00:00Z
+123456789012,i-price-001,Amazon EC2,BoxUsage:t3.medium,Usage,1,0.1500,2026-06-02T00:00:00Z,2026-06-02T01:00:00Z
+123456789012,s3-usage-001,Amazon S3,TimedStorage-ByteHrs,Usage,10,0.0100,2026-06-01T00:00:00Z,2026-06-01T01:00:00Z
+123456789012,s3-usage-001,Amazon S3,TimedStorage-ByteHrs,Usage,10,0.0100,2026-06-02T00:00:00Z,2026-06-02T01:00:00Z
+123456789012,s3-usage-001,Amazon S3,TimedStorage-ByteHrs,Usage,10,0.0100,2026-06-03T00:00:00Z,2026-06-03T01:00:00Z
+123456789012,s3-usage-001,Amazon S3,TimedStorage-ByteHrs,Usage,50,0.0100,2026-06-04T00:00:00Z,2026-06-04T01:00:00Z
+123456789012,bedrock-model-001,Amazon Bedrock,ModelInvocation,Usage,1,30.0000,2026-06-06T00:00:00Z,2026-06-06T01:00:00Z
+123456789012,redshift-commit-001,Amazon Redshift,NodeUsageReserved,Usage,80,0.1000,2026-06-01T00:00:00Z,2026-06-01T01:00:00Z
+123456789012,redshift-ondemand-001,Amazon Redshift,NodeUsage,Usage,20,0.1000,2026-06-01T00:00:00Z,2026-06-01T01:00:00Z
+123456789012,redshift-ondemand-002,Amazon Redshift,NodeUsage,Usage,100,0.1000,2026-06-02T00:00:00Z,2026-06-02T01:00:00Z

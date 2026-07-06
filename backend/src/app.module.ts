@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { AllocationModule } from './allocation/allocation.module';
+import { BillingAgentModule } from './billing-agent/billing-agent.module';
 import { CostModelModule } from './cost-model/cost-model.module';
 import { ExecutiveModule } from './executive/executive.module';
 import { GovernanceModule } from './governance/governance.module';
@@ -22,7 +23,8 @@ import { AUTH_TOKEN_VERIFIER } from './security/token-verifier';
     GovernanceModule,
     OptimizationModule,
     ExecutiveModule,
-    ReportingModule
+    ReportingModule,
+    BillingAgentModule
   ],
   controllers: [HealthController],
   providers: [

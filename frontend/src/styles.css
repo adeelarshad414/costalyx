@@ -390,6 +390,95 @@ td {
   grid-template-columns: minmax(0, 1fr) minmax(260px, 0.8fr);
 }
 
+.anomaly-toolbar {
+  justify-content: space-between;
+}
+
+.anomaly-toolbar h2 {
+  margin: 0;
+}
+
+.anomaly-toolbar button,
+.anomaly-actions button {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.anomaly-list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.anomaly-list li {
+  align-items: start;
+  border-bottom: 1px solid var(--border-subtle);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto minmax(0, 1fr) minmax(220px, auto);
+  padding: 12px 0;
+}
+
+.anomaly-body {
+  display: grid;
+  gap: 8px;
+}
+
+.anomaly-body p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.anomaly-title-row,
+.anomaly-actions,
+.anomaly-evidence {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.anomaly-actions {
+  justify-content: flex-end;
+}
+
+.anomaly-actions select {
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font: inherit;
+  min-width: 150px;
+  padding: 0.62rem 0.7rem;
+}
+
+.anomaly-evidence {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+}
+
+.status-chip {
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  padding: 0.25rem 0.45rem;
+}
+
+.severity-high {
+  color: var(--status-danger);
+}
+
+.severity-medium {
+  color: var(--status-warning);
+}
+
+.severity-low {
+  color: var(--status-info);
+}
+
 .executive-toolbar {
   justify-content: space-between;
 }
@@ -569,6 +658,7 @@ td {
   }
 
   .executive-list li,
+  .anomaly-list li,
   .optimization-list li,
   .report-list li,
   .run-list li {
