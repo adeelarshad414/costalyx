@@ -3,7 +3,9 @@ import type { Role } from '../security/roles';
 
 export interface AccountReference {
   id: string;
+  tenantId: string;
   provider: CloudProvider;
+  cloudConnectionId: string | null;
   externalAccountId: string;
   displayName: string;
   vendor: string;
@@ -13,6 +15,7 @@ export interface AccountReference {
 
 export interface AccountGroup {
   id: string;
+  tenantId: string;
   name: string;
   accountIds: string[];
   createdAt: string;
@@ -20,6 +23,7 @@ export interface AccountGroup {
 
 export interface CloudCredentialReference {
   id: string;
+  tenantId: string;
   provider: CloudProvider;
   accountId: string;
   displayName: string;
@@ -30,6 +34,7 @@ export interface CloudCredentialReference {
 
 export interface UserRecord {
   id: string;
+  tenantId: string;
   email: string;
   displayName: string;
   roles: Role[];
@@ -42,6 +47,7 @@ export interface FixedRoleRecord {
 
 export interface AuditLogEntry {
   id: string;
+  tenantId: string;
   actorId: string;
   action: string;
   targetType: string;
@@ -54,6 +60,8 @@ export interface AuditLogEntry {
 export interface ViewFilter {
   provider?: CloudProvider;
   accountId?: string;
+  accountGroupId?: string;
+  cloudConnectionId?: string;
   service?: string;
   dimension?: string;
   from?: string;
@@ -78,6 +86,30 @@ export interface CreateViewInput {
 export interface PageQuery {
   page: number;
   pageSize: number;
+}
+
+export interface TenantRecord {
+  id: string;
+  name: string;
+  slug: string;
+  plan: 'starter' | 'business' | 'enterprise';
+  createdAt: string;
+}
+
+export type CloudConnectionStatus = 'pending_validation' | 'validated' | 'validation_failed';
+
+export interface CloudConnection {
+  id: string;
+  tenantId: string;
+  provider: CloudProvider;
+  displayName: string;
+  externalTenantId: string;
+  accessMode: 'aws_assume_role' | 'azure_delegated_app' | 'gcp_workload_identity';
+  readOnlyPrincipal: string;
+  billingExportUri: string | null;
+  status: CloudConnectionStatus;
+  lastValidatedAt: string | null;
+  createdAt: string;
 }
 
 export interface Paginated<T> {

@@ -23,7 +23,7 @@ export class OptimizationService {
   ) {}
 
   async listRecommendations(query: RecommendationQuery) {
-    await this.syncFromBillingData();
+    await this.syncFromBillingData(query.tenantId);
     return this.repository.listRecommendations(query);
   }
 
@@ -33,7 +33,7 @@ export class OptimizationService {
     actor: AuthenticatedUser,
     idempotencyKey: string
   ) {
-    await this.syncFromBillingData();
+    await this.syncFromBillingData(actor.tenantId);
     return this.repository.updateRecommendation(id, input, actor, idempotencyKey);
   }
 
@@ -41,13 +41,13 @@ export class OptimizationService {
     return this.repository.listRealizedSavings(query);
   }
 
-  private async syncFromBillingData(): Promise<void> {
-    const records = await this.costModel.listRecords({ page: 1, pageSize: 200 });
-    await this.repository.syncRecommendations(records.data.flatMap((record) => candidateFromRecord(record)));
+  private async syncFromBillingData(tenantId: string): Promise<void> {
+    const records = await this.costModel.listRecords({ tenantId, page: 1, pageSize: 200 });
+    await this.repository.syncRecommendations(tenantId, records.data.flatMap((record) => candidateFromRecord(tenantId, record)));
   }
 }
 
-function candidateFromRecord(record: NormalizedCostRecord): RecommendationCandidate[] {
+function candidateFromRecord(tenantId: string, record: NormalizedCostRecord): RecommendationCandidate[] {
   if (record.isEstimate || record.transactionType !== 'usage') {
     return [];
   }
@@ -59,7 +59,7 @@ function candidateFromRecord(record: NormalizedCostRecord): RecommendationCandid
   }
   const deltaUsd = formatDecimal(delta, 8);
   const type = recommendationType(record);
-  const id = stableId(`recommendation:${type}:${record.provider}:${record.resourceId}:${record.validFrom}`);
+  const id = stableId(`recommendation:${tenantId}:${type}:${record.provider}:${record.resourceId}:${record.validFrom}`);
 
   return [
     {

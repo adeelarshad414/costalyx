@@ -5,6 +5,7 @@ export type RecommendationStatus = 'open' | 'applied' | 'dismissed';
 
 export interface Recommendation {
   id: string;
+  tenantId: string;
   type: RecommendationType;
   resourceId: string;
   estimatedSavingsUsd: string;
@@ -14,6 +15,7 @@ export interface Recommendation {
 
 export interface RealizedSaving {
   id: string;
+  tenantId: string;
   recommendationId: string;
   appliedAt: string;
   baselineCostUsd: string;
@@ -23,14 +25,15 @@ export interface RealizedSaving {
 }
 
 export interface RecommendationCandidate {
-  recommendation: Recommendation;
-  realization: Omit<RealizedSaving, 'id' | 'recommendationId' | 'appliedAt'>;
+  recommendation: Omit<Recommendation, 'tenantId'>;
+  realization: Omit<RealizedSaving, 'id' | 'tenantId' | 'recommendationId' | 'appliedAt'>;
 }
 
 export interface RecommendationQuery extends PageQuery {
+  tenantId: string;
   status?: RecommendationStatus;
 }
 
-export type RealizedSavingsQuery = PageQuery;
+export type RealizedSavingsQuery = PageQuery & { tenantId: string };
 export type PaginatedRecommendations = Paginated<Recommendation>;
 export type PaginatedRealizedSavings = Paginated<RealizedSaving>;

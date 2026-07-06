@@ -4,19 +4,19 @@ import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { ProblemDetailsFilter } from '../../src/common/problem-details.filter';
 import type { Role } from '../../src/security/roles';
-import { AUTH_TOKEN_VERIFIER, type AuthenticatedUser, type TokenVerifier } from '../../src/security/token-verifier';
+import { AUTH_TOKEN_VERIFIER, DEFAULT_TENANT_ID, type AuthenticatedUser, type TokenVerifier } from '../../src/security/token-verifier';
 
 async function createApp(): Promise<INestApplication> {
   const roleVerifier: TokenVerifier = {
     verifyBearerToken: jest.fn(async (token: string): Promise<AuthenticatedUser> => {
       if (token.includes('admin')) {
-        return { subject: 'admin-user', role: 'admin' };
+        return { subject: 'admin-user', role: 'admin', tenantId: DEFAULT_TENANT_ID };
       }
       if (token.includes('analyst')) {
-        return { subject: 'analyst-user', role: 'analyst' };
+        return { subject: 'analyst-user', role: 'analyst', tenantId: DEFAULT_TENANT_ID };
       }
       const role: Role = 'viewer';
-      return { subject: 'viewer-user', role };
+      return { subject: 'viewer-user', role, tenantId: DEFAULT_TENANT_ID };
     })
   };
   const moduleRef = await Test.createTestingModule({

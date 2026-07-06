@@ -31,6 +31,6 @@ export class ReportingController {
     @Req() request: AuthenticatedRequest
   ) {
     const scoped = await this.governance.applyViewScope(query, request.user, viewId);
-    return this.reporting.runReport(id, scoped);
+    return this.reporting.runReport(id, { ...scoped, tenantId: request.user.tenantId });
   }
 }

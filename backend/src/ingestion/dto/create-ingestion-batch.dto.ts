@@ -1,4 +1,4 @@
-import { IsEnum, IsString, MinLength } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 import type { CloudProvider } from '../../cost-model/cost-record.types';
 
 export class CreateIngestionBatchDto {
@@ -8,4 +8,8 @@ export class CreateIngestionBatchDto {
   @IsString()
   @MinLength(1)
   sourceUri!: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  cloudConnectionId?: string;
 }

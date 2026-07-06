@@ -39,7 +39,10 @@ describeIfPostgres('Milestone C allocation API with PostgreSQL persistence', () 
       '002_persisted_ingestion_idempotency.sql',
       '003_rbac_trust_tiers.sql',
       '004_governance_idempotency.sql',
-      '005_dynamic_allocation.sql'
+      '005_dynamic_allocation.sql',
+      '006_optimization.sql',
+      '007_reporting_views.sql',
+      '008_multitenant_cloud_portfolio.sql'
     ]) {
       const sql = readFileSync(join(process.cwd(), 'migrations', migration), 'utf8');
       await pool.query(sql);
@@ -49,8 +52,12 @@ describeIfPostgres('Milestone C allocation API with PostgreSQL persistence', () 
   beforeEach(async () => {
     await pool.query(
       `TRUNCATE
+        realized_savings,
+        recommendations,
+        optimization_idempotency,
         allocation_idempotency,
         governance_idempotency,
+        views,
         resource_tags,
         dimension_tag_mappings,
         dimensions,
@@ -60,6 +67,7 @@ describeIfPostgres('Milestone C allocation API with PostgreSQL persistence', () 
         cloud_credentials,
         account_group_members,
         account_groups,
+        cloud_connections,
         cost_records,
         accounts,
         ingestion_batches

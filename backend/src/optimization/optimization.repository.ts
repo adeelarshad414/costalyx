@@ -12,7 +12,7 @@ import type {
 export const OPTIMIZATION_REPOSITORY = Symbol('OPTIMIZATION_REPOSITORY');
 
 export interface OptimizationRepository {
-  syncRecommendations(candidates: RecommendationCandidate[]): Promise<void>;
+  syncRecommendations(tenantId: string, candidates: RecommendationCandidate[]): Promise<void>;
   listRecommendations(query: RecommendationQuery): Promise<PaginatedRecommendations>;
   updateRecommendation(
     id: string,

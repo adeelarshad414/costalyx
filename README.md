@@ -9,6 +9,10 @@ dynamic tagging, and surfaces waste, savings opportunities, and executive
 reporting through one shared interface — built for engineering, finance, and
 leadership alike, without the black-box math or per-percentage-of-spend
 pricing of commercial incumbents.
+The product is tenant-first: a customer can connect multiple AWS, Azure, and
+GCP accounts with read-only roles/federated principals, inspect each
+connection separately, group accounts for ownership views, and roll
+everything up into one portfolio.
 
 ## Status
 🚧 Pre-release. See [`PROGRESS.md`](./PROGRESS.md) for live build status —
@@ -36,6 +40,7 @@ it with linked test evidence.
 | Event bus | Redpanda |
 | Auth | Keycloak (OIDC) |
 | Secrets | Vault / OpenBao |
+| Cloud access | Customer read-only IAM roles / Azure delegated app or workload identity / GCP Workload Identity Federation |
 | Backend | NestJS |
 | Frontend | React + shadcn/ui + Tailwind |
 | Typography | Inter (UI), JetBrains Mono (numeric/telemetry) |
@@ -71,6 +76,7 @@ Full environment matrix and production deployment: see
 | [`07-FRONTEND-BACKEND-WIRING.md`](./07-FRONTEND-BACKEND-WIRING.md) | Full-stack integration contract |
 | [`08-TESTING-STRATEGY.md`](./08-TESTING-STRATEGY.md) | TDD discipline, coverage gates |
 | [`09-DEPLOYMENT.md`](./09-DEPLOYMENT.md) | CI/CD, environments, release process |
+| [`12-MULTITENANT-CLOUD-PORTFOLIO.md`](./12-MULTITENANT-CLOUD-PORTFOLIO.md) | Tenant-first cloud account onboarding and portfolio architecture |
 | [`PROGRESS.md`](./PROGRESS.md) | Live build status (source of truth over this README) |
 
 ## Contributing

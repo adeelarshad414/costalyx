@@ -1,6 +1,7 @@
 import { CostModelService } from '../../src/cost-model/cost-model.service';
 import { InMemoryCostModelRepository } from '../../src/cost-model/in-memory-cost-model.repository';
 import type { NormalizedCostRecord } from '../../src/cost-model/cost-record.types';
+import { DEFAULT_TENANT_ID } from '../../src/security/token-verifier';
 
 const baseRecord = {
   provider: 'aws',
@@ -22,6 +23,7 @@ describe('Cost Explorer flow reconciliation', () => {
   it('reconciles Explorer link totals exactly with Resource Inventory summary totals for the same filters', async () => {
     const service = new CostModelService(new InMemoryCostModelRepository());
     await service.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'explorer-fixture.csv',
       idempotencyKey: 'explorer-fixture',
@@ -50,8 +52,9 @@ describe('Cost Explorer flow reconciliation', () => {
       ] as NormalizedCostRecord[]
     });
 
-    const summary = await service.getSummary({ provider: 'aws' });
+    const summary = await service.getSummary({ tenantId: DEFAULT_TENANT_ID, provider: 'aws' });
     const flow = await service.getExplorerFlow({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       dimensions: ['service', 'leaseType'],
       costFloorUsd: '0.00000000'
@@ -68,6 +71,7 @@ describe('Cost Explorer flow reconciliation', () => {
   it('applies the cost-floor threshold without storing or mutating computed totals', async () => {
     const service = new CostModelService(new InMemoryCostModelRepository());
     await service.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'explorer-floor-fixture.csv',
       idempotencyKey: 'explorer-floor-fixture',
@@ -100,6 +104,7 @@ describe('Cost Explorer flow reconciliation', () => {
     });
 
     const flow = await service.getExplorerFlow({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       dimensions: ['usageFamily', 'leaseType'],
       costFloorUsd: '1.00000000'

@@ -1,7 +1,9 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '../security/token-verifier';
 import type { CreateAccountDto, CreateAccountGroupDto, PatchAccountGroupDto } from './dto/account.dto';
+import type { CreateCloudConnectionDto } from './dto/cloud-connection.dto';
 import type { CreateCloudCredentialDto, RotateCloudCredentialDto } from './dto/cloud-credential.dto';
+import type { CreateTenantDto } from './dto/tenant.dto';
 import type { CreateUserDto } from './dto/user.dto';
 import type { CreateViewDto } from './dto/view.dto';
 import { GOVERNANCE_REPOSITORY, type GovernanceRepository } from './governance.repository';
@@ -10,9 +12,11 @@ import type {
   AccountReference,
   AuditLogEntry,
   CloudCredentialReference,
+  CloudConnection,
   PageQuery,
   Paginated,
   SavedView,
+  TenantRecord,
   ViewFilter,
   UserRecord
 } from './governance.types';
@@ -21,8 +25,32 @@ import type {
 export class GovernanceService {
   constructor(@Inject(GOVERNANCE_REPOSITORY) private readonly repository: GovernanceRepository) {}
 
-  listAccounts(query: PageQuery): Promise<Paginated<Omit<AccountReference, 'vaultCredentialPath'>>> {
-    return this.repository.listAccounts(query);
+  listTenants(actor: AuthenticatedUser): Promise<{ data: TenantRecord[] }> {
+    return this.repository.listTenants(actor);
+  }
+
+  createTenant(input: CreateTenantDto, actor: AuthenticatedUser, idempotencyKey: string): Promise<TenantRecord> {
+    return this.repository.createTenant(input, actor, idempotencyKey);
+  }
+
+  listCloudConnections(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<CloudConnection>> {
+    return this.repository.listCloudConnections(query, actor);
+  }
+
+  createCloudConnection(
+    input: CreateCloudConnectionDto,
+    actor: AuthenticatedUser,
+    idempotencyKey: string
+  ): Promise<CloudConnection> {
+    return this.repository.createCloudConnection(input, actor, idempotencyKey);
+  }
+
+  validateCloudConnection(id: string, actor: AuthenticatedUser, idempotencyKey: string): Promise<CloudConnection> {
+    return this.repository.validateCloudConnection(id, actor, idempotencyKey);
+  }
+
+  listAccounts(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<Omit<AccountReference, 'vaultCredentialPath'>>> {
+    return this.repository.listAccounts(query, actor);
   }
 
   createAccount(
@@ -33,8 +61,8 @@ export class GovernanceService {
     return this.repository.createAccount(input, actor, idempotencyKey);
   }
 
-  listAccountGroups(query: PageQuery): Promise<Paginated<AccountGroup>> {
-    return this.repository.listAccountGroups(query);
+  listAccountGroups(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<AccountGroup>> {
+    return this.repository.listAccountGroups(query, actor);
   }
 
   createAccountGroup(
@@ -58,8 +86,8 @@ export class GovernanceService {
     return this.repository.deleteAccountGroup(id, actor, idempotencyKey);
   }
 
-  listCredentials(query: PageQuery): Promise<Paginated<CloudCredentialReference>> {
-    return this.repository.listCredentials(query);
+  listCredentials(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<CloudCredentialReference>> {
+    return this.repository.listCredentials(query, actor);
   }
 
   createCredential(
@@ -79,8 +107,8 @@ export class GovernanceService {
     return this.repository.rotateCredential(id, input, actor, idempotencyKey);
   }
 
-  listUsers(query: PageQuery): Promise<Paginated<UserRecord>> {
-    return this.repository.listUsers(query);
+  listUsers(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<UserRecord>> {
+    return this.repository.listUsers(query, actor);
   }
 
   createUser(input: CreateUserDto, actor: AuthenticatedUser, idempotencyKey: string): Promise<UserRecord> {
@@ -95,12 +123,12 @@ export class GovernanceService {
     throw new BadRequestException('Milestone B ships fixed roles only; custom roles are an additive later milestone.');
   }
 
-  listAuditLog(query: PageQuery): Promise<Paginated<AuditLogEntry>> {
-    return this.repository.listAuditLog(query);
+  listAuditLog(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<AuditLogEntry>> {
+    return this.repository.listAuditLog(query, actor);
   }
 
   listViews(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<SavedView>> {
-    return this.repository.listViews(query, actor.role);
+    return this.repository.listViews(query, actor);
   }
 
   createView(input: CreateViewDto, actor: AuthenticatedUser, idempotencyKey: string): Promise<SavedView> {
@@ -116,7 +144,7 @@ export class GovernanceService {
   }
 
   getViewForRole(id: string, actor: AuthenticatedUser): Promise<SavedView> {
-    return this.repository.getViewForRole(id, actor.role);
+    return this.repository.getViewForRole(id, actor);
   }
 
   async applyViewScope<T extends object>(query: T, actor: AuthenticatedUser, viewId?: string): Promise<T> {
@@ -130,7 +158,7 @@ export class GovernanceService {
 
 function mergeViewScope<T extends object>(query: T, filter: ViewFilter): T {
   const scoped = { ...query } as Record<string, unknown>;
-  for (const key of ['provider', 'accountId', 'service', 'dimension', 'from', 'to'] as const) {
+  for (const key of ['provider', 'accountId', 'accountGroupId', 'cloudConnectionId', 'service', 'dimension', 'from', 'to'] as const) {
     const value = filter[key];
     if (value) {
       scoped[key] = value;
@@ -144,7 +172,7 @@ function normalizeViewFilter(value: Record<string, unknown>): ViewFilter {
   if (value.provider === 'aws' || value.provider === 'azure' || value.provider === 'gcp') {
     filter.provider = value.provider;
   }
-  for (const key of ['accountId', 'service', 'dimension', 'from', 'to'] as const) {
+  for (const key of ['accountId', 'accountGroupId', 'cloudConnectionId', 'service', 'dimension', 'from', 'to'] as const) {
     if (typeof value[key] === 'string' && value[key]) {
       filter[key] = value[key];
     }

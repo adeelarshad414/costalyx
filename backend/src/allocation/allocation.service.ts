@@ -9,8 +9,8 @@ import type { PageQuery } from '../governance/governance.types';
 export class AllocationService {
   constructor(@Inject(ALLOCATION_REPOSITORY) private readonly repository: AllocationRepository) {}
 
-  listDimensions(query: PageQuery) {
-    return this.repository.listDimensions(query);
+  listDimensions(query: PageQuery, actor: AuthenticatedUser) {
+    return this.repository.listDimensions(query, actor);
   }
 
   createDimension(input: CreateDimensionDto, actor: AuthenticatedUser, idempotencyKey: string) {
@@ -26,8 +26,8 @@ export class AllocationService {
     return this.repository.createDimensionMapping(dimensionId, input, actor, idempotencyKey);
   }
 
-  listResourceTags(query: ListResourceTagsQueryDto) {
-    return this.repository.listResourceTags(query);
+  listResourceTags(query: ListResourceTagsQueryDto, actor: AuthenticatedUser) {
+    return this.repository.listResourceTags(query, actor);
   }
 
   upsertResourceTag(input: UpsertResourceTagDto, actor: AuthenticatedUser, idempotencyKey: string) {

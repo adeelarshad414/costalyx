@@ -2,6 +2,7 @@ import { CostModelService } from '../../src/cost-model/cost-model.service';
 import { InMemoryCostModelRepository } from '../../src/cost-model/in-memory-cost-model.repository';
 import type { NormalizedCostRecord } from '../../src/cost-model/cost-record.types';
 import { ExecutiveService } from '../../src/executive/executive.service';
+import { DEFAULT_TENANT_ID } from '../../src/security/token-verifier';
 
 function record(overrides: Partial<NormalizedCostRecord> = {}): NormalizedCostRecord {
   return {
@@ -32,6 +33,7 @@ describe('ExecutiveService', () => {
   async function createService() {
     const costModel = new CostModelService(new InMemoryCostModelRepository());
     await costModel.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'executive-fixture.csv',
       idempotencyKey: 'executive-fixture',
@@ -56,7 +58,10 @@ describe('ExecutiveService', () => {
     const service = await createService();
 
     await expect(
-      service.getExecutiveSummary({ revenueBaselineUsd: '1000.00000000', budgetBaselineUsd: '100.00000000' })
+      service.getExecutiveSummary(DEFAULT_TENANT_ID, {
+        revenueBaselineUsd: '1000.00000000',
+        budgetBaselineUsd: '100.00000000'
+      })
     ).resolves.toMatchObject({
       totalSpendUsd: '49.74000000',
       spendAsRevenuePercent: '4.9740',
@@ -78,6 +83,7 @@ describe('ExecutiveService', () => {
           }
         }
       },
+      DEFAULT_TENANT_ID,
       'tco-estimate-key'
     );
 

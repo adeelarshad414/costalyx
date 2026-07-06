@@ -7,7 +7,7 @@ export const AUDIT_LOG_STORE = Symbol('AUDIT_LOG_STORE');
 
 export interface AuditLogStore {
   append(actor: AuthenticatedUser, action: string, targetType: string, targetId: string): Promise<void>;
-  list(query: PageQuery): Promise<Paginated<AuditLogEntry>>;
+  list(query: PageQuery, tenantId?: string): Promise<Paginated<AuditLogEntry>>;
 }
 
 export class InMemoryAuditLogStore implements AuditLogStore {
@@ -17,6 +17,7 @@ export class InMemoryAuditLogStore implements AuditLogStore {
     const prevHash = this.entries[this.entries.length - 1]?.hash ?? null;
     const entryWithoutHash = {
       id: randomUUID(),
+      tenantId: actor.tenantId,
       actorId: stableId(`actor:${actor.subject}`),
       action,
       targetType,
@@ -28,9 +29,9 @@ export class InMemoryAuditLogStore implements AuditLogStore {
     this.entries.push({ ...entryWithoutHash, hash });
   }
 
-  async list(query: PageQuery): Promise<Paginated<AuditLogEntry>> {
+  async list(query: PageQuery, tenantId?: string): Promise<Paginated<AuditLogEntry>> {
     const start = (query.page - 1) * query.pageSize;
-    const items = [...this.entries].reverse();
+    const items = [...this.entries].filter((entry) => !tenantId || entry.tenantId === tenantId).reverse();
     return {
       data: items.slice(start, start + query.pageSize),
       meta: { total: items.length, page: query.page, pageSize: query.pageSize }

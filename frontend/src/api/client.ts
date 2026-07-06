@@ -6,6 +6,17 @@ type IngestionBatchCreateRequest =
   paths['/ingestion/batches']['post']['requestBody']['content']['application/json'];
 type IngestionBatchResponse =
   paths['/ingestion/batches']['post']['responses']['202']['content']['application/json'];
+type TenantsResponse = paths['/tenants']['get']['responses']['200']['content']['application/json'];
+type TenantCreateRequest = paths['/tenants']['post']['requestBody']['content']['application/json'];
+type TenantResponse = paths['/tenants']['post']['responses']['201']['content']['application/json'];
+type CloudConnectionsResponse =
+  paths['/cloud-connections']['get']['responses']['200']['content']['application/json'];
+type CloudConnectionCreateRequest =
+  paths['/cloud-connections']['post']['requestBody']['content']['application/json'];
+type CloudConnectionResponse =
+  paths['/cloud-connections']['post']['responses']['201']['content']['application/json'];
+type AccountsResponse = paths['/accounts']['get']['responses']['200']['content']['application/json'];
+type AccountGroupsResponse = paths['/account-groups']['get']['responses']['200']['content']['application/json'];
 type RolesResponse = paths['/roles']['get']['responses']['200']['content']['application/json'];
 type CostSummaryResponse =
   paths['/cost-records/summary']['get']['responses']['200']['content']['application/json'];
@@ -46,6 +57,8 @@ type RecommendationStatus = NonNullable<
 interface CostRecordQuery {
   provider?: CloudProvider;
   accountId?: string;
+  accountGroupId?: string;
+  cloudConnectionId?: string;
   service?: string;
   from?: string;
   to?: string;
@@ -57,6 +70,9 @@ interface CostRecordQuery {
 
 interface CostExplorerFlowQuery {
   provider?: CloudProvider;
+  accountId?: string;
+  accountGroupId?: string;
+  cloudConnectionId?: string;
   from?: string;
   to?: string;
   dimensions?: string[];
@@ -84,6 +100,10 @@ interface ReportsQuery {
 interface ReportRunQuery {
   id: string;
   activeViewId?: string;
+  provider?: CloudProvider;
+  accountId?: string;
+  accountGroupId?: string;
+  cloudConnectionId?: string;
   from?: string;
   to?: string;
 }
@@ -94,6 +114,15 @@ export interface CostalyxClient {
   getCostExplorerFlow(query?: CostExplorerFlowQuery): Promise<CostExplorerFlowResponse>;
   createIngestionBatch(input: IngestionBatchCreateRequest & { idempotencyKey: string }): Promise<IngestionBatchResponse>;
   exportCostRecords(input?: { activeViewId?: string }): Promise<string>;
+  listTenants?(): Promise<TenantsResponse>;
+  createTenant?(input: TenantCreateRequest & { idempotencyKey: string }): Promise<TenantResponse>;
+  listCloudConnections?(query?: { page?: number; pageSize?: number }): Promise<CloudConnectionsResponse>;
+  createCloudConnection?(
+    input: CloudConnectionCreateRequest & { idempotencyKey: string }
+  ): Promise<CloudConnectionResponse>;
+  validateCloudConnection?(input: { id: string; idempotencyKey: string }): Promise<CloudConnectionResponse>;
+  listAccounts?(query?: { page?: number; pageSize?: number }): Promise<AccountsResponse>;
+  listAccountGroups?(query?: { page?: number; pageSize?: number }): Promise<AccountGroupsResponse>;
   listRoles(): Promise<RolesResponse>;
   listDimensions(): Promise<DimensionsResponse>;
   createDimension(input: DimensionCreateRequest & { idempotencyKey: string }): Promise<DimensionResponse>;
@@ -163,6 +192,9 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
     async getCostExplorerFlow(query) {
       const params = new URLSearchParams();
       appendParam(params, 'provider', query?.provider);
+      appendParam(params, 'accountId', query?.accountId);
+      appendParam(params, 'accountGroupId', query?.accountGroupId);
+      appendParam(params, 'cloudConnectionId', query?.cloudConnectionId);
       appendParam(params, 'from', query?.from);
       appendParam(params, 'to', query?.to);
       if (query?.dimensions?.length) {
@@ -194,6 +226,116 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
         throw new Error(`Cost records export failed with ${response.status}`);
       }
       return response.text();
+    },
+
+    async listTenants() {
+      const response = await fetch(`${baseUrl}/tenants`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Tenants request failed with ${response.status}`);
+      }
+      return response.json() as Promise<TenantsResponse>;
+    },
+
+    async createTenant({ idempotencyKey, ...body }) {
+      const response = await fetch(`${baseUrl}/tenants`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+          ...(await authHeaders())
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error(`Tenant create request failed with ${response.status}`);
+      }
+      return response.json() as Promise<TenantResponse>;
+    },
+
+    async listCloudConnections(query) {
+      const params = new URLSearchParams();
+      appendParam(params, 'page', query?.page);
+      appendParam(params, 'pageSize', query?.pageSize);
+      const response = await fetch(`${baseUrl}/cloud-connections${queryString(params)}`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Cloud connections request failed with ${response.status}`);
+      }
+      return response.json() as Promise<CloudConnectionsResponse>;
+    },
+
+    async createCloudConnection({ idempotencyKey, ...body }) {
+      const response = await fetch(`${baseUrl}/cloud-connections`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+          ...(await authHeaders())
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error(`Cloud connection create request failed with ${response.status}`);
+      }
+      return response.json() as Promise<CloudConnectionResponse>;
+    },
+
+    async validateCloudConnection({ id, idempotencyKey }) {
+      const response = await fetch(`${baseUrl}/cloud-connections/${id}/validation`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Idempotency-Key': idempotencyKey,
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Cloud connection validation request failed with ${response.status}`);
+      }
+      return response.json() as Promise<CloudConnectionResponse>;
+    },
+
+    async listAccounts(query) {
+      const params = new URLSearchParams();
+      appendParam(params, 'page', query?.page);
+      appendParam(params, 'pageSize', query?.pageSize);
+      const response = await fetch(`${baseUrl}/accounts${queryString(params)}`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Accounts request failed with ${response.status}`);
+      }
+      return response.json() as Promise<AccountsResponse>;
+    },
+
+    async listAccountGroups(query) {
+      const params = new URLSearchParams();
+      appendParam(params, 'page', query?.page);
+      appendParam(params, 'pageSize', query?.pageSize);
+      const response = await fetch(`${baseUrl}/account-groups${queryString(params)}`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Account groups request failed with ${response.status}`);
+      }
+      return response.json() as Promise<AccountGroupsResponse>;
     },
 
     async createIngestionBatch({ idempotencyKey, ...body }) {
@@ -417,8 +559,12 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
       return response.json() as Promise<ReportsResponse>;
     },
 
-    async runReport({ id, activeViewId, from, to }) {
+    async runReport({ id, activeViewId, provider, accountId, accountGroupId, cloudConnectionId, from, to }) {
       const params = new URLSearchParams();
+      appendParam(params, 'provider', provider);
+      appendParam(params, 'accountId', accountId);
+      appendParam(params, 'accountGroupId', accountGroupId);
+      appendParam(params, 'cloudConnectionId', cloudConnectionId);
       appendParam(params, 'from', from);
       appendParam(params, 'to', to);
       const response = await fetch(`${baseUrl}/reports/${id}/run${queryString(params)}`, {
@@ -480,6 +626,8 @@ function costRecordParams(query?: CostRecordQuery): URLSearchParams {
   const params = new URLSearchParams();
   appendParam(params, 'provider', query?.provider);
   appendParam(params, 'accountId', query?.accountId);
+  appendParam(params, 'accountGroupId', query?.accountGroupId);
+  appendParam(params, 'cloudConnectionId', query?.cloudConnectionId);
   appendParam(params, 'service', query?.service);
   appendParam(params, 'from', query?.from);
   appendParam(params, 'to', query?.to);

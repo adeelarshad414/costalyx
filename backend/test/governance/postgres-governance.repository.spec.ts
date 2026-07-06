@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { PostgresGovernanceRepository } from '../../src/governance/postgres-governance.repository';
-import type { AuthenticatedUser } from '../../src/security/token-verifier';
+import { DEFAULT_TENANT_ID, type AuthenticatedUser } from '../../src/security/token-verifier';
 
 type QueryResult = { rows: unknown[]; rowCount?: number };
 
@@ -31,9 +31,10 @@ class FakePool {
   query = jest.fn(async (sql: string, params: unknown[] = []) => this.client.query(sql, params));
 }
 
-const actor: AuthenticatedUser = { subject: 'admin-user', role: 'admin' };
+const actor: AuthenticatedUser = { subject: 'admin-user', role: 'admin', tenantId: DEFAULT_TENANT_ID };
 const credentialRow = {
   id: '11111111-1111-4111-8111-111111111111',
+  tenant_id: DEFAULT_TENANT_ID,
   provider: 'aws',
   account_id: '22222222-2222-4222-8222-222222222222',
   display_name: 'AWS production billing',

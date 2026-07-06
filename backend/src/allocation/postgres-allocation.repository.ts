@@ -12,7 +12,7 @@ import type { ListResourceTagsQueryDto, UpsertResourceTagDto } from './dto/resou
 type PgPool = Pick<Pool, 'connect' | 'query'> & Partial<Pick<Pool, 'end'>>;
 type PgRow = Record<string, unknown>;
 
-const defaultOrgId = stableId('org:default');
+const defaultTenantId = '00000000-0000-4000-8000-000000000001';
 
 @Injectable()
 export class PostgresAllocationRepository implements AllocationRepository, OnModuleDestroy {
@@ -35,16 +35,19 @@ export class PostgresAllocationRepository implements AllocationRepository, OnMod
     }
   }
 
-  async listDimensions(query: PageQuery): Promise<Paginated<Dimension>> {
+  async listDimensions(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<Dimension>> {
     const offset = (query.page - 1) * query.pageSize;
     const result = await this.pool.query(
       `SELECT id, org_id, name, created_by, created_at
        FROM dimensions
+       WHERE org_id = $1
        ORDER BY created_at ASC, id ASC
-       LIMIT $1 OFFSET $2`,
-      [query.pageSize, offset]
+       LIMIT $2 OFFSET $3`,
+      [actor.tenantId, query.pageSize, offset]
     );
-    const total = await this.pool.query('SELECT COUNT(id)::int AS total FROM dimensions');
+    const total = await this.pool.query('SELECT COUNT(id)::int AS total FROM dimensions WHERE org_id = $1', [
+      actor.tenantId
+    ]);
     return {
       data: result.rows.map((row) => mapDimension(row as PgRow)),
       meta: { total: Number((total.rows[0] as PgRow | undefined)?.total ?? 0), page: query.page, pageSize: query.pageSize }
@@ -57,13 +60,13 @@ export class PostgresAllocationRepository implements AllocationRepository, OnMod
     idempotencyKey: string
   ): Promise<Dimension> {
     return this.withTransaction((client) =>
-      this.withIdempotency(client, idempotencyKey, async () => {
+      this.withIdempotency(client, actor.tenantId, idempotencyKey, async () => {
         const actorId = stableId(`actor:${actor.subject}`);
         const saved = await client.query(
           `INSERT INTO dimensions (id, org_id, name, created_by, created_at)
            VALUES ($1, $2, $3, $4, $5)
            RETURNING id, org_id, name, created_by, created_at`,
-          [randomUUID(), defaultOrgId, input.name, actorId, new Date().toISOString()]
+          [randomUUID(), actor.tenantId, input.name, actorId, new Date().toISOString()]
         );
         const dimension = mapDimension(saved.rows[0] as PgRow);
         await this.appendAudit(client, actor, 'dimension_created', 'dimension', dimension.id);
@@ -79,8 +82,11 @@ export class PostgresAllocationRepository implements AllocationRepository, OnMod
     idempotencyKey: string
   ): Promise<DimensionMapping> {
     return this.withTransaction((client) =>
-      this.withIdempotency(client, idempotencyKey, async () => {
-        const existingDimension = await client.query('SELECT id FROM dimensions WHERE id = $1', [dimensionId]);
+      this.withIdempotency(client, actor.tenantId, idempotencyKey, async () => {
+        const existingDimension = await client.query('SELECT id FROM dimensions WHERE id = $1 AND org_id = $2', [
+          dimensionId,
+          actor.tenantId
+        ]);
         if (!existingDimension.rows[0]) {
           throw new NotFoundException(`Dimension ${dimensionId} was not found.`);
         }
@@ -97,21 +103,22 @@ export class PostgresAllocationRepository implements AllocationRepository, OnMod
     );
   }
 
-  async listResourceTags(query: ListResourceTagsQueryDto): Promise<Paginated<ResourceTag>> {
+  async listResourceTags(query: ListResourceTagsQueryDto, actor: AuthenticatedUser): Promise<Paginated<ResourceTag>> {
     const offset = (query.page - 1) * query.pageSize;
+    const resourceIds = resourceTagStorageCandidates(actor.tenantId, query.resourceId);
     const result = await this.pool.query(
       `SELECT resource_id, tag_key, tag_value, source
        FROM resource_tags
-       WHERE resource_id = $1
+       WHERE resource_id = ANY($1::text[])
        ORDER BY tag_key ASC
        LIMIT $2 OFFSET $3`,
-      [query.resourceId, query.pageSize, offset]
+      [resourceIds, query.pageSize, offset]
     );
-    const total = await this.pool.query('SELECT COUNT(*)::int AS total FROM resource_tags WHERE resource_id = $1', [
-      query.resourceId
+    const total = await this.pool.query('SELECT COUNT(*)::int AS total FROM resource_tags WHERE resource_id = ANY($1::text[])', [
+      resourceIds
     ]);
     return {
-      data: result.rows.map((row) => mapResourceTag(row as PgRow)),
+      data: result.rows.map((row) => mapResourceTag(row as PgRow, actor.tenantId)),
       meta: { total: Number((total.rows[0] as PgRow | undefined)?.total ?? 0), page: query.page, pageSize: query.pageSize }
     };
   }
@@ -122,26 +129,28 @@ export class PostgresAllocationRepository implements AllocationRepository, OnMod
     idempotencyKey: string
   ): Promise<ResourceTag> {
     return this.withTransaction((client) =>
-      this.withIdempotency(client, idempotencyKey, async () => {
+      this.withIdempotency(client, actor.tenantId, idempotencyKey, async () => {
+        const scopedResourceId = resourceTagStorageKey(actor.tenantId, input.resourceId);
         const saved = await client.query(
           `INSERT INTO resource_tags (resource_id, tag_key, tag_value, source, updated_at)
            VALUES ($1, $2, $3, $4, $5)
            ON CONFLICT (resource_id, tag_key)
            DO UPDATE SET tag_value = EXCLUDED.tag_value, source = EXCLUDED.source, updated_at = EXCLUDED.updated_at
            RETURNING resource_id, tag_key, tag_value, source`,
-          [input.resourceId, input.tagKey, input.tagValue, input.source, new Date().toISOString()]
+          [scopedResourceId, input.tagKey, input.tagValue, input.source, new Date().toISOString()]
         );
-        const tag = mapResourceTag(saved.rows[0] as PgRow);
+        const tag = mapResourceTag(saved.rows[0] as PgRow, actor.tenantId);
         await this.appendAudit(client, actor, 'resource_tag_upserted', 'resource_tag', `${tag.resourceId}:${tag.tagKey}`);
         return tag;
       })
     );
   }
 
-  async summarizeDimensionMatches(dimensionId: string, resourceIds: string[]): Promise<DimensionMatchSummary> {
+  async summarizeDimensionMatches(dimensionId: string, tenantId: string, resourceIds: string[]): Promise<DimensionMatchSummary> {
     if (resourceIds.length === 0) {
       return { matchingResourceIds: new Set(), taggedResourceIds: new Set() };
     }
+    const resourceIdCandidates = resourceIds.flatMap((resourceId) => resourceTagStorageCandidates(tenantId, resourceId));
     const result = await this.pool.query(
       `SELECT
          rt.resource_id,
@@ -151,15 +160,22 @@ export class PostgresAllocationRepository implements AllocationRepository, OnMod
          ON dtm.dimension_id = $1
         AND dtm.tag_key = rt.tag_key
         AND (dtm.tag_value_pattern IS NULL OR dtm.tag_value_pattern = rt.tag_value)
+       JOIN dimensions d
+         ON d.id = $1
+        AND d.org_id = $3
        WHERE rt.resource_id = ANY($2::text[])
        GROUP BY rt.resource_id`,
-      [dimensionId, resourceIds]
+      [dimensionId, resourceIdCandidates, tenantId]
     );
     return {
       matchingResourceIds: new Set(
-        result.rows.filter((row) => Boolean((row as PgRow).matches_dimension)).map((row) => String((row as PgRow).resource_id))
+        result.rows
+          .filter((row) => Boolean((row as PgRow).matches_dimension))
+          .map((row) => decodeResourceTagStorageKey(tenantId, String((row as PgRow).resource_id)))
       ),
-      taggedResourceIds: new Set(result.rows.map((row) => String((row as PgRow).resource_id)))
+      taggedResourceIds: new Set(
+        result.rows.map((row) => decodeResourceTagStorageKey(tenantId, String((row as PgRow).resource_id)))
+      )
     };
   }
 
@@ -180,12 +196,15 @@ export class PostgresAllocationRepository implements AllocationRepository, OnMod
 
   private async withIdempotency<T>(
     client: PoolClient,
+    tenantId: string,
     idempotencyKey: string,
     create: () => Promise<T>
   ): Promise<T> {
-    const existing = await client.query('SELECT response_json FROM allocation_idempotency WHERE idempotency_key = $1', [
-      idempotencyKey
-    ]);
+    const scopedIdempotencyKey = tenantScopedStorageValue(tenantId, idempotencyKey);
+    const existing = await client.query(
+      'SELECT response_json FROM allocation_idempotency WHERE idempotency_key = ANY($1::text[])',
+      [tenantStorageCandidates(tenantId, idempotencyKey)]
+    );
     if (existing.rows[0]) {
       return (existing.rows[0] as PgRow).response_json as T;
     }
@@ -193,7 +212,7 @@ export class PostgresAllocationRepository implements AllocationRepository, OnMod
     await client.query(
       `INSERT INTO allocation_idempotency (idempotency_key, response_json, created_at)
        VALUES ($1, $2, $3)`,
-      [idempotencyKey, JSON.stringify(response), new Date().toISOString()]
+      [scopedIdempotencyKey, JSON.stringify(response), new Date().toISOString()]
     );
     return response;
   }
@@ -205,9 +224,13 @@ export class PostgresAllocationRepository implements AllocationRepository, OnMod
     targetType: string,
     targetId: string
   ): Promise<void> {
-    const previous = await client.query('SELECT hash FROM audit_log ORDER BY created_at DESC, id DESC LIMIT 1');
+    const previous = await client.query(
+      'SELECT hash FROM audit_log WHERE tenant_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1',
+      [actor.tenantId]
+    );
     const entryWithoutHash = {
       id: randomUUID(),
+      tenantId: actor.tenantId,
       actorId: stableId(`actor:${actor.subject}`),
       action,
       targetType,
@@ -217,10 +240,11 @@ export class PostgresAllocationRepository implements AllocationRepository, OnMod
     };
     const hash = createHash('sha256').update(canonicalJson(entryWithoutHash)).digest('hex');
     await client.query(
-      `INSERT INTO audit_log (id, actor_id, action, target_type, target_id, prev_hash, hash, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      `INSERT INTO audit_log (id, tenant_id, actor_id, action, target_type, target_id, prev_hash, hash, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         entryWithoutHash.id,
+        actor.tenantId,
         entryWithoutHash.actorId,
         action,
         targetType,
@@ -252,9 +276,9 @@ function mapDimensionMapping(row: PgRow): DimensionMapping {
   };
 }
 
-function mapResourceTag(row: PgRow): ResourceTag {
+function mapResourceTag(row: PgRow, tenantId: string): ResourceTag {
   return {
-    resourceId: String(row.resource_id),
+    resourceId: decodeResourceTagStorageKey(tenantId, String(row.resource_id)),
     tagKey: String(row.tag_key),
     tagValue: String(row.tag_value),
     source: row.source as ResourceTagSource
@@ -267,4 +291,27 @@ function toIso(value: unknown): string {
 
 function canonicalJson(value: unknown): string {
   return JSON.stringify(value, Object.keys(value as Record<string, unknown>).sort());
+}
+
+function resourceTagStorageKey(tenantId: string, resourceId: string): string {
+  return `${tenantId}:${resourceId}`;
+}
+
+function decodeResourceTagStorageKey(tenantId: string, resourceId: string): string {
+  const prefix = `${tenantId}:`;
+  return resourceId.startsWith(prefix) ? resourceId.slice(prefix.length) : resourceId;
+}
+
+function resourceTagStorageCandidates(tenantId: string, resourceId: string): string[] {
+  const scoped = resourceTagStorageKey(tenantId, resourceId);
+  return tenantId === defaultTenantId ? [scoped, resourceId] : [scoped];
+}
+
+function tenantScopedStorageValue(tenantId: string, value: string): string {
+  return `${tenantId}:${value}`;
+}
+
+function tenantStorageCandidates(tenantId: string, value: string): string[] {
+  const scoped = tenantScopedStorageValue(tenantId, value);
+  return tenantId === defaultTenantId ? [scoped, value] : [scoped];
 }

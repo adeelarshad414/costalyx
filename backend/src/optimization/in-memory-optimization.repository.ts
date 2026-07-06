@@ -15,29 +15,31 @@ import type {
 @Injectable()
 export class InMemoryOptimizationRepository implements OptimizationRepository {
   private readonly recommendations = new Map<string, Recommendation>();
-  private readonly realizations = new Map<string, Omit<RealizedSaving, 'id' | 'recommendationId' | 'appliedAt'>>();
+  private readonly realizations = new Map<string, Omit<RealizedSaving, 'id' | 'tenantId' | 'recommendationId' | 'appliedAt'>>();
   private readonly savings = new Map<string, RealizedSaving>();
   private readonly idempotentResponses = new Map<string, Recommendation>();
 
   constructor(private readonly auditLog: AuditLogStore = new InMemoryAuditLogStore()) {}
 
-  async syncRecommendations(candidates: RecommendationCandidate[]): Promise<void> {
+  async syncRecommendations(tenantId: string, candidates: RecommendationCandidate[]): Promise<void> {
     candidates.forEach((candidate) => {
-      const existing = this.recommendations.get(candidate.recommendation.id);
+      const scopedRecommendation = { ...candidate.recommendation, tenantId };
+      const existing = this.recommendations.get(scopedRecommendation.id);
       if (!existing) {
-        this.recommendations.set(candidate.recommendation.id, candidate.recommendation);
+        this.recommendations.set(scopedRecommendation.id, scopedRecommendation);
       } else if (existing.status === 'open') {
-        this.recommendations.set(candidate.recommendation.id, {
-          ...candidate.recommendation,
+        this.recommendations.set(scopedRecommendation.id, {
+          ...scopedRecommendation,
           status: existing.status
         });
       }
-      this.realizations.set(candidate.recommendation.id, candidate.realization);
+      this.realizations.set(scopedRecommendation.id, candidate.realization);
     });
   }
 
   async listRecommendations(query: RecommendationQuery) {
     const items = [...this.recommendations.values()]
+      .filter((recommendation) => recommendation.tenantId === query.tenantId)
       .filter((recommendation) => !query.status || recommendation.status === query.status)
       .sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id));
     return paginate(items, query);
@@ -49,12 +51,13 @@ export class InMemoryOptimizationRepository implements OptimizationRepository {
     actor: AuthenticatedUser,
     idempotencyKey: string
   ): Promise<Recommendation> {
-    const existingReplay = this.idempotentResponses.get(idempotencyKey);
+    const scopedKey = `${actor.tenantId}:${idempotencyKey}`;
+    const existingReplay = this.idempotentResponses.get(scopedKey);
     if (existingReplay) {
       return existingReplay;
     }
     const recommendation = this.recommendations.get(id);
-    if (!recommendation) {
+    if (!recommendation || recommendation.tenantId !== actor.tenantId) {
       throw new NotFoundException(`Recommendation ${id} was not found.`);
     }
     const updated = { ...recommendation, status: input.status };
@@ -62,14 +65,14 @@ export class InMemoryOptimizationRepository implements OptimizationRepository {
     if (input.status === 'applied') {
       await this.createRealizedSaving(id, actor);
     }
-    this.idempotentResponses.set(idempotencyKey, updated);
+    this.idempotentResponses.set(scopedKey, updated);
     return updated;
   }
 
   async listRealizedSavings(query: RealizedSavingsQuery) {
-    const items = [...this.savings.values()].sort(
-      (left, right) => right.appliedAt.localeCompare(left.appliedAt) || left.id.localeCompare(right.id)
-    );
+    const items = [...this.savings.values()]
+      .filter((saving) => saving.tenantId === query.tenantId)
+      .sort((left, right) => right.appliedAt.localeCompare(left.appliedAt) || left.id.localeCompare(right.id));
     return paginate(items, query);
   }
 
@@ -83,6 +86,7 @@ export class InMemoryOptimizationRepository implements OptimizationRepository {
     }
     const saving: RealizedSaving = {
       id: randomUUID(),
+      tenantId: actor.tenantId,
       recommendationId: id,
       appliedAt: new Date().toISOString(),
       ...realization

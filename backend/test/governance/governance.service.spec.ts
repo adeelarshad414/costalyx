@@ -1,9 +1,11 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { GovernanceService } from '../../src/governance/governance.service';
 import { InMemoryGovernanceRepository } from '../../src/governance/in-memory-governance.repository';
-import type { AuthenticatedUser } from '../../src/security/token-verifier';
+import { DEFAULT_TENANT_ID, type AuthenticatedUser } from '../../src/security/token-verifier';
 
-const actor: AuthenticatedUser = { subject: 'admin-user', role: 'admin' };
+const actor: AuthenticatedUser = { subject: 'admin-user', role: 'admin', tenantId: DEFAULT_TENANT_ID };
+const viewerActor: AuthenticatedUser = { subject: 'viewer-user', role: 'viewer', tenantId: DEFAULT_TENANT_ID };
+const analystActor: AuthenticatedUser = { subject: 'analyst-user', role: 'analyst', tenantId: DEFAULT_TENANT_ID };
 const accountId = '11111111-1111-4111-8111-111111111111';
 
 describe('GovernanceService', () => {
@@ -26,7 +28,9 @@ describe('GovernanceService', () => {
     );
 
     expect(account.vaultCredentialPath).toBe('kv/costalyx/aws/prod');
-    expect((await service.listAccounts({ page: 1, pageSize: 25 })).data[0]).not.toHaveProperty('vaultCredentialPath');
+    expect((await service.listAccounts({ page: 1, pageSize: 25 }, actor)).data[0]).not.toHaveProperty(
+      'vaultCredentialPath'
+    );
   });
 
   it('creates, updates, deletes, and idempotently replays account groups', async () => {
@@ -43,7 +47,7 @@ describe('GovernanceService', () => {
     expect(updated).toMatchObject({ name: 'Platform owners', accountIds: [accountId] });
 
     await service.deleteAccountGroup(created.id, actor, 'group-delete-key');
-    expect((await service.listAccountGroups({ page: 1, pageSize: 25 })).data).toEqual([]);
+    expect((await service.listAccountGroups({ page: 1, pageSize: 25 }, actor)).data).toEqual([]);
     await expect(service.updateAccountGroup(created.id, { name: 'Missing' }, actor, 'group-missing-key')).rejects.toThrow(
       NotFoundException
     );
@@ -92,7 +96,7 @@ describe('GovernanceService', () => {
       ]
     });
     expect(() => service.rejectCustomRoleCreation()).toThrow(BadRequestException);
-    expect((await service.listAuditLog({ page: 1, pageSize: 25 })).data.map((entry) => entry.action)).toContain(
+    expect((await service.listAuditLog({ page: 1, pageSize: 25 }, actor)).data.map((entry) => entry.action)).toContain(
       'role_change'
     );
   });
@@ -114,7 +118,7 @@ describe('GovernanceService', () => {
       'audit-credential-key'
     );
 
-    const audit = await service.listAuditLog({ page: 1, pageSize: 1 });
+    const audit = await service.listAuditLog({ page: 1, pageSize: 1 }, actor);
     expect(audit.meta).toEqual({ total: 2, page: 1, pageSize: 1 });
     expect(audit.data[0]).toEqual(
       expect.objectContaining({
@@ -136,14 +140,12 @@ describe('GovernanceService', () => {
       'view-create-key'
     );
 
-    expect((await service.listViews({ page: 1, pageSize: 25 }, { subject: 'viewer-user', role: 'viewer' })).data[0]).toEqual(
+    expect((await service.listViews({ page: 1, pageSize: 25 }, viewerActor)).data[0]).toEqual(
       expect.objectContaining({ id: view.id, filterJson: { provider: 'aws' } })
     );
     await expect(
-      service.applyViewScope({ provider: 'azure' as const, page: 1, pageSize: 25 }, { subject: 'viewer-user', role: 'viewer' }, view.id)
+      service.applyViewScope({ provider: 'azure' as const, page: 1, pageSize: 25 }, viewerActor, view.id)
     ).resolves.toMatchObject({ provider: 'aws', page: 1, pageSize: 25 });
-    await expect(service.getViewForRole(view.id, { subject: 'analyst-user', role: 'analyst' })).rejects.toThrow(
-      ForbiddenException
-    );
+    await expect(service.getViewForRole(view.id, analystActor)).rejects.toThrow(ForbiddenException);
   });
 });

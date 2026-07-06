@@ -135,6 +135,74 @@ td {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.portfolio-toolbar {
+  justify-content: space-between;
+}
+
+.portfolio-toolbar h2,
+.connection-form-header h2 {
+  margin: 0;
+}
+
+.portfolio-grid {
+  align-items: start;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+}
+
+.portfolio-metrics {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin-bottom: 16px;
+}
+
+.field-row {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.field-row input,
+.field-row select {
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font: inherit;
+  min-width: 0;
+  padding: 0.65rem 0.7rem;
+}
+
+.connection-list {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+}
+
+.connection-list li,
+.connection-form-header {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.connection-list li {
+  border-bottom: 1px solid var(--border-subtle);
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.status-success {
+  color: var(--status-success);
+}
+
+.status-warning {
+  color: var(--status-warning);
+}
+
 .allocation-grid {
   display: grid;
   gap: 20px;

@@ -48,7 +48,14 @@ export function buildCostExplorerFlow(input: {
 }
 
 function normalizeDimensions(dimensions: CostExplorerDimension[] = defaultDimensions): CostExplorerDimension[] {
-  const allowed = new Set<CostExplorerDimension>(['provider', 'service', 'leaseType', 'transactionType', 'usageFamily']);
+  const allowed = new Set<CostExplorerDimension>([
+    'provider',
+    'account',
+    'service',
+    'leaseType',
+    'transactionType',
+    'usageFamily'
+  ]);
   const deduped = dimensions.filter((dimension, index) => allowed.has(dimension) && dimensions.indexOf(dimension) === index);
   return deduped.length > 0 ? deduped.slice(0, 2) : defaultDimensions;
 }
@@ -56,6 +63,7 @@ function normalizeDimensions(dimensions: CostExplorerDimension[] = defaultDimens
 function dimensionValue(record: NormalizedCostRecord, dimension: CostExplorerDimension) {
   const labelByDimension: Record<CostExplorerDimension, string> = {
     provider: record.provider,
+    account: record.accountExternalId,
     service: record.serviceName,
     leaseType: record.leaseType,
     transactionType: record.transactionType,

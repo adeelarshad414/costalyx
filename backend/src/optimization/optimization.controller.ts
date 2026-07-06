@@ -15,8 +15,8 @@ export class OptimizationController {
 
   @Get('recommendations')
   @RequiredRole('viewer')
-  listRecommendations(@Query() query: ListRecommendationsQueryDto) {
-    return this.optimization.listRecommendations(query);
+  listRecommendations(@Query() query: ListRecommendationsQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.optimization.listRecommendations({ ...query, tenantId: request.user.tenantId });
   }
 
   @Patch('recommendations/:id')
@@ -32,8 +32,8 @@ export class OptimizationController {
 
   @Get('realized-savings')
   @RequiredRole('viewer')
-  listRealizedSavings(@Query() query: PageQueryDto) {
-    return this.optimization.listRealizedSavings(query);
+  listRealizedSavings(@Query() query: PageQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.optimization.listRealizedSavings({ ...query, tenantId: request.user.tenantId });
   }
 }
 

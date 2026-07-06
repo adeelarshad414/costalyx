@@ -16,8 +16,10 @@ import {
 import { RequiredRole } from '../security/roles.decorator';
 import type { AuthenticatedUser } from '../security/token-verifier';
 import { CreateAccountDto, CreateAccountGroupDto, PatchAccountGroupDto } from './dto/account.dto';
+import { CreateCloudConnectionDto } from './dto/cloud-connection.dto';
 import { CreateCloudCredentialDto, RotateCloudCredentialDto } from './dto/cloud-credential.dto';
 import { PageQueryDto } from './dto/page-query.dto';
+import { CreateTenantDto } from './dto/tenant.dto';
 import { CreateRoleDto, CreateUserDto } from './dto/user.dto';
 import { CreateViewDto } from './dto/view.dto';
 import { GovernanceService } from './governance.service';
@@ -30,10 +32,52 @@ interface AuthenticatedRequest {
 export class GovernanceController {
   constructor(private readonly governance: GovernanceService) {}
 
+  @Get('tenants')
+  @RequiredRole('viewer')
+  listTenants(@Req() request: AuthenticatedRequest) {
+    return this.governance.listTenants(request.user);
+  }
+
+  @Post('tenants')
+  @RequiredRole('admin')
+  createTenant(
+    @Body() body: CreateTenantDto,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey: string | undefined
+  ) {
+    return this.governance.createTenant(body, request.user, requireIdempotencyKey(idempotencyKey));
+  }
+
+  @Get('cloud-connections')
+  @RequiredRole('viewer')
+  listCloudConnections(@Query() query: PageQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.governance.listCloudConnections(query, request.user);
+  }
+
+  @Post('cloud-connections')
+  @RequiredRole('admin')
+  createCloudConnection(
+    @Body() body: CreateCloudConnectionDto,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey: string | undefined
+  ) {
+    return this.governance.createCloudConnection(body, request.user, requireIdempotencyKey(idempotencyKey));
+  }
+
+  @Post('cloud-connections/:id/validation')
+  @RequiredRole('admin')
+  validateCloudConnection(
+    @Param('id') id: string,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey: string | undefined
+  ) {
+    return this.governance.validateCloudConnection(id, request.user, requireIdempotencyKey(idempotencyKey));
+  }
+
   @Get('accounts')
   @RequiredRole('viewer')
-  listAccounts(@Query() query: PageQueryDto) {
-    return this.governance.listAccounts(query);
+  listAccounts(@Query() query: PageQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.governance.listAccounts(query, request.user);
   }
 
   @Post('accounts')
@@ -48,8 +92,8 @@ export class GovernanceController {
 
   @Get('account-groups')
   @RequiredRole('viewer')
-  listAccountGroups(@Query() query: PageQueryDto) {
-    return this.governance.listAccountGroups(query);
+  listAccountGroups(@Query() query: PageQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.governance.listAccountGroups(query, request.user);
   }
 
   @Post('account-groups')
@@ -86,8 +130,8 @@ export class GovernanceController {
 
   @Get('cloud-credentials')
   @RequiredRole('admin')
-  listCredentials(@Query() query: PageQueryDto) {
-    return this.governance.listCredentials(query);
+  listCredentials(@Query() query: PageQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.governance.listCredentials(query, request.user);
   }
 
   @Post('cloud-credentials')
@@ -113,8 +157,8 @@ export class GovernanceController {
 
   @Get('users')
   @RequiredRole('admin')
-  listUsers(@Query() query: PageQueryDto) {
-    return this.governance.listUsers(query);
+  listUsers(@Query() query: PageQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.governance.listUsers(query, request.user);
   }
 
   @Post('users')
@@ -141,8 +185,8 @@ export class GovernanceController {
 
   @Get('audit-log')
   @RequiredRole('admin')
-  listAuditLog(@Query() query: PageQueryDto) {
-    return this.governance.listAuditLog(query);
+  listAuditLog(@Query() query: PageQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.governance.listAuditLog(query, request.user);
   }
 
   @Get('views')

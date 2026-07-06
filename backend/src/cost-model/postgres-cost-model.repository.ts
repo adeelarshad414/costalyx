@@ -36,36 +36,44 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
   }
 
   async saveIngestion(input: {
+    tenantId: string;
     provider: CloudProvider;
+    cloudConnectionId?: string;
     sourceUri: string;
     idempotencyKey: string;
     rows: NormalizedCostRecord[];
   }): Promise<IngestionBatch> {
     const client = await this.pool.connect();
+    const scopedIdempotencyKey = tenantScopedStorageValue(input.tenantId, input.idempotencyKey);
     try {
       await client.query('BEGIN');
-      const existing = await client.query('SELECT * FROM ingestion_batches WHERE idempotency_key = $1', [
-        input.idempotencyKey
-      ]);
+      const existing = await client.query(
+        'SELECT * FROM ingestion_batches WHERE tenant_id = $1 AND idempotency_key = ANY($2::text[])',
+        [input.tenantId, tenantStorageCandidates(input.tenantId, input.idempotencyKey)]
+      );
       if (existing.rows[0]) {
         await client.query('COMMIT');
         return mapBatch(existing.rows[0] as PgRow);
       }
 
       const now = new Date().toISOString();
-      const batchId = stableId(`batch:${input.provider}:${input.sourceUri}:${input.idempotencyKey}`);
+      const batchId = stableId(`batch:${input.tenantId}:${input.provider}:${input.sourceUri}:${input.idempotencyKey}`);
       await client.query(
         `INSERT INTO ingestion_batches
-          (id, provider, status, source_uri, idempotency_key, created_at, completed_at, ingested_rows, duplicate_rows)
-         VALUES ($1, $2, 'complete', $3, $4, $5, $5, 0, 0)`,
-        [batchId, input.provider, input.sourceUri, input.idempotencyKey, now]
+          (id, tenant_id, provider, status, cloud_connection_id, source_uri, idempotency_key, created_at, completed_at, ingested_rows, duplicate_rows)
+         VALUES ($1, $2, $3, 'complete', $4, $5, $6, $7, $7, 0, 0)`,
+        [batchId, input.tenantId, input.provider, input.cloudConnectionId ?? null, input.sourceUri, scopedIdempotencyKey, now]
       );
 
       let ingestedRows = 0;
       let duplicateRows = 0;
       for (const row of input.rows) {
-        await this.upsertAccount(client, row);
-        const duplicate = await client.query('SELECT id FROM cost_records WHERE fingerprint = $1', [row.fingerprint]);
+        await this.upsertAccount(client, input.tenantId, input.cloudConnectionId ?? null, row);
+        const scopedFingerprint = tenantScopedStorageValue(input.tenantId, row.fingerprint);
+        const duplicate = await client.query(
+          'SELECT id FROM cost_records WHERE tenant_id = $1 AND fingerprint = ANY($2::text[])',
+          [input.tenantId, tenantStorageCandidates(input.tenantId, row.fingerprint)]
+        );
         if ((duplicate.rowCount ?? duplicate.rows.length) > 0) {
           duplicateRows += 1;
           continue;
@@ -73,14 +81,16 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
 
         await client.query(
           `INSERT INTO cost_records
-            (id, provider, account_id, resource_id, service_name, usage_family, lease_type,
+            (id, tenant_id, provider, cloud_connection_id, account_id, resource_id, service_name, usage_family, lease_type,
              transaction_type, hourly_rate_usd, usage_hours, is_estimate, valid_from, valid_to,
              ingested_at, source_batch_id, fingerprint)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
           [
-            row.id,
+            tenantScopedUuid(input.tenantId, 'cost-record', row.id),
+            input.tenantId,
             row.provider,
-            row.accountId,
+            input.cloudConnectionId ?? null,
+            tenantScopedUuid(input.tenantId, 'account', `${row.provider}:${row.accountExternalId}`),
             row.resourceId,
             row.serviceName,
             row.usageFamily,
@@ -93,7 +103,7 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
             row.validTo,
             now,
             batchId,
-            row.fingerprint
+            scopedFingerprint
           ]
         );
         ingestedRows += 1;
@@ -115,8 +125,8 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
     }
   }
 
-  async getBatch(id: string): Promise<IngestionBatch> {
-    const result = await this.pool.query('SELECT * FROM ingestion_batches WHERE id = $1', [id]);
+  async getBatch(id: string, tenantId: string): Promise<IngestionBatch> {
+    const result = await this.pool.query('SELECT * FROM ingestion_batches WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
     if (!result.rows[0]) {
       throw new NotFoundException(`Ingestion batch ${id} was not found.`);
     }
@@ -124,8 +134,11 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
   }
 
   async listRecords(query: {
+    tenantId: string;
     provider?: CloudProvider;
     accountId?: string;
+    accountGroupId?: string;
+    cloudConnectionId?: string;
     service?: string;
     dimension?: string;
     from?: string;
@@ -139,7 +152,9 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
     const data = await this.pool.query(
       `SELECT
          cr.id,
+         cr.tenant_id,
          cr.provider,
+         cr.cloud_connection_id,
          cr.account_id,
          a.external_account_id AS account_external_id,
          cr.resource_id,
@@ -164,7 +179,9 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
       [...filtered.params, query.pageSize, offset]
     );
     const total = await this.pool.query(
-      `SELECT COUNT(*)::int AS total FROM cost_records cr ${filtered.whereSql}`,
+      `SELECT COUNT(*)::int AS total
+       FROM cost_records cr
+       ${filtered.whereSql}`,
       filtered.params
     );
 
@@ -180,13 +197,16 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
 
   async getSummary(
     query: {
+      tenantId: string;
       provider?: CloudProvider;
       accountId?: string;
+      accountGroupId?: string;
+      cloudConnectionId?: string;
       service?: string;
       dimension?: string;
       from?: string;
       to?: string;
-    } = {}
+    }
   ) {
     if (query.dimension) {
       return this.getDimensionSummary(query);
@@ -214,8 +234,11 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
   }
 
   private async getDimensionSummary(query: {
+    tenantId: string;
     provider?: CloudProvider;
     accountId?: string;
+    accountGroupId?: string;
+    cloudConnectionId?: string;
     service?: string;
     dimension?: string;
     from?: string;
@@ -236,7 +259,13 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
              ON dtm.dimension_id = $${dimensionParam}
             AND dtm.tag_key = rt.tag_key
             AND (dtm.tag_value_pattern IS NULL OR dtm.tag_value_pattern = rt.tag_value)
-           WHERE rt.resource_id = cr.resource_id
+           JOIN dimensions d
+             ON d.id = dtm.dimension_id
+            AND d.org_id = cr.tenant_id
+           WHERE (
+             rt.resource_id = cr.tenant_id::text || ':' || cr.resource_id
+             OR (cr.tenant_id = '00000000-0000-4000-8000-000000000001' AND rt.resource_id = cr.resource_id)
+           )
          )
        ), untagged AS (
          SELECT COUNT(DISTINCT cr.resource_id)::int AS count
@@ -248,7 +277,13 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
              ON dtm.dimension_id = $${dimensionParam}
             AND dtm.tag_key = rt.tag_key
             AND (dtm.tag_value_pattern IS NULL OR dtm.tag_value_pattern = rt.tag_value)
-           WHERE rt.resource_id = cr.resource_id
+           JOIN dimensions d
+             ON d.id = dtm.dimension_id
+            AND d.org_id = cr.tenant_id
+           WHERE (
+             rt.resource_id = cr.tenant_id::text || ':' || cr.resource_id
+             OR (cr.tenant_id = '00000000-0000-4000-8000-000000000001' AND rt.resource_id = cr.resource_id)
+           )
          )
        )
        SELECT
@@ -272,19 +307,25 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
 
   async getExplorerFlow(
     query: {
+      tenantId: string;
       provider?: CloudProvider;
       accountId?: string;
+      accountGroupId?: string;
+      cloudConnectionId?: string;
       service?: string;
       dimension?: string;
       from?: string;
       to?: string;
       dimensions?: CostExplorerDimension[];
       costFloorUsd?: string;
-    } = {}
+    }
   ) {
     const records = await this.listRecords({
+      tenantId: query.tenantId,
       provider: query.provider,
       accountId: query.accountId,
+      accountGroupId: query.accountGroupId,
+      cloudConnectionId: query.cloudConnectionId,
       service: query.service,
       dimension: query.dimension,
       from: query.from,
@@ -299,20 +340,42 @@ export class PostgresCostModelRepository implements CostModelRepository, OnModul
     });
   }
 
-  private async upsertAccount(client: PoolClient, row: NormalizedCostRecord): Promise<void> {
+  private async upsertAccount(
+    client: PoolClient,
+    tenantId: string,
+    cloudConnectionId: string | null,
+    row: NormalizedCostRecord
+  ): Promise<void> {
     await client.query(
-      `INSERT INTO accounts (id, provider, external_account_id, display_name, vendor)
-       VALUES ($1, $2, $3, $4, $2)
-       ON CONFLICT (provider, external_account_id)
-       DO UPDATE SET display_name = EXCLUDED.display_name`,
-      [row.accountId, row.provider, row.accountExternalId, row.accountExternalId]
+      `INSERT INTO accounts (id, tenant_id, provider, cloud_connection_id, external_account_id, display_name, vendor)
+       VALUES ($1, $2, $3, $4, $5, $6, $3)
+       ON CONFLICT (tenant_id, provider, external_account_id)
+       DO UPDATE SET display_name = EXCLUDED.display_name, cloud_connection_id = EXCLUDED.cloud_connection_id`,
+      [
+        tenantScopedUuid(tenantId, 'account', `${row.provider}:${row.accountExternalId}`),
+        tenantId,
+        row.provider,
+        cloudConnectionId,
+        tenantScopedStorageValue(tenantId, row.accountExternalId),
+        row.accountExternalId
+      ]
     );
   }
 }
 
-function buildRecordWhere(query: { provider?: CloudProvider; accountId?: string; service?: string; from?: string; to?: string }) {
+function buildRecordWhere(query: {
+  tenantId: string;
+  provider?: CloudProvider;
+  accountId?: string;
+  accountGroupId?: string;
+  cloudConnectionId?: string;
+  service?: string;
+  from?: string;
+  to?: string;
+}) {
   const clauses: string[] = [];
-  const params: string[] = [];
+  const params: string[] = [query.tenantId];
+  clauses.push('cr.tenant_id = $1');
   if (query.provider) {
     params.push(query.provider);
     clauses.push(`cr.provider = $${params.length}`);
@@ -320,6 +383,21 @@ function buildRecordWhere(query: { provider?: CloudProvider; accountId?: string;
   if (query.accountId) {
     params.push(query.accountId);
     clauses.push(`cr.account_id = $${params.length}`);
+  }
+  if (query.accountGroupId) {
+    params.push(query.accountGroupId);
+    clauses.push(`EXISTS (
+      SELECT 1
+      FROM account_group_members agm
+      JOIN account_groups ag ON ag.id = agm.account_group_id
+      WHERE agm.account_id = cr.account_id
+        AND ag.tenant_id = cr.tenant_id
+        AND agm.account_group_id = $${params.length}
+    )`);
+  }
+  if (query.cloudConnectionId) {
+    params.push(query.cloudConnectionId);
+    clauses.push(`cr.cloud_connection_id = $${params.length}`);
   }
   if (query.service) {
     params.push(query.service);
@@ -351,7 +429,13 @@ function addDimensionWhere(whereSql: string, params: string[], dimension?: strin
       ON dtm.dimension_id = $${nextParams.length}
      AND dtm.tag_key = rt.tag_key
      AND (dtm.tag_value_pattern IS NULL OR dtm.tag_value_pattern = rt.tag_value)
-    WHERE rt.resource_id = cr.resource_id
+    JOIN dimensions d
+      ON d.id = dtm.dimension_id
+     AND d.org_id = cr.tenant_id
+    WHERE (
+      rt.resource_id = cr.tenant_id::text || ':' || cr.resource_id
+      OR (cr.tenant_id = '00000000-0000-4000-8000-000000000001' AND rt.resource_id = cr.resource_id)
+    )
   )`;
   return {
     whereSql: whereSql ? `${whereSql} AND ${clause}` : `WHERE ${clause}`,
@@ -362,8 +446,10 @@ function addDimensionWhere(whereSql: string, params: string[], dimension?: strin
 function mapBatch(row: PgRow): IngestionBatch {
   return {
     id: String(row.id),
+    tenantId: String(row.tenant_id),
     provider: row.provider as CloudProvider,
     status: row.status as IngestionBatch['status'],
+    cloudConnectionId: row.cloud_connection_id ? String(row.cloud_connection_id) : null,
     sourceUri: String(row.source_uri),
     createdAt: toIso(row.created_at),
     completedAt: row.completed_at ? toIso(row.completed_at) : null,
@@ -374,11 +460,12 @@ function mapBatch(row: PgRow): IngestionBatch {
 
 function mapRecord(row: PgRow): NormalizedCostRecord {
   const costTotalUsd = formatDecimal(String(row.cost_total_usd ?? '0'), 8);
+  const tenantId = String(row.tenant_id);
   return {
     id: String(row.id),
     provider: row.provider as CloudProvider,
     accountId: String(row.account_id),
-    accountExternalId: String(row.account_external_id),
+    accountExternalId: decodeTenantScopedStorageValue(tenantId, String(row.account_external_id)),
     resourceId: String(row.resource_id),
     serviceName: String(row.service_name),
     usageFamily: String(row.usage_family),
@@ -393,10 +480,27 @@ function mapRecord(row: PgRow): NormalizedCostRecord {
     validTo: row.valid_to ? toIso(row.valid_to) : null,
     ingestedAt: toIso(row.ingested_at),
     sourceBatchId: String(row.source_batch_id),
-    fingerprint: String(row.fingerprint)
+    fingerprint: decodeTenantScopedStorageValue(tenantId, String(row.fingerprint))
   };
 }
 
 function toIso(value: unknown): string {
   return value instanceof Date ? value.toISOString() : new Date(String(value)).toISOString();
+}
+
+function tenantScopedStorageValue(tenantId: string, value: string): string {
+  return `${tenantId}:${value}`;
+}
+
+function decodeTenantScopedStorageValue(tenantId: string, value: string): string {
+  const prefix = `${tenantId}:`;
+  return value.startsWith(prefix) ? value.slice(prefix.length) : value;
+}
+
+function tenantStorageCandidates(tenantId: string, value: string): string[] {
+  return [tenantScopedStorageValue(tenantId, value), value];
+}
+
+function tenantScopedUuid(tenantId: string, label: string, value: string): string {
+  return stableId(`${label}:${tenantId}:${value}`);
 }

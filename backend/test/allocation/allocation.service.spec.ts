@@ -1,9 +1,9 @@
 import { InMemoryAuditLogStore } from '../../src/audit/audit-log.store';
 import { AllocationService } from '../../src/allocation/allocation.service';
 import { InMemoryAllocationRepository } from '../../src/allocation/in-memory-allocation.repository';
-import type { AuthenticatedUser } from '../../src/security/token-verifier';
+import { DEFAULT_TENANT_ID, type AuthenticatedUser } from '../../src/security/token-verifier';
 
-const actor: AuthenticatedUser = { subject: 'analyst-user', role: 'analyst' };
+const actor: AuthenticatedUser = { subject: 'analyst-user', role: 'analyst', tenantId: DEFAULT_TENANT_ID };
 
 describe('AllocationService', () => {
   let service: AllocationService;
@@ -20,14 +20,14 @@ describe('AllocationService', () => {
       );
     }
 
-    const listed = await service.listDimensions({ page: 1, pageSize: 200 });
+    const listed = await service.listDimensions({ page: 1, pageSize: 200 }, actor);
 
     expect(dimensions).toHaveLength(50);
     expect(listed.meta.total).toBe(50);
     expect(listed.data[49]).toEqual(
       expect.objectContaining({
         name: 'Dimension 50',
-        orgId: expect.any(String),
+        orgId: actor.tenantId,
         createdBy: expect.any(String)
       })
     );
@@ -53,7 +53,7 @@ describe('AllocationService', () => {
       actor,
       'tag-i-aws-prod-001'
     );
-    const listedTags = await service.listResourceTags({ resourceId: 'i-aws-prod-001', page: 1, pageSize: 25 });
+    const listedTags = await service.listResourceTags({ resourceId: 'i-aws-prod-001', page: 1, pageSize: 25 }, actor);
 
     expect(replayedMapping).toBe(mapping);
     expect(tag).toEqual({ resourceId: 'i-aws-prod-001', tagKey: 'owner', tagValue: 'platform', source: 'manual' });

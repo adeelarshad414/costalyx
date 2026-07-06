@@ -3,6 +3,7 @@ import { CostModelService } from '../../src/cost-model/cost-model.service';
 import { InMemoryCostModelRepository } from '../../src/cost-model/in-memory-cost-model.repository';
 import type { NormalizedCostRecord } from '../../src/cost-model/cost-record.types';
 import { ReportingService } from '../../src/reporting/reporting.service';
+import { DEFAULT_TENANT_ID } from '../../src/security/token-verifier';
 
 function record(overrides: Partial<NormalizedCostRecord> = {}): NormalizedCostRecord {
   return {
@@ -33,6 +34,7 @@ describe('ReportingService', () => {
   async function createService() {
     const costModel = new CostModelService(new InMemoryCostModelRepository());
     await costModel.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'reporting-fixture.csv',
       idempotencyKey: 'reporting-fixture',
@@ -69,19 +71,25 @@ describe('ReportingService', () => {
     ]);
 
     const reportByCategory = Object.fromEntries(reports.data.map((report) => [report.category, report.id]));
-    await expect(service.runReport(reportByCategory.cost, { provider: 'aws' })).resolves.toMatchObject({
+    await expect(service.runReport(reportByCategory.cost, { tenantId: DEFAULT_TENANT_ID, provider: 'aws' })).resolves.toMatchObject({
       rows: [expect.objectContaining({ provider: 'aws', resourceId: 'db-prod-001', costTotalUsd: '49.64000000' })]
     });
-    await expect(service.runReport(reportByCategory.cost_summary, { provider: 'aws' })).resolves.toMatchObject({
+    await expect(
+      service.runReport(reportByCategory.cost_summary, { tenantId: DEFAULT_TENANT_ID, provider: 'aws' })
+    ).resolves.toMatchObject({
       rows: [expect.objectContaining({ totalCostUsd: '49.64000000', resourceCount: 1 })]
     });
-    await expect(service.runReport(reportByCategory.invoices, { provider: 'aws' })).resolves.toMatchObject({
+    await expect(service.runReport(reportByCategory.invoices, { tenantId: DEFAULT_TENANT_ID, provider: 'aws' })).resolves.toMatchObject({
       rows: [expect.objectContaining({ provider: 'aws', invoiceTotalUsd: '49.64000000' })]
     });
-    await expect(service.runReport(reportByCategory.utilization, { provider: 'aws' })).resolves.toMatchObject({
+    await expect(
+      service.runReport(reportByCategory.utilization, { tenantId: DEFAULT_TENANT_ID, provider: 'aws' })
+    ).resolves.toMatchObject({
       rows: [expect.objectContaining({ provider: 'aws', usageHours: '730.0000' })]
     });
-    await expect(service.runReport(reportByCategory.underutilization, { provider: 'azure' })).resolves.toMatchObject({
+    await expect(
+      service.runReport(reportByCategory.underutilization, { tenantId: DEFAULT_TENANT_ID, provider: 'azure' })
+    ).resolves.toMatchObject({
       rows: [expect.objectContaining({ provider: 'azure', resourceId: 'vm-prod-001' })]
     });
   });
@@ -89,6 +97,8 @@ describe('ReportingService', () => {
   it('rejects unknown report ids', async () => {
     const service = await createService();
 
-    await expect(service.runReport('99999999-9999-4999-8999-999999999999')).rejects.toThrow(NotFoundException);
+    await expect(
+      service.runReport('99999999-9999-4999-8999-999999999999', { tenantId: DEFAULT_TENANT_ID })
+    ).rejects.toThrow(NotFoundException);
   });
 });

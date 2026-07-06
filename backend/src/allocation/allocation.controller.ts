@@ -16,8 +16,8 @@ export class AllocationController {
 
   @Get('dimensions')
   @RequiredRole('viewer')
-  listDimensions(@Query() query: PageQueryDto) {
-    return this.allocation.listDimensions(query);
+  listDimensions(@Query() query: PageQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.allocation.listDimensions(query, request.user);
   }
 
   @Post('dimensions')
@@ -43,8 +43,8 @@ export class AllocationController {
 
   @Get('resource-tags')
   @RequiredRole('viewer')
-  listResourceTags(@Query() query: ListResourceTagsQueryDto) {
-    return this.allocation.listResourceTags(query);
+  listResourceTags(@Query() query: ListResourceTagsQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.allocation.listResourceTags(query, request.user);
   }
 
   @Post('resource-tags')

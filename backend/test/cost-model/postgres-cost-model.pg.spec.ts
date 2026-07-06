@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { Pool } from 'pg';
 import { PostgresCostModelRepository } from '../../src/cost-model/postgres-cost-model.repository';
 import type { NormalizedCostRecord } from '../../src/cost-model/cost-record.types';
+import { DEFAULT_TENANT_ID } from '../../src/security/token-verifier';
 
 const runPostgresSuite = process.env.RUN_POSTGRES_INTEGRATION === 'true' && process.env.DATABASE_URL;
 const describeIfPostgres = runPostgresSuite ? describe : describe.skip;
@@ -38,7 +39,16 @@ describeIfPostgres('PostgresCostModelRepository with a real database', () => {
     pool = new Pool({ connectionString: process.env.DATABASE_URL });
     repository = new PostgresCostModelRepository(pool);
 
-    for (const migration of ['001_initial_cost_model.sql', '002_persisted_ingestion_idempotency.sql']) {
+    for (const migration of [
+      '001_initial_cost_model.sql',
+      '002_persisted_ingestion_idempotency.sql',
+      '003_rbac_trust_tiers.sql',
+      '004_governance_idempotency.sql',
+      '005_dynamic_allocation.sql',
+      '006_optimization.sql',
+      '007_reporting_views.sql',
+      '008_multitenant_cloud_portfolio.sql'
+    ]) {
       const sql = readFileSync(join(process.cwd(), 'migrations', migration), 'utf8');
       await pool.query(sql);
     }
@@ -55,6 +65,7 @@ describeIfPostgres('PostgresCostModelRepository with a real database', () => {
   it('persists ingestion state durably and computes cost totals from pricing fields', async () => {
     const firstRepository = new PostgresCostModelRepository(pool);
     const first = await firstRepository.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'postgres-fixture.csv',
       idempotencyKey: 'pg-idem-1',
@@ -63,12 +74,13 @@ describeIfPostgres('PostgresCostModelRepository with a real database', () => {
 
     const secondRepository = new PostgresCostModelRepository(pool);
     const replay = await secondRepository.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'postgres-fixture.csv',
       idempotencyKey: 'pg-idem-1',
       rows: [{ ...record, fingerprint: 'different-fingerprint' }]
     });
-    const records = await secondRepository.listRecords({ page: 1, pageSize: 25 });
+    const records = await secondRepository.listRecords({ tenantId: DEFAULT_TENANT_ID, page: 1, pageSize: 25 });
     const storedCostTotalColumn = await pool.query(
       `SELECT COUNT(*)::int AS count
        FROM information_schema.columns
@@ -84,6 +96,7 @@ describeIfPostgres('PostgresCostModelRepository with a real database', () => {
 
   it('counts duplicate fingerprints across different idempotency keys', async () => {
     await repository.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'postgres-fixture.csv',
       idempotencyKey: 'pg-idem-2',
@@ -91,6 +104,7 @@ describeIfPostgres('PostgresCostModelRepository with a real database', () => {
     });
 
     const replay = await repository.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'postgres-fixture.csv',
       idempotencyKey: 'pg-idem-3',
@@ -103,12 +117,14 @@ describeIfPostgres('PostgresCostModelRepository with a real database', () => {
 
   it('reconciles filtered Cost Explorer totals with Resource Inventory summary totals', async () => {
     await repository.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'postgres-explorer-aws.csv',
       idempotencyKey: 'pg-explorer-aws',
       rows: [record]
     });
     await repository.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'azure',
       sourceUri: 'postgres-explorer-azure.csv',
       idempotencyKey: 'pg-explorer-azure',
@@ -130,8 +146,9 @@ describeIfPostgres('PostgresCostModelRepository with a real database', () => {
       ]
     });
 
-    const summary = await repository.getSummary({ provider: 'aws' });
+    const summary = await repository.getSummary({ tenantId: DEFAULT_TENANT_ID, provider: 'aws' });
     const flow = await repository.getExplorerFlow({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       dimensions: ['service', 'leaseType'],
       costFloorUsd: '0.00000000'

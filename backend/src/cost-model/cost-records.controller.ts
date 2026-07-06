@@ -23,7 +23,10 @@ export class CostRecordsController {
     @Headers('x-costalyx-view-id') viewId: string | undefined,
     @Req() request: AuthenticatedRequest
   ) {
-    return this.costModel.listRecords(await this.governance.applyViewScope(query, request.user, viewId));
+    return this.costModel.listRecords({
+      ...(await this.governance.applyViewScope(query, request.user, viewId)),
+      tenantId: request.user.tenantId
+    });
   }
 
   @Get('cost-records/summary')
@@ -33,7 +36,10 @@ export class CostRecordsController {
     @Headers('x-costalyx-view-id') viewId: string | undefined,
     @Req() request: AuthenticatedRequest
   ) {
-    return this.costModel.getSummary(await this.governance.applyViewScope(query, request.user, viewId));
+    return this.costModel.getSummary({
+      ...(await this.governance.applyViewScope(query, request.user, viewId)),
+      tenantId: request.user.tenantId
+    });
   }
 
   @Get('cost-explorer/flow')
@@ -43,7 +49,10 @@ export class CostRecordsController {
     @Headers('x-costalyx-view-id') viewId: string | undefined,
     @Req() request: AuthenticatedRequest
   ) {
-    return this.costModel.getExplorerFlow(await this.governance.applyViewScope(query, request.user, viewId));
+    return this.costModel.getExplorerFlow({
+      ...(await this.governance.applyViewScope(query, request.user, viewId)),
+      tenantId: request.user.tenantId
+    });
   }
 
   @Get('cost-records/export')
@@ -54,7 +63,7 @@ export class CostRecordsController {
     @Req() request: AuthenticatedRequest
   ) {
     const scoped = await this.governance.applyViewScope({ page: 1, pageSize: 200 }, request.user, viewId);
-    const records = await this.costModel.listRecords(scoped);
+    const records = await this.costModel.listRecords({ ...scoped, tenantId: request.user.tenantId });
     return [
       'id,provider,accountId,resourceId,serviceName,costTotalUsd,isEstimate',
       ...records.data.map((record) =>

@@ -3,8 +3,9 @@ import { InMemoryCostModelRepository } from '../../src/cost-model/in-memory-cost
 import type { NormalizedCostRecord } from '../../src/cost-model/cost-record.types';
 import { InMemoryOptimizationRepository } from '../../src/optimization/in-memory-optimization.repository';
 import { OptimizationService } from '../../src/optimization/optimization.service';
+import { DEFAULT_TENANT_ID } from '../../src/security/token-verifier';
 
-const actor = { subject: 'analyst-user', role: 'analyst' as const };
+const actor = { subject: 'analyst-user', role: 'analyst' as const, tenantId: DEFAULT_TENANT_ID };
 
 function record(overrides: Partial<NormalizedCostRecord> = {}): NormalizedCostRecord {
   return {
@@ -35,6 +36,7 @@ describe('OptimizationService', () => {
   async function createService() {
     const costModel = new CostModelService(new InMemoryCostModelRepository());
     await costModel.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'optimization-fixture.csv',
       idempotencyKey: 'optimization-fixture',
@@ -45,7 +47,12 @@ describe('OptimizationService', () => {
 
   it('derives realized savings from actual ingested billing data instead of copying the estimate', async () => {
     const service = await createService();
-    const recommendations = await service.listRecommendations({ status: 'open', page: 1, pageSize: 25 });
+    const recommendations = await service.listRecommendations({
+      tenantId: DEFAULT_TENANT_ID,
+      status: 'open',
+      page: 1,
+      pageSize: 25
+    });
     const recommendation = recommendations.data.find((item) => item.resourceId === 'i-underused-001');
 
     expect(recommendation).toEqual(
@@ -68,7 +75,7 @@ describe('OptimizationService', () => {
       actor,
       'optimization-apply-key'
     );
-    const realized = await service.listRealizedSavings({ page: 1, pageSize: 25 });
+    const realized = await service.listRealizedSavings({ tenantId: DEFAULT_TENANT_ID, page: 1, pageSize: 25 });
 
     expect(replay).toEqual(applied);
     expect(applied.status).toBe('applied');
@@ -87,7 +94,12 @@ describe('OptimizationService', () => {
 
   it('does not create realized savings rows for dismissed recommendations', async () => {
     const service = await createService();
-    const recommendations = await service.listRecommendations({ status: 'open', page: 1, pageSize: 25 });
+    const recommendations = await service.listRecommendations({
+      tenantId: DEFAULT_TENANT_ID,
+      status: 'open',
+      page: 1,
+      pageSize: 25
+    });
 
     await service.updateRecommendation(
       recommendations.data[0].id,
@@ -96,11 +108,13 @@ describe('OptimizationService', () => {
       'optimization-dismiss-key'
     );
 
-    await expect(service.listRecommendations({ status: 'dismissed', page: 1, pageSize: 25 })).resolves.toMatchObject({
+    await expect(
+      service.listRecommendations({ tenantId: DEFAULT_TENANT_ID, status: 'dismissed', page: 1, pageSize: 25 })
+    ).resolves.toMatchObject({
       meta: { total: 1 },
       data: [expect.objectContaining({ status: 'dismissed' })]
     });
-    await expect(service.listRealizedSavings({ page: 1, pageSize: 25 })).resolves.toMatchObject({
+    await expect(service.listRealizedSavings({ tenantId: DEFAULT_TENANT_ID, page: 1, pageSize: 25 })).resolves.toMatchObject({
       meta: { total: 0 },
       data: []
     });
