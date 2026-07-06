@@ -33,6 +33,7 @@ export interface GovernanceRepository {
   listTenants(actor: AuthenticatedUser): Promise<{ data: TenantRecord[] }>;
   createTenant(input: CreateTenantDto, actor: AuthenticatedUser, idempotencyKey: string): Promise<TenantRecord>;
   listCloudConnections(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<CloudConnection>>;
+  listCloudConnectionsForScheduler(): Promise<CloudConnection[]>;
   getCloudConnection(id: string, actor: AuthenticatedUser): Promise<CloudConnection>;
   createCloudConnection(
     input: CreateCloudConnectionDto,

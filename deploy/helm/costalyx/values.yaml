@@ -24,6 +24,21 @@ backend:
       cpu: 500m
       memory: 512Mi
 
+worker:
+  enabled: false
+  replicaCount: 1
+  scheduler:
+    enabled: "enabled"
+    intervalMs: "900000"
+    ingestionEnabled: ""
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
 frontend:
   replicaCount: 2
   image:

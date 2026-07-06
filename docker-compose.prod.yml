@@ -62,6 +62,45 @@ services:
     networks:
       - costalyx
 
+  worker:
+    image: ${COSTALYX_BACKEND_IMAGE:-costalyx-backend:${COSTALYX_IMAGE_TAG:-local}}
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    command: ["npm", "--workspace", "backend", "run", "start:worker"]
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL from Vault or the production secret store}
+      KEYCLOAK_ISSUER_URL: ${KEYCLOAK_ISSUER_URL:?Set production Keycloak issuer URL}
+      KEYCLOAK_JWKS_URL: ${KEYCLOAK_JWKS_URL:?Set production Keycloak JWKS URL}
+      VAULT_ADDR: ${VAULT_ADDR:?Set production Vault address}
+      VAULT_TOKEN: ${VAULT_TOKEN:?Set runtime Vault token or workload identity token}
+      REDPANDA_BROKERS: ${REDPANDA_BROKERS:-}
+      COSTALYX_LIVE_CLOUD_PROBES: ${COSTALYX_LIVE_CLOUD_PROBES:-}
+      COSTALYX_AWS_BROKER_PRINCIPAL_ARN: ${COSTALYX_AWS_BROKER_PRINCIPAL_ARN:-}
+      COSTALYX_AWS_PROBE_REGION: ${COSTALYX_AWS_PROBE_REGION:-}
+      COSTALYX_CLOUD_SCHEDULER_ENABLED: ${COSTALYX_CLOUD_SCHEDULER_ENABLED:-enabled}
+      COSTALYX_CLOUD_SCHEDULER_INTERVAL_MS: ${COSTALYX_CLOUD_SCHEDULER_INTERVAL_MS:-900000}
+      COSTALYX_CLOUD_SCHEDULER_INGESTION_ENABLED: ${COSTALYX_CLOUD_SCHEDULER_INGESTION_ENABLED:-}
+      USE_MOCKS: "false"
+      SEED_FIXTURE_DATA: ${SEED_FIXTURE_DATA:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - costalyx
+
   frontend:
     image: ${COSTALYX_FRONTEND_IMAGE:-costalyx-frontend:${COSTALYX_IMAGE_TAG:-local}}
     build:

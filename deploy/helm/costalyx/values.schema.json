@@ -28,6 +28,22 @@
         }
       }
     },
+    "worker": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "replicaCount": { "type": "integer", "minimum": 1, "maximum": 1 },
+        "scheduler": {
+          "type": "object",
+          "required": ["enabled", "intervalMs", "ingestionEnabled"],
+          "properties": {
+            "enabled": { "type": "string", "enum": ["enabled"] },
+            "intervalMs": { "type": "string", "pattern": "^[0-9]+$" },
+            "ingestionEnabled": { "type": "string", "enum": ["", "enabled"] }
+          }
+        }
+      }
+    },
     "config": {
       "type": "object",
       "required": ["appEnv", "keycloakIssuerUrl", "keycloakJwksUrl", "vaultAddr", "useMocks", "seedFixtureData"],

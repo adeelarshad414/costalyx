@@ -64,6 +64,13 @@ Every validation and ingestion attempt tied to a cloud connection writes a
 tenant-scoped `cloud_connection_runs` evidence row. The API and portfolio UI
 surface status, timestamps, validation codes/messages, ingestion batch IDs,
 row counts, and duplicate counts without exposing credential material.
+Production deployments run scheduled cloud maintenance through a separate
+worker process, not through horizontally-scaled API pods. Set
+`COSTALYX_CLOUD_SCHEDULER_ENABLED=enabled` only on that single worker. The
+worker validates every registered connection on its configured interval and
+optionally ingests the registered export URI when
+`COSTALYX_CLOUD_SCHEDULER_INGESTION_ENABLED=enabled`; all scheduler work is
+recorded through the same tenant-scoped run ledger.
 
 ## Keycloak (OIDC)
 - Costalyx is registered as a confidential OIDC client — it is never its own

@@ -25,6 +25,9 @@ customer secrets.
 Each cloud connection also has tenant-scoped validation and ingestion run
 evidence so admins and viewers can see the latest probe result, batch ID, row
 counts, duplicate counts, and failure messages without exposing credentials.
+Production deployments can run a single scheduler worker that periodically
+validates every registered connection and, when enabled, ingests each
+registered billing export into the same evidence ledger.
 
 ## Status
 🚧 Pre-release. See [`PROGRESS.md`](./PROGRESS.md) for live build status —
