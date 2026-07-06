@@ -12,6 +12,7 @@ interface KeycloakClaims {
 
 export interface KeycloakAdapter {
   token?: string;
+  refreshToken?: string;
   tokenParsed?: KeycloakClaims;
   init(options: Record<string, unknown>): Promise<boolean>;
   login(options?: Record<string, unknown>): Promise<void>;
@@ -91,14 +92,17 @@ export function AuthProvider({ adapter = createKeycloakAdapter(), children }: Au
   }, [adapter]);
 
   const getAccessToken = useCallback(async () => {
-    if (status !== 'authenticated') {
+    const currentToken = adapter.token ?? token;
+    if (status !== 'authenticated' && !currentToken) {
       return null;
     }
-    await adapter.updateToken(30);
-    const refreshedToken = adapter.token ?? null;
+    if (adapter.refreshToken) {
+      await adapter.updateToken(30);
+    }
+    const refreshedToken = adapter.token ?? currentToken ?? null;
     setToken(refreshedToken);
     return refreshedToken;
-  }, [adapter, status]);
+  }, [adapter, status, token]);
 
   const value = useMemo(
     () => ({ status, role, token, error, login, logout, getAccessToken }),
