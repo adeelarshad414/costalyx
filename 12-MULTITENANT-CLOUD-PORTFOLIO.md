@@ -77,12 +77,13 @@ The frontend and API support:
    broker identity to query Cost Management and list the unsigned Blob export
    prefix. GCP validation uses Workload Identity Federation / Application
    Default Credentials to read one row from the BigQuery billing export.
+   Operators can preflight those same paths with `npm run probe:azure-live`
+   and `npm run probe:gcp-live`.
 6. Billing exports are ingested with `tenant_id` and `cloud_connection_id`.
 7. Cost, reports, recommendations, savings, and audit rows stay tenant scoped.
 
 ## Next connector hardening
 - Add scheduled validation and ingestion jobs per connection with
   last-success and last-failure evidence surfaced in the UI.
-- Add Azure/GCP operator preflight CLIs mirroring `npm run probe:aws-live`.
 - Execute live AWS/Azure/GCP probes against real customer cloud accounts once
   broker identities and read-only customer grants are supplied.

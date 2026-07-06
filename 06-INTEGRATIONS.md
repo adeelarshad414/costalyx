@@ -55,6 +55,12 @@ row from the BigQuery billing export table before marking the connection
 client secrets, and base64 credential blobs are rejected at the
 cloud-connection boundary.
 
+Operators can run the same live validation paths before or during customer
+launch with `npm run probe:aws-live`, `npm run probe:azure-live`, and
+`npm run probe:gcp-live`. These commands accept provider references and rely
+on Costalyx-controlled broker credentials from the normal cloud SDK runtime;
+they do not accept customer secrets.
+
 ## Keycloak (OIDC)
 - Costalyx is registered as a confidential OIDC client — it is never its own
   identity provider
