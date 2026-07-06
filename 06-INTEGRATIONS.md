@@ -43,10 +43,16 @@ S3 read policy when `COSTALYX_AWS_BROKER_PRINCIPAL_ARN` is configured; no
 customer secret or access key is accepted.
 For Azure, the same endpoint returns Reader, Cost Management Reader, and
 Storage Blob Data Reader role-assignment guidance for the registered delegated
-app/workload identity. For GCP, it returns Workload Identity Federation
+app/workload identity. With live probes enabled, validation uses Azure
+DefaultAzureCredential, performs a Cost Management query at the registered
+scope, and lists the unsigned Blob export prefix before marking the connection
+`validated`. For GCP, onboarding returns Workload Identity Federation
 principal-set and IAM binding guidance for Billing Viewer, BigQuery Data
-Viewer, and BigQuery Job User. Signed URLs, SAS tokens, service-account JSON,
-access keys, client secrets, and base64 credential blobs are rejected at the
+Viewer, and BigQuery Job User. With live probes enabled, validation uses
+Application Default Credentials / Workload Identity Federation and reads one
+row from the BigQuery billing export table before marking the connection
+`validated`. Signed URLs, SAS tokens, service-account JSON, access keys,
+client secrets, and base64 credential blobs are rejected at the
 cloud-connection boundary.
 
 ## Keycloak (OIDC)

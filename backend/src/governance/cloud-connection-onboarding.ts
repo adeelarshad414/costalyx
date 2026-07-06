@@ -1,4 +1,4 @@
-import { parseS3Uri } from './cloud-connection-probe';
+import { parseBigQueryUri, parseS3Uri } from './cloud-connection-probe';
 import type { CloudConnection, CloudConnectionOnboarding } from './governance.types';
 
 const awsPrincipalArnPattern = /^arn:aws:iam::\d{12}:(role\/[\w+=,.@/-]+|root)$/;
@@ -207,26 +207,6 @@ function azureScope(value: string): string {
 function gcpPrincipalSet(providerPath: string): string {
   const poolPath = providerPath.replace(/\/providers\/[^/]+$/, '');
   return `principalSet://iam.googleapis.com/${poolPath}/*`;
-}
-
-function parseBigQueryUri(value: string | null): { projectId: string; datasetId: string; tableId: string } | null {
-  if (!value) {
-    return null;
-  }
-  try {
-    const uri = new URL(value);
-    if (uri.protocol !== 'bigquery:') {
-      return null;
-    }
-    if (uri.pathname) {
-      const [datasetId, tableId] = uri.pathname.replace(/^\/+/, '').split('/');
-      return uri.hostname && datasetId && tableId ? { projectId: uri.hostname, datasetId, tableId } : null;
-    }
-    const [projectId, datasetId, tableId] = uri.hostname.split('.');
-    return projectId && datasetId && tableId ? { projectId, datasetId, tableId } : null;
-  } catch {
-    return null;
-  }
 }
 
 function buildAwsCurReadPolicy(exportLocation: { bucket: string; prefix: string }): Record<string, unknown> {

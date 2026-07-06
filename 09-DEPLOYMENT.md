@@ -127,6 +127,23 @@ collect unsigned export locations only. Signed URLs, SAS query strings,
 customer access keys, client secrets, service-account JSON, passwords, and
 base64 credential blobs are rejected before persistence.
 
+Azure live validation uses the Azure SDK `DefaultAzureCredential` chain from
+the backend runtime. In production this should be a managed identity,
+workload identity, or operator-approved federated credential for the
+Costalyx-controlled broker principal. The customer grants that principal
+Reader and Cost Management Reader on the subscription or management-group
+scope, plus Storage Blob Data Reader on the export container when an export
+URI is registered. No Azure client secret is accepted in the cloud-connection
+payload.
+
+GCP live validation uses Google Application Default Credentials, normally a
+Workload Identity Federation external-account configuration or managed
+runtime identity. The customer grants the federated Costalyx principal
+Billing Viewer on the billing resource and BigQuery Data Viewer / BigQuery
+Job User for the export dataset/project. `COSTALYX_GCP_BIGQUERY_LOCATION`
+may be set when the billing export dataset is regional. No service-account
+JSON key is accepted in the cloud-connection payload.
+
 ## Observability hook (future integration point with Lumen)
 Backend exposes Prometheus-compatible `/metrics` and structured JSON logs
 from day one, even before a Lumen integration is wired, so the two open

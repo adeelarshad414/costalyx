@@ -73,13 +73,16 @@ The frontend and API support:
    during customer launch with `npm run probe:aws-live` by supplying only the
    tenant ID, customer account ID, read-only role ARN, and unsigned CUR S3
    URI; the command prints the generated external ID and sanitized validation
-   evidence, not credential material.
+   evidence, not credential material. Azure validation uses the Costalyx
+   broker identity to query Cost Management and list the unsigned Blob export
+   prefix. GCP validation uses Workload Identity Federation / Application
+   Default Credentials to read one row from the BigQuery billing export.
 6. Billing exports are ingested with `tenant_id` and `cloud_connection_id`.
 7. Cost, reports, recommendations, savings, and audit rows stay tenant scoped.
 
 ## Next connector hardening
-- Add scheduled AWS validation and ingestion jobs per connection with
+- Add scheduled validation and ingestion jobs per connection with
   last-success and last-failure evidence surfaced in the UI.
-- Implement Azure token acquisition and Cost Management export read probe.
-- Implement GCP Workload Identity Federation token exchange and BigQuery
-  billing-export row-limit probe.
+- Add Azure/GCP operator preflight CLIs mirroring `npm run probe:aws-live`.
+- Execute live AWS/Azure/GCP probes against real customer cloud accounts once
+  broker identities and read-only customer grants are supplied.

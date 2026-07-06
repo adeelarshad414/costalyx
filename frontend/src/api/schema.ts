@@ -646,7 +646,7 @@ export interface components {
             /** Format: date-time */
             lastValidationAttemptedAt: string | null;
             /** @enum {string|null} */
-            lastValidationCode: "shape_invalid" | "provider_probe_not_implemented" | "live_probes_disabled" | "aws_billing_export_required" | "aws_account_mismatch" | "aws_billing_export_empty" | "aws_probe_failed" | "aws_probe_passed" | null;
+            lastValidationCode: "shape_invalid" | "provider_probe_not_implemented" | "live_probes_disabled" | "aws_billing_export_required" | "aws_account_mismatch" | "aws_billing_export_empty" | "aws_probe_failed" | "aws_probe_passed" | "azure_billing_export_required" | "azure_billing_export_empty" | "azure_probe_failed" | "azure_probe_passed" | "gcp_billing_export_required" | "gcp_billing_export_empty" | "gcp_probe_failed" | "gcp_probe_passed" | null;
             lastValidationMessage: string | null;
             /** Format: date-time */
             createdAt: string;
