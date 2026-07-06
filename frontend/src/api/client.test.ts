@@ -166,6 +166,25 @@ describe('createCostalyxClient', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => onboarding })
       .mockResolvedValueOnce({
         ok: true,
+        json: async () => ({
+          data: [
+            {
+              id: '33333333-3333-4333-8333-333333333333',
+              tenantId: cloudConnection.tenantId,
+              cloudConnectionId: cloudConnection.id,
+              runType: 'validation',
+              status: 'succeeded',
+              startedAt: '2026-07-06T00:00:00.000Z',
+              completedAt: '2026-07-06T00:00:00.000Z',
+              evidence: { code: 'live_probes_disabled' },
+              createdAt: '2026-07-06T00:00:00.000Z'
+            }
+          ],
+          meta: { total: 1, page: 1, pageSize: 5 }
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
         json: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 1 } })
       })
       .mockResolvedValueOnce({
@@ -193,6 +212,7 @@ describe('createCostalyxClient', () => {
     });
     await client.validateCloudConnection?.({ id: cloudConnection.id, idempotencyKey: 'validation-key-1' });
     await client.getCloudConnectionOnboarding?.({ id: cloudConnection.id });
+    await client.listCloudConnectionRuns?.({ id: cloudConnection.id, page: 1, pageSize: 5 });
     await client.listAccounts?.({ page: 1, pageSize: 1 });
     await client.listAccountGroups?.({ page: 1, pageSize: 1 });
 
@@ -256,13 +276,23 @@ describe('createCostalyxClient', () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       7,
+      `http://api.test/api/v1/cloud-connections/${cloudConnection.id}/runs?page=1&pageSize=5`,
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Accept: 'application/json',
+          Authorization: 'Bearer signed-keycloak-token'
+        })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      8,
       'http://api.test/api/v1/accounts?page=1&pageSize=1',
       expect.objectContaining({
         headers: expect.objectContaining({ Authorization: 'Bearer signed-keycloak-token' })
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      8,
+      9,
       'http://api.test/api/v1/account-groups?page=1&pageSize=1',
       expect.objectContaining({
         headers: expect.objectContaining({ Authorization: 'Bearer signed-keycloak-token' })

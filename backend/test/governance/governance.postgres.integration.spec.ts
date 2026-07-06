@@ -45,7 +45,8 @@ describeIfPostgres('Milestone B governance API with PostgreSQL persistence', () 
       '006_optimization.sql',
       '007_reporting_views.sql',
       '008_multitenant_cloud_portfolio.sql',
-      '009_cloud_connection_probe_evidence.sql'
+      '009_cloud_connection_probe_evidence.sql',
+      '010_cloud_connection_runs.sql'
     ]) {
       const sql = readFileSync(join(process.cwd(), 'migrations', migration), 'utf8');
       await pool.query(sql);
@@ -135,6 +136,12 @@ describeIfPostgres('Milestone B governance API with PostgreSQL persistence', () 
       .expect(201);
 
     await request(writer.getHttpAdapter().getInstance())
+      .post(`/api/v1/cloud-connections/${cloudConnection.body.id}/validation`)
+      .set('x-costalyx-role', 'admin')
+      .set('Idempotency-Key', 'pg-cloud-connection-validation')
+      .expect(201);
+
+    await request(writer.getHttpAdapter().getInstance())
       .post('/api/v1/users')
       .set('x-costalyx-role', 'admin')
       .set('Idempotency-Key', 'pg-user-create')
@@ -172,9 +179,29 @@ describeIfPostgres('Milestone B governance API with PostgreSQL persistence', () 
         expect(body.data[0]).toMatchObject({
           id: cloudConnection.body.id,
           displayName: 'AWS payer account',
-          status: 'pending_validation'
+          status: 'ready_for_live_probe'
         });
         expect(body.data[0].externalId).toBe(`costalyx:${body.data[0].tenantId}:${cloudConnection.body.id}`);
+      });
+
+    await request(reader.getHttpAdapter().getInstance())
+      .get(`/api/v1/cloud-connections/${cloudConnection.body.id}/runs?page=1&pageSize=25`)
+      .set('x-costalyx-role', 'viewer')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              cloudConnectionId: cloudConnection.body.id,
+              runType: 'validation',
+              status: 'succeeded',
+              evidence: expect.objectContaining({
+                code: 'live_probes_disabled',
+                connectionStatus: 'ready_for_live_probe'
+              })
+            })
+          ])
+        );
       });
 
     await request(reader.getHttpAdapter().getInstance())

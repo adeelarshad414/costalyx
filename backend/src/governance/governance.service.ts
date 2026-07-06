@@ -16,8 +16,10 @@ import type {
   CloudCredentialReference,
   CloudConnection,
   CloudConnectionOnboarding,
+  CloudConnectionRun,
   PageQuery,
   Paginated,
+  RecordCloudConnectionRunInput,
   SavedView,
   TenantRecord,
   ViewFilter,
@@ -60,6 +62,18 @@ export class GovernanceService {
 
   validateCloudConnection(id: string, actor: AuthenticatedUser, idempotencyKey: string): Promise<CloudConnection> {
     return this.repository.validateCloudConnection(id, actor, idempotencyKey);
+  }
+
+  listCloudConnectionRuns(
+    id: string,
+    query: PageQuery,
+    actor: AuthenticatedUser
+  ): Promise<Paginated<CloudConnectionRun>> {
+    return this.repository.listCloudConnectionRuns(id, query, actor);
+  }
+
+  recordCloudConnectionRun(input: RecordCloudConnectionRunInput, actor: AuthenticatedUser): Promise<CloudConnectionRun> {
+    return this.repository.recordCloudConnectionRun(input, actor);
   }
 
   async getCloudConnectionOnboarding(id: string, actor: AuthenticatedUser): Promise<CloudConnectionOnboarding> {

@@ -227,6 +227,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cloud-connections/{id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List validation and ingestion run evidence for a cloud connection */
+        get: operations["listCloudConnectionRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/accounts": {
         parameters: {
             query?: never;
@@ -684,6 +701,28 @@ export interface components {
             } | null;
             customerSteps: string[];
         };
+        CloudConnectionRun: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tenantId: string;
+            /** Format: uuid */
+            cloudConnectionId: string;
+            /** @enum {string} */
+            runType: "validation" | "ingestion";
+            /** @enum {string} */
+            status: "succeeded" | "failed";
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            completedAt: string;
+            /** @description Sanitized run evidence such as validation code/message, ingestion batch ID, ingested row count, and duplicate row count. Never contains cloud credential material. */
+            evidence: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            createdAt: string;
+        };
         /** @example 1234.5600 */
         MoneyString: string;
         ListMeta: {
@@ -1033,6 +1072,9 @@ export interface components {
         };
         PaginatedCloudConnections: components["schemas"]["PaginatedResponse"] & {
             data?: components["schemas"]["CloudConnection"][];
+        };
+        PaginatedCloudConnectionRuns: components["schemas"]["PaginatedResponse"] & {
+            data?: components["schemas"]["CloudConnectionRun"][];
         };
         PaginatedCloudCredentials: components["schemas"]["PaginatedResponse"] & {
             data?: components["schemas"]["CloudCredential"][];
@@ -1568,6 +1610,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CloudConnectionOnboarding"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listCloudConnectionRuns: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                pageSize?: components["parameters"]["PageSize"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated cloud connection run evidence */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCloudConnectionRuns"];
                 };
             };
             401: components["responses"]["Unauthorized"];

@@ -80,6 +80,12 @@ export class GovernanceController {
     return this.governance.getCloudConnectionOnboarding(id, request.user);
   }
 
+  @Get('cloud-connections/:id/runs')
+  @RequiredRole('viewer')
+  listCloudConnectionRuns(@Param('id') id: string, @Query() query: PageQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.governance.listCloudConnectionRuns(id, query, request.user);
+  }
+
   @Get('accounts')
   @RequiredRole('viewer')
   listAccounts(@Query() query: PageQueryDto, @Req() request: AuthenticatedRequest) {

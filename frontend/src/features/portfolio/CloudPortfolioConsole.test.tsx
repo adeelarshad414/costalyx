@@ -6,6 +6,7 @@ import { AuthProvider, type KeycloakAdapter } from '../../auth/AuthProvider';
 import { CloudPortfolioConsole } from './CloudPortfolioConsole';
 
 type CloudConnectionOnboarding = Awaited<ReturnType<NonNullable<CostalyxClient['getCloudConnectionOnboarding']>>>;
+type CloudConnectionRuns = Awaited<ReturnType<NonNullable<CostalyxClient['listCloudConnectionRuns']>>>;
 
 function renderWithRole(ui: React.ReactElement, roles: string[]) {
   const adapter: KeycloakAdapter = {
@@ -63,6 +64,43 @@ const onboarding: CloudConnectionOnboarding = {
   customerSteps: ['Create or update the AWS IAM role trust policy with the generated external ID.']
 };
 
+const connectionRuns: CloudConnectionRuns = {
+  data: [
+    {
+      id: '33333333-3333-4333-8333-333333333333',
+      tenantId: connection.tenantId,
+      cloudConnectionId: connection.id,
+      runType: 'ingestion',
+      status: 'succeeded',
+      startedAt: '2026-07-06T01:00:00.000Z',
+      completedAt: '2026-07-06T01:00:02.000Z',
+      evidence: {
+        provider: 'aws',
+        sourceUri: 'backend/test/fixtures/aws-cur-sample.csv',
+        ingestedRows: 3,
+        duplicateRows: 0
+      },
+      createdAt: '2026-07-06T01:00:02.000Z'
+    },
+    {
+      id: '44444444-4444-4444-8444-444444444444',
+      tenantId: connection.tenantId,
+      cloudConnectionId: connection.id,
+      runType: 'validation',
+      status: 'succeeded',
+      startedAt: '2026-07-06T00:00:00.000Z',
+      completedAt: '2026-07-06T00:00:00.000Z',
+      evidence: {
+        code: 'live_probes_disabled',
+        connectionStatus: 'ready_for_live_probe',
+        message: connection.lastValidationMessage
+      },
+      createdAt: '2026-07-06T00:00:00.000Z'
+    }
+  ],
+  meta: { total: 2, page: 1, pageSize: 5 }
+};
+
 function createClient(overrides: Partial<CostalyxClient> = {}): CostalyxClient {
   return {
     listCostRecords: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
@@ -93,6 +131,7 @@ function createClient(overrides: Partial<CostalyxClient> = {}): CostalyxClient {
     createCloudConnection: async () => connection,
     validateCloudConnection: async () => connection,
     getCloudConnectionOnboarding: async () => onboarding,
+    listCloudConnectionRuns: async () => connectionRuns,
     listAccounts: async () => ({ data: [], meta: { total: 4, page: 1, pageSize: 1 } }),
     listAccountGroups: async () => ({ data: [], meta: { total: 2, page: 1, pageSize: 1 } }),
     listRoles: async () => ({ data: [] }),
@@ -163,6 +202,10 @@ describe('CloudPortfolioConsole', () => {
     );
     expect(screen.getByText(connection.externalId)).toHaveClass('font-mono-data');
     expect(screen.getByText(connection.lastValidationMessage)).toBeInTheDocument();
+    expect(await screen.findByText('Run evidence')).toBeInTheDocument();
+    expect(screen.getByText('ingestion')).toBeInTheDocument();
+    expect(screen.getByText('validation')).toBeInTheDocument();
+    expect(screen.getByText('3 rows, 0 duplicates')).toHaveClass('font-mono-data');
   });
 
   it('lets admins register and validate a read-only cloud connection', async () => {

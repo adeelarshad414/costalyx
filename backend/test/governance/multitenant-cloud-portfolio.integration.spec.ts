@@ -82,6 +82,34 @@ describe('Multi-tenant cloud portfolio', () => {
       });
 
     await request(app.getHttpServer())
+      .get(`/api/v1/cloud-connections/${createConnection.body.id}/runs`)
+      .set('x-costalyx-role', 'viewer')
+      .set('x-costalyx-tenant-id', tenantA)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              tenantId: tenantA,
+              cloudConnectionId: createConnection.body.id,
+              runType: 'validation',
+              status: 'succeeded',
+              evidence: expect.objectContaining({
+                code: 'live_probes_disabled',
+                connectionStatus: 'ready_for_live_probe'
+              })
+            })
+          ])
+        );
+      });
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/cloud-connections/${createConnection.body.id}/runs`)
+      .set('x-costalyx-role', 'viewer')
+      .set('x-costalyx-tenant-id', tenantB)
+      .expect(404);
+
+    await request(app.getHttpServer())
       .get(`/api/v1/cloud-connections/${createConnection.body.id}/onboarding`)
       .set('x-costalyx-role', 'admin')
       .set('x-costalyx-tenant-id', tenantA)
@@ -121,6 +149,28 @@ describe('Multi-tenant cloud portfolio', () => {
         .expect(202)
         .expect(({ body }) => expect(body.tenantId).toBe(tenantId));
     }
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/cloud-connections/${createConnection.body.id}/runs`)
+      .set('x-costalyx-role', 'viewer')
+      .set('x-costalyx-tenant-id', tenantA)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              runType: 'ingestion',
+              status: 'succeeded',
+              evidence: expect.objectContaining({
+                provider: 'aws',
+                sourceUri: 'backend/test/fixtures/aws-cur-sample.csv',
+                ingestedRows: 3,
+                duplicateRows: 0
+              })
+            })
+          ])
+        );
+      });
 
     const tenantARecords = await request(app.getHttpServer())
       .get('/api/v1/cost-records?provider=aws&page=1&pageSize=25')

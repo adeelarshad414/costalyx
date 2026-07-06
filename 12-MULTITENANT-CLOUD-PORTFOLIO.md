@@ -55,6 +55,9 @@ The frontend and API support:
 - Collective tenant-wide rollups across AWS, Azure, and GCP.
 - Account groups for ownership or business-unit views.
 - Saved views through `X-Costalyx-View-Id`, still bounded by the token tenant.
+- Latest validation and ingestion run evidence per cloud connection, including
+  success/failure status, timestamps, sanitized probe codes, batch IDs, row
+  counts, and duplicate counts.
 
 ## Current production path
 1. Operator provisions the Costalyx tenant and OIDC tenant claim.
@@ -79,11 +82,14 @@ The frontend and API support:
    Default Credentials to read one row from the BigQuery billing export.
    Operators can preflight those same paths with `npm run probe:azure-live`
    and `npm run probe:gcp-live`.
-6. Billing exports are ingested with `tenant_id` and `cloud_connection_id`.
-7. Cost, reports, recommendations, savings, and audit rows stay tenant scoped.
+6. Validation and ingestion attempts write sanitized rows to
+   `cloud_connection_runs`, and the portfolio UI surfaces latest run evidence
+   per connection.
+7. Billing exports are ingested with `tenant_id` and `cloud_connection_id`.
+8. Cost, reports, recommendations, savings, and audit rows stay tenant scoped.
 
 ## Next connector hardening
-- Add scheduled validation and ingestion jobs per connection with
-  last-success and last-failure evidence surfaced in the UI.
+- Add the production scheduler/worker loop that invokes the existing
+  validation and ingestion run ledger on a configured cadence per connection.
 - Execute live AWS/Azure/GCP probes against real customer cloud accounts once
   broker identities and read-only customer grants are supplied.

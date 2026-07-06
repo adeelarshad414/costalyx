@@ -22,6 +22,9 @@ tenant/account/principal/export references and Costalyx broker credentials.
 Azure and GCP live validation use federated broker identities to check Cost
 Management / Blob exports and BigQuery billing exports without accepting
 customer secrets.
+Each cloud connection also has tenant-scoped validation and ingestion run
+evidence so admins and viewers can see the latest probe result, batch ID, row
+counts, duplicate counts, and failure messages without exposing credentials.
 
 ## Status
 🚧 Pre-release. See [`PROGRESS.md`](./PROGRESS.md) for live build status —

@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS cloud_connection_runs_tenant_connection_completed_idx;
+DROP TABLE IF EXISTS cloud_connection_runs;

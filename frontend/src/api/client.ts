@@ -17,6 +17,8 @@ type CloudConnectionResponse =
   paths['/cloud-connections']['post']['responses']['201']['content']['application/json'];
 type CloudConnectionOnboardingResponse =
   paths['/cloud-connections/{id}/onboarding']['get']['responses']['200']['content']['application/json'];
+type CloudConnectionRunsResponse =
+  paths['/cloud-connections/{id}/runs']['get']['responses']['200']['content']['application/json'];
 type AccountsResponse = paths['/accounts']['get']['responses']['200']['content']['application/json'];
 type AccountGroupsResponse = paths['/account-groups']['get']['responses']['200']['content']['application/json'];
 type RolesResponse = paths['/roles']['get']['responses']['200']['content']['application/json'];
@@ -124,6 +126,7 @@ export interface CostalyxClient {
   ): Promise<CloudConnectionResponse>;
   validateCloudConnection?(input: { id: string; idempotencyKey: string }): Promise<CloudConnectionResponse>;
   getCloudConnectionOnboarding?(input: { id: string }): Promise<CloudConnectionOnboardingResponse>;
+  listCloudConnectionRuns?(input: { id: string; page?: number; pageSize?: number }): Promise<CloudConnectionRunsResponse>;
   listAccounts?(query?: { page?: number; pageSize?: number }): Promise<AccountsResponse>;
   listAccountGroups?(query?: { page?: number; pageSize?: number }): Promise<AccountGroupsResponse>;
   listRoles(): Promise<RolesResponse>;
@@ -320,6 +323,22 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
         throw new Error(`Cloud connection onboarding request failed with ${response.status}`);
       }
       return response.json() as Promise<CloudConnectionOnboardingResponse>;
+    },
+
+    async listCloudConnectionRuns({ id, page, pageSize }) {
+      const params = new URLSearchParams();
+      appendParam(params, 'page', page);
+      appendParam(params, 'pageSize', pageSize);
+      const response = await fetch(`${baseUrl}/cloud-connections/${id}/runs${queryString(params)}`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Cloud connection runs request failed with ${response.status}`);
+      }
+      return response.json() as Promise<CloudConnectionRunsResponse>;
     },
 
     async listAccounts(query) {

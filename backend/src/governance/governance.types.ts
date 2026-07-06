@@ -123,6 +123,30 @@ export interface CloudConnectionValidationResult {
   validatedAt: string | null;
 }
 
+export type CloudConnectionRunType = 'validation' | 'ingestion';
+export type CloudConnectionRunStatus = 'succeeded' | 'failed';
+
+export interface CloudConnectionRun {
+  id: string;
+  tenantId: string;
+  cloudConnectionId: string;
+  runType: CloudConnectionRunType;
+  status: CloudConnectionRunStatus;
+  startedAt: string;
+  completedAt: string;
+  evidence: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface RecordCloudConnectionRunInput {
+  cloudConnectionId: string;
+  runType: CloudConnectionRunType;
+  status: CloudConnectionRunStatus;
+  startedAt: string;
+  completedAt: string;
+  evidence: Record<string, unknown>;
+}
+
 export type CloudConnectionOnboardingStatus =
   | 'ready'
   | 'broker_principal_missing'
