@@ -42,6 +42,12 @@ type RecommendationPatchRequest =
 type RecommendationResponse =
   paths['/recommendations/{id}']['patch']['responses']['200']['content']['application/json'];
 type RealizedSavingsResponse = paths['/realized-savings']['get']['responses']['200']['content']['application/json'];
+type AnomalyScanResponse =
+  paths['/billing-agent/anomaly-scan']['post']['responses']['200']['content']['application/json'];
+type AnomaliesResponse = paths['/anomalies']['get']['responses']['200']['content']['application/json'];
+type AnomalyStatusPatchRequest =
+  paths['/anomalies/{id}']['patch']['requestBody']['content']['application/json'];
+type AnomalyResponse = paths['/anomalies/{id}']['patch']['responses']['200']['content']['application/json'];
 type ExecutiveSummaryResponse =
   paths['/executive-summary']['get']['responses']['200']['content']['application/json'];
 type TcoEstimateRequest = paths['/tco/estimate']['post']['requestBody']['content']['application/json'];
@@ -57,6 +63,8 @@ type ReportCategory = NonNullable<NonNullable<paths['/reports']['get']['paramete
 type RecommendationStatus = NonNullable<
   NonNullable<paths['/recommendations']['get']['parameters']['query']>['status']
 >;
+type AnomalyStatus = NonNullable<NonNullable<paths['/anomalies']['get']['parameters']['query']>['status']>;
+type AnomalyType = NonNullable<NonNullable<paths['/anomalies']['get']['parameters']['query']>['type']>;
 
 interface CostRecordQuery {
   provider?: CloudProvider;
@@ -86,6 +94,13 @@ interface CostExplorerFlowQuery {
 
 interface RecommendationsQuery {
   status?: RecommendationStatus;
+  page?: number;
+  pageSize?: number;
+}
+
+interface AnomaliesQuery {
+  type?: AnomalyType;
+  status?: AnomalyStatus;
   page?: number;
   pageSize?: number;
 }
@@ -142,6 +157,9 @@ export interface CostalyxClient {
     input: RecommendationPatchRequest & { id: string; idempotencyKey: string }
   ): Promise<RecommendationResponse>;
   listRealizedSavings(query?: { page?: number; pageSize?: number }): Promise<RealizedSavingsResponse>;
+  scanBillingAnomalies?(): Promise<AnomalyScanResponse>;
+  listAnomalies?(query?: AnomaliesQuery): Promise<AnomaliesResponse>;
+  updateAnomalyStatus?(input: AnomalyStatusPatchRequest & { id: string; idempotencyKey: string }): Promise<AnomalyResponse>;
   getExecutiveSummary(query?: ExecutiveSummaryQuery): Promise<ExecutiveSummaryResponse>;
   exportExecutiveSummaryPdf(): Promise<string>;
   estimateTco(input: TcoEstimateRequest & { idempotencyKey: string }): Promise<TcoEstimateResponse>;
@@ -529,6 +547,55 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
         throw new Error(`Realized savings request failed with ${response.status}`);
       }
       return response.json() as Promise<RealizedSavingsResponse>;
+    },
+
+    async scanBillingAnomalies() {
+      const response = await fetch(`${baseUrl}/billing-agent/anomaly-scan`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Billing anomaly scan failed with ${response.status}`);
+      }
+      return response.json() as Promise<AnomalyScanResponse>;
+    },
+
+    async listAnomalies(query) {
+      const params = new URLSearchParams();
+      appendParam(params, 'type', query?.type);
+      appendParam(params, 'status', query?.status);
+      appendParam(params, 'page', query?.page);
+      appendParam(params, 'pageSize', query?.pageSize);
+      const response = await fetch(`${baseUrl}/anomalies${queryString(params)}`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Anomalies request failed with ${response.status}`);
+      }
+      return response.json() as Promise<AnomaliesResponse>;
+    },
+
+    async updateAnomalyStatus({ id, idempotencyKey, ...body }) {
+      const response = await fetch(`${baseUrl}/anomalies/${id}`, {
+        method: 'PATCH',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+          ...(await authHeaders())
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error(`Anomaly status update failed with ${response.status}`);
+      }
+      return response.json() as Promise<AnomalyResponse>;
     },
 
     async getExecutiveSummary(query) {

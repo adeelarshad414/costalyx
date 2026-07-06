@@ -93,6 +93,25 @@ backfills may introduce a longer SLA, but must document it before shipping.
   restricts that Viewer's *entire session* to the scoped data, verified at
   the API layer
 
+### Milestone I — Agentic Billing Intelligence
+- Anomaly Detection Engine: detect unit-price, usage, new-spend, and
+  commitment-coverage anomalies from existing `cost_records`, with every
+  anomaly carrying traceable `evidence_json`, validated deterministic
+  `explanation_md`, false-positive reason codes, and downstream
+  `costalyx.billing-agent` events
+- Stakeholder Invoicing & Statements: generate showback/chargeback
+  statements from cost-record aggregations, map stakeholders to account
+  groups/dimensions/Views, flag overlap and unallocated remainder, require
+  approval before external sends, and audit every state transition
+- Agent Runtime & Guardrails: run anomaly and statement jobs inside the
+  existing worker, record `agent_runs`, keep LLM narrative generation behind
+  a deterministic fallback, and cap notification/send blast radius
+- **Acceptance:** I.1 golden fixture detects all four anomaly types and a
+  clean fixture detects zero; evidence references real pricing rows; numeric
+  claim validation has 100% branch coverage; statement totals reconcile to
+  tenant total to the cent; no statement reaches `sent` without server-side
+  approval; every agent cycle is auditable
+
 ## Explicit non-goals (v1)
 - Kubernetes-cost-level granularity (Kubecost-equivalent) — future phase
 - SaaS/license cost tracking beyond cloud infra — future phase
