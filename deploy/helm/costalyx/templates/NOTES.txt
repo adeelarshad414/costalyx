@@ -1,0 +1,16 @@
+Costalyx has been rendered for release {{ .Release.Name }}.
+
+Backend service:
+  {{ include "costalyx.backendName" . }}:{{ .Values.backend.service.port }}
+
+Frontend service:
+  {{ include "costalyx.frontendName" . }}:{{ .Values.frontend.service.port }}
+
+Required runtime Secret:
+  {{ .Values.secrets.existingSecret }}
+  - {{ .Values.secrets.databaseUrlKey }}: production DATABASE_URL
+  - {{ .Values.secrets.vaultTokenKey }}: production Vault token or workload identity token
+
+Rollback:
+  kubectl rollout undo deployment/{{ include "costalyx.backendName" . }}
+  kubectl rollout undo deployment/{{ include "costalyx.frontendName" . }}

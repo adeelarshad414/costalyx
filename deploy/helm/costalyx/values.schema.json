@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "backend": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "object",
+          "required": ["repository", "tag"],
+          "properties": {
+            "repository": { "type": "string", "minLength": 1 },
+            "tag": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "frontend": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "object",
+          "required": ["repository", "tag"],
+          "properties": {
+            "repository": { "type": "string", "minLength": 1 },
+            "tag": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "required": ["appEnv", "keycloakIssuerUrl", "keycloakJwksUrl", "vaultAddr", "useMocks", "seedFixtureData"],
+      "properties": {
+        "appEnv": { "type": "string", "minLength": 1 },
+        "keycloakIssuerUrl": { "type": "string", "minLength": 1 },
+        "keycloakJwksUrl": { "type": "string", "minLength": 1 },
+        "vaultAddr": { "type": "string", "minLength": 1 },
+        "redpandaBrokers": { "type": "string" },
+        "useMocks": { "type": "string", "enum": ["false"] },
+        "seedFixtureData": { "type": "string", "enum": ["false"] }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "required": ["existingSecret", "databaseUrlKey", "vaultTokenKey"],
+      "properties": {
+        "existingSecret": { "type": "string", "minLength": 1 },
+        "databaseUrlKey": { "type": "string", "minLength": 1 },
+        "vaultTokenKey": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

@@ -1,0 +1,102 @@
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+
+backend:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/adeelarshad414/costalyx-backend
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  service:
+    port: 3000
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+frontend:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/adeelarshad414/costalyx-frontend
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  service:
+    port: 8080
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 75
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+config:
+  appEnv: production
+  keycloakIssuerUrl: https://auth.example.test/realms/costalyx
+  keycloakJwksUrl: https://auth.example.test/realms/costalyx/protocol/openid-connect/certs
+  vaultAddr: https://vault.example.test
+  redpandaBrokers: ""
+  useMocks: "false"
+  seedFixtureData: "false"
+
+secrets:
+  existingSecret: costalyx-runtime-secrets
+  databaseUrlKey: database-url
+  vaultTokenKey: vault-token
+
+serviceAccount:
+  create: true
+  annotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  frontendHost: app.example.test
+  backendHost: api.example.test
+  tls:
+    enabled: true
+    frontendSecretName: costalyx-frontend-tls
+    backendSecretName: costalyx-backend-tls
+
+networkPolicy:
+  enabled: true
+  ingressController:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: ingress-nginx
+    podSelector:
+      matchLabels:
+        app.kubernetes.io/name: ingress-nginx
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

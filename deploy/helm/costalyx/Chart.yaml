@@ -1,0 +1,16 @@
+apiVersion: v2
+name: costalyx
+description: Production Helm chart for Costalyx
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - finops
+  - cost-management
+  - costalyx
+sources:
+  - https://github.com/adeelarshad414/costalyx
+maintainers:
+  - name: Costalyx maintainers
+annotations:
+  category: FinOps

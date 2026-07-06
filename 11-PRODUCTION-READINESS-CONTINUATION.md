@@ -6,26 +6,26 @@ job is to turn a feature-complete Costalyx checkout into a release candidate
 with deployment, security, and operator-readiness evidence.
 
 ## Step 1 - Re-verify milestone evidence
-- [ ] `npm test` passes with current counts recorded in `PROGRESS.md`
-- [ ] `npm run ci:live-contract` passes against a live local backend
-- [ ] Live Keycloak browser E2E passes when Docker/network are available
-- [ ] Any skipped test is either opt-in by design or documented in
+- [x] `npm test` passes with current counts recorded in `PROGRESS.md`
+- [x] `npm run ci:live-contract` passes against a live local backend
+- [x] Live Keycloak browser E2E passes when Docker/network are available
+- [x] Any skipped test is either opt-in by design or documented in
   `PROGRESS.md`
 
 ## Step 2 - Production hardening items
-- [ ] `DUMMY-VALUES.md` enumerates every credential, endpoint, and fixture
+- [x] `DUMMY-VALUES.md` enumerates every credential, endpoint, and fixture
   stand-in plus its production replacement location
-- [ ] Backend startup fails on `CHANGE_ME_DEV_ONLY` outside local
+- [x] Backend startup fails on `CHANGE_ME_DEV_ONLY` outside local
   development
-- [ ] Production Dockerfiles run as non-root users and include health checks
-- [ ] `docker-compose.prod.yml` has no default plaintext secrets and requires
+- [x] Production Dockerfiles run as non-root users and include health checks
+- [x] `docker-compose.prod.yml` has no default plaintext secrets and requires
   operator-supplied production settings
-- [ ] CI validates unit/integration/contract/build/audit gates on every
+- [x] CI validates unit/integration/contract/build/audit gates on every
   feature branch and PR
-- [ ] E2E remains available as an opt-in CI gate with the full compose stack
-- [ ] Health and metrics endpoints exist and are documented for operators
-- [ ] Rollback procedure is documented and uses immutable image tags
-- [ ] Any missing Helm/Kubernetes artifact is either implemented or listed as
+- [x] E2E remains available as an opt-in CI gate with the full compose stack
+- [x] Health and metrics endpoints exist and are documented for operators
+- [x] Rollback procedure is documented and uses immutable image tags
+- [x] Any missing Helm/Kubernetes artifact is either implemented or listed as
   blocked/exhausted with the exact remaining work
 
 ## Step 3 - Launch-readiness gate

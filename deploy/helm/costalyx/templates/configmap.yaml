@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "costalyx.fullname" . }}-config
+  labels:
+    {{- include "costalyx.labels" . | nindent 4 }}
+data:
+  APP_ENV: {{ .Values.config.appEnv | quote }}
+  KEYCLOAK_ISSUER_URL: {{ .Values.config.keycloakIssuerUrl | quote }}
+  KEYCLOAK_JWKS_URL: {{ .Values.config.keycloakJwksUrl | quote }}
+  VAULT_ADDR: {{ .Values.config.vaultAddr | quote }}
+  REDPANDA_BROKERS: {{ .Values.config.redpandaBrokers | quote }}
+  USE_MOCKS: {{ .Values.config.useMocks | quote }}
+  SEED_FIXTURE_DATA: {{ .Values.config.seedFixtureData | quote }}

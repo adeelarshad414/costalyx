@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "costalyx.backendName" . }}
+  labels:
+    {{- include "costalyx.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  {{- if not .Values.backend.autoscaling.enabled }}
+  replicas: {{ .Values.backend.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "costalyx.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        {{- include "costalyx.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+    spec:
+      serviceAccountName: {{ include "costalyx.backendServiceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3000"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.databaseUrlKey }}
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.vaultTokenKey }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "costalyx.fullname" . }}-config
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

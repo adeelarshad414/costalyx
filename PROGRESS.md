@@ -5,7 +5,7 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-06 13:30:02 PKT_
+_Last updated: 2026-07-06 13:33:08 PKT_
 
 ## Milestone status
 
@@ -35,6 +35,8 @@ Definition of Done is satisfied.
 - `env POSTGRES_PASSWORD=placeholder-postgres-password DATABASE_URL=postgresql://costalyx:placeholder-postgres-password@postgres:5432/costalyx KEYCLOAK_ISSUER_URL=https://auth.example.test/realms/costalyx KEYCLOAK_JWKS_URL=https://auth.example.test/realms/costalyx/protocol/openid-connect/certs VAULT_ADDR=https://vault.example.test VAULT_TOKEN=placeholder-vault-token VITE_API_BASE_URL=https://api.example.test/api/v1 VITE_KEYCLOAK_URL=https://auth.example.test VITE_KEYCLOAK_REALM=costalyx VITE_KEYCLOAK_CLIENT_ID=costalyx-web docker compose -f docker-compose.prod.yml config`: passed.
 - `docker build -f backend/Dockerfile -t costalyx-backend:local-check .`: passed with Docker socket escalation; pinned Node 22.12.0 Alpine image pulled and backend TypeScript build completed inside the image.
 - `docker build -f frontend/Dockerfile -t costalyx-frontend:local-check --build-arg VITE_API_BASE_URL=https://api.example.test/api/v1 --build-arg VITE_KEYCLOAK_URL=https://auth.example.test --build-arg VITE_KEYCLOAK_REALM=costalyx --build-arg VITE_KEYCLOAK_CLIENT_ID=costalyx-web .`: passed with Docker socket escalation; Vite production build completed inside the image.
+- `helm lint deploy/helm/costalyx`: 1 chart linted, 0 failed.
+- `helm template costalyx deploy/helm/costalyx --namespace costalyx`: rendered successfully.
 - `npm run test:e2e`: 1 skipped when live Keycloak credentials are intentionally absent.
 - `env E2E_KEYCLOAK_URL=http://127.0.0.1:55880 E2E_API_BASE_URL=http://127.0.0.1:43101/api/v1 E2E_BASE_URL=http://localhost:5173 npm run test:e2e:keycloak`: seeded `costalyx-e2e-admin`; Playwright reported 1 Chromium test passed in 2.1s.
 
@@ -47,7 +49,7 @@ Definition of Done is satisfied.
 | Launch-readiness continuation doc | Done (evidence linked) | `11-PRODUCTION-READINESS-CONTINUATION.md` now defines the Step 1 re-verification, Step 2 hardening, and Step 3 launch-readiness gates consumed by the goal-driven run. | Added because prompt 12 references doc 11, but it was absent from the repo. |
 | Production Dockerfiles | Done (evidence linked) | Backend and frontend production images built successfully as `costalyx-backend:local-check` and `costalyx-frontend:local-check`. | Both use pinned Node 22.12.0 Alpine, non-root `costalyx` users, and container health checks. |
 | Production compose path | Done (evidence linked) | `docker compose -f docker-compose.prod.yml config` passed with explicit operator-supplied placeholder env. | The file has no `CHANGE_ME_DEV_ONLY` defaults; required production env values use Compose `:?` guards. |
-| Helm/Kubernetes production manifests | Not started | No `deploy/helm/costalyx` chart exists yet. | Next hardening gap from `09-DEPLOYMENT.md` / doc 11. |
+| Helm/Kubernetes production manifests | Done (evidence linked) | `helm lint deploy/helm/costalyx`: 1 chart linted, 0 failed. `helm template costalyx deploy/helm/costalyx --namespace costalyx`: rendered successfully. | Chart includes backend/frontend Deployments, Services, ServiceAccounts, HPA, optional Ingress, ConfigMap, external Secret references, pod security contexts, resource requests/limits, health probes, and NetworkPolicies. |
 
 ## Full-stack wiring checklist (per feature, filled in as work proceeds)
 _Copy this block per feature; do not mark complete without linked evidence._
