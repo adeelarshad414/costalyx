@@ -46,19 +46,24 @@ jobs:
   contract      → OpenAPI contract suite against a running backend
   migration-check → additive-only migration diff check
   e2e           → Playwright against a full docker-compose stack (on PR to main only)
-  build         → backend + frontend production builds, Docker images pushed
-                   to registry tagged with commit SHA (on merge to main only)
+  deploy-check  → production Compose config, backend/frontend Docker image
+                   builds, backend worker entrypoint check, Helm lint, and
+                   Helm template render with worker/cloud-ingestion config
 ```
 Merge to `main` is blocked unless lint, unit, integration, contract, and
-migration-check all pass — E2E runs on PR-to-main and must pass before merge
-completes, not just before deploy.
+migration-check all pass. The production deploy-check must also pass on
+PRs and `main` pushes. E2E remains repository-configurable through
+`E2E_ENABLED=true`; when enabled it must pass before merge completes, not
+just before deploy.
 
 ## Release process
 1. Conventional commits accumulate on a feature branch
 2. PR opened at run completion (per `00-BRANDING-PERSONAS-MASTER-PROMPT.md`
    orchestrator rules)
-3. On merge: CI builds and tags Docker images, updates `CHANGELOG.md`
-   (generated from conventional commit messages)
+3. On merge: CI verifies production Docker image buildability, Compose config,
+   Helm rendering, and worker entrypoint packaging. Registry publication is
+   enabled only after GHCR or another registry is configured with write
+   permissions; published images must be tagged with the commit SHA.
 4. Tagged release (`vX.Y.Z`) triggers Helm chart version bump and a GitHub
    Release with the changelog excerpt
 
