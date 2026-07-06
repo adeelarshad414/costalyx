@@ -201,6 +201,25 @@ describe('createCostalyxClient', () => {
             disputedBy: 'actor-1'
           }
         })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              id: '55555555-5555-4555-8555-555555555555',
+              tenantId: statement.tenantId,
+              runType: 'statement_generation',
+              startedAt: '2026-07-06T00:00:00.000Z',
+              finishedAt: '2026-07-06T00:00:01.000Z',
+              inputsSummary: { periodStart: statement.periodStart, periodEnd: statement.periodEnd },
+              actionsTaken: [],
+              actionsProposed: [{ action: 'statement_generation', count: 1, capped: false, statementIds: [statement.id] }],
+              errors: []
+            }
+          ],
+          meta: { total: 1, page: 1, pageSize: 5 }
+        })
       });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -222,6 +241,7 @@ describe('createCostalyxClient', () => {
       note: 'Allocation review requested.',
       idempotencyKey: 'statement-dispute-key'
     });
+    await client.listAgentRuns?.({ runType: 'statement_generation', page: 1, pageSize: 5 });
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
@@ -256,6 +276,16 @@ describe('createCostalyxClient', () => {
         method: 'POST',
         headers: expect.objectContaining({ 'Idempotency-Key': 'statement-dispute-key' }),
         body: JSON.stringify({ note: 'Allocation review requested.' })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      6,
+      'http://api.test/api/v1/agent-runs?runType=statement_generation&page=1&pageSize=5',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Accept: 'application/json',
+          Authorization: 'Bearer signed-keycloak-token'
+        })
       })
     );
   });

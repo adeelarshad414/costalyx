@@ -1,7 +1,8 @@
 import { IsEmail, IsIn, IsObject, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 import { PageQueryDto } from '../../governance/dto/page-query.dto';
-import type { BillingScopeType, BillingStatementStatus, StakeholderNotificationChannel } from '../billing-agent.types';
+import type { AgentRunType, BillingScopeType, BillingStatementStatus, StakeholderNotificationChannel } from '../billing-agent.types';
 
+export const agentRunTypes: AgentRunType[] = ['anomaly_scan', 'statement_generation', 'statement_send'];
 export const billingScopeTypes: BillingScopeType[] = ['account_group', 'dimension', 'view'];
 export const billingStatementStatuses: BillingStatementStatus[] = [
   'draft',
@@ -72,6 +73,12 @@ export class ListStatementsQueryDto extends PageQueryDto {
   @IsOptional()
   @IsUUID('4')
   stakeholderId?: string;
+}
+
+export class ListAgentRunsQueryDto extends PageQueryDto {
+  @IsOptional()
+  @IsIn(agentRunTypes)
+  runType?: AgentRunType;
 }
 
 export class DisputeStatementDto {

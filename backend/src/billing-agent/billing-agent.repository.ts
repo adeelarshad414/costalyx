@@ -1,6 +1,9 @@
 import type {
   BillingScope,
   BillingScopeFilter,
+  AgentRun,
+  AgentRunCreateInput,
+  AgentRunQuery,
   BillingAnomaly,
   BillingAnomalyCandidate,
   BillingAnomalyQuery,
@@ -84,4 +87,9 @@ export interface BillingAgentRepository {
     },
     actor: AuthenticatedUser
   ): Promise<BillingStatement>;
+  createAgentRun(input: AgentRunCreateInput, actor: AuthenticatedUser): Promise<AgentRun>;
+  listAgentRuns(query: AgentRunQuery): Promise<{
+    data: AgentRun[];
+    meta: { total: number; page: number; pageSize: number };
+  }>;
 }

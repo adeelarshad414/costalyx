@@ -423,6 +423,10 @@ td {
   padding: 12px 0;
 }
 
+.agent-run-list li {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
 .anomaly-body {
   display: grid;
   gap: 8px;

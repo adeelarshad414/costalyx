@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BillingAgentModule } from '../billing-agent/billing-agent.module';
 import { CostModelModule } from '../cost-model/cost-model.module';
 import { GovernanceModule } from '../governance/governance.module';
 import { BILLING_SOURCE_READER, DefaultBillingSourceReader } from './billing-source-reader';
@@ -7,7 +8,7 @@ import { IngestionController } from './ingestion.controller';
 import { IngestionService } from './ingestion.service';
 
 @Module({
-  imports: [CostModelModule, GovernanceModule],
+  imports: [CostModelModule, GovernanceModule, BillingAgentModule],
   controllers: [IngestionController],
   providers: [
     IngestionService,

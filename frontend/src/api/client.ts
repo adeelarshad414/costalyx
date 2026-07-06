@@ -63,6 +63,7 @@ type BillingStatementGenerateResponse =
   paths['/billing-statements/generate']['post']['responses']['201']['content']['application/json'];
 type BillingStatementsResponse =
   paths['/billing-statements']['get']['responses']['200']['content']['application/json'];
+type AgentRunsResponse = paths['/agent-runs']['get']['responses']['200']['content']['application/json'];
 type BillingStatementResponse =
   paths['/billing-statements/{id}']['get']['responses']['200']['content']['application/json'];
 type BillingStatementDisputeRequest =
@@ -87,6 +88,7 @@ type AnomalyType = NonNullable<NonNullable<paths['/anomalies']['get']['parameter
 type BillingStatementStatus = NonNullable<
   NonNullable<paths['/billing-statements']['get']['parameters']['query']>['status']
 >;
+type AgentRunType = NonNullable<NonNullable<paths['/agent-runs']['get']['parameters']['query']>['runType']>;
 
 interface CostRecordQuery {
   provider?: CloudProvider;
@@ -130,6 +132,12 @@ interface AnomaliesQuery {
 interface BillingStatementsQuery {
   status?: BillingStatementStatus;
   stakeholderId?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+interface AgentRunsQuery {
+  runType?: AgentRunType;
   page?: number;
   pageSize?: number;
 }
@@ -199,6 +207,7 @@ export interface CostalyxClient {
     input: BillingStatementGenerateRequest & { idempotencyKey: string }
   ): Promise<BillingStatementGenerateResponse>;
   listBillingStatements?(query?: BillingStatementsQuery): Promise<BillingStatementsResponse>;
+  listAgentRuns?(query?: AgentRunsQuery): Promise<AgentRunsResponse>;
   getBillingStatement?(input: { id: string }): Promise<BillingStatementResponse>;
   approveBillingStatement?(input: { id: string; idempotencyKey: string }): Promise<BillingStatementResponse>;
   sendBillingStatement?(input: { id: string; idempotencyKey: string }): Promise<BillingStatementResponse>;
@@ -738,6 +747,23 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
         throw new Error(`Billing statements request failed with ${response.status}`);
       }
       return response.json() as Promise<BillingStatementsResponse>;
+    },
+
+    async listAgentRuns(query) {
+      const params = new URLSearchParams();
+      appendParam(params, 'runType', query?.runType);
+      appendParam(params, 'page', query?.page);
+      appendParam(params, 'pageSize', query?.pageSize);
+      const response = await fetch(`${baseUrl}/agent-runs${queryString(params)}`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Agent runs request failed with ${response.status}`);
+      }
+      return response.json() as Promise<AgentRunsResponse>;
     },
 
     async getBillingStatement({ id }) {

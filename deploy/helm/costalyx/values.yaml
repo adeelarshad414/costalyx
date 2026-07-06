@@ -31,6 +31,13 @@ worker:
     enabled: "enabled"
     intervalMs: "900000"
     ingestionEnabled: ""
+    billingAgentTenantIds: ""
+    billingAgentAnomalyScanEnabled: ""
+    billingAgentStatementGenerationEnabled: ""
+    billingAgentStatementSendEnabled: ""
+    billingAgentStatementSendLimit: "10"
+    billingAgentPeriodStart: ""
+    billingAgentPeriodEnd: ""
   resources:
     requests:
       cpu: 50m
@@ -72,6 +79,8 @@ config:
   awsProbeRegion: ""
   awsIngestionRegion: ""
   gcpBigQueryLocation: ""
+  llmNarrativesEnabled: "disabled"
+  llmProviderKeyVaultPath: ""
   useMocks: "false"
   seedFixtureData: "false"
 

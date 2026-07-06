@@ -1144,6 +1144,31 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /agent-runs:
+    get:
+      tags: [billing-agent]
+      summary: List billing agent decision-cycle runs
+      operationId: listAgentRuns
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: runType
+          in: query
+          schema:
+            $ref: "#/components/schemas/AgentRunType"
+      responses:
+        "200":
+          description: Paginated agent-run ledger
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedAgentRuns"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /billing-statements/{id}:
     get:
       tags: [billing-agent]
@@ -2901,6 +2926,78 @@ components:
           items:
             $ref: "#/components/schemas/BillingStatementScopeWarning"
 
+    AgentRunType:
+      type: string
+      enum: [anomaly_scan, statement_generation, statement_send]
+
+    AgentRunActionSummary:
+      type: object
+      required: [action, count, capped]
+      properties:
+        action:
+          type: string
+        count:
+          type: integer
+          minimum: 0
+        capped:
+          type: boolean
+        cap:
+          type: integer
+          minimum: 1
+        statementIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        anomalyIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    AgentRun:
+      type: object
+      required:
+        - id
+        - tenantId
+        - runType
+        - startedAt
+        - finishedAt
+        - inputsSummary
+        - actionsTaken
+        - actionsProposed
+        - errors
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        runType:
+          $ref: "#/components/schemas/AgentRunType"
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        inputsSummary:
+          type: object
+          additionalProperties: true
+        actionsTaken:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentRunActionSummary"
+        actionsProposed:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentRunActionSummary"
+        errors:
+          type: array
+          items:
+            type: string
+
     RealizedSaving:
       type: object
       required:
@@ -3279,6 +3376,15 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/BillingStatement"
+    PaginatedAgentRuns:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/AgentRun"
     PaginatedRealizedSavings:
       allOf:
         - $ref: "#/components/schemas/PaginatedResponse"

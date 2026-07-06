@@ -1,7 +1,9 @@
 import { createServer, type AddressInfo, type Server } from 'node:net';
+import { ConfigService } from '@nestjs/config';
 import { BillingAgentService } from '../../src/billing-agent/billing-agent.service';
 import { BILLING_AGENT_EVENT_TOPIC, InMemoryBillingAgentEventPublisher } from '../../src/billing-agent/billing-agent-event.publisher';
 import { InMemoryBillingAgentRepository } from '../../src/billing-agent/in-memory-billing-agent.repository';
+import { NarrativeGeneratorService } from '../../src/billing-agent/narrative-generator.service';
 import { CostModelService } from '../../src/cost-model/cost-model.service';
 import type { CostModelRepository } from '../../src/cost-model/cost-model.repository';
 import type { NormalizedCostRecord } from '../../src/cost-model/cost-record.types';
@@ -24,6 +26,10 @@ async function createService(rows = goldenAnomalyRecords()) {
   const events = new InMemoryBillingAgentEventPublisher();
   const service = new BillingAgentService(costModel, repository, events);
   return { costModel, events, repository, service };
+}
+
+function createConfig(values: Record<string, string | undefined>) {
+  return { get: jest.fn((key: string) => values[key]) } as unknown as ConfigService;
 }
 
 describe('BillingAgentService anomaly detection', () => {
@@ -255,6 +261,184 @@ describe('BillingAgentService stakeholder statements', () => {
       restoreEnv('SMTP_PORT', previousPort);
       await smtp.close();
     }
+  });
+});
+
+describe('BillingAgentService runtime guardrails', () => {
+  it('uses the deterministic narrative fallback when LLM generation is disabled', async () => {
+    const narrative = new NarrativeGeneratorService(createConfig({ COSTALYX_LLM_NARRATIVES_ENABLED: 'disabled' }));
+
+    await expect(
+      narrative.generateStatementNarrative({
+        stakeholderName: 'Finance owner',
+        totalUsd: '10.00',
+        periodStart: '2026-06-01T00:00:00.000Z',
+        periodEnd: '2026-06-30T23:59:59.000Z',
+        openAnomalyCount: 2,
+        varianceTopMovers: [{ label: 'EC2', currentUsd: '10.00', priorUsd: '8.00', deltaUsd: '2.00' }],
+        reconciliation: {
+          tenantTotalUsd: '10.00',
+          allocatedUniqueUsd: '10.00',
+          unallocatedUsd: '0.00',
+          overlapUsd: '0.00',
+          reconcilesToTenantTotal: true
+        }
+      })
+    ).resolves.toContain('Finance owner is assigned $10.00');
+  });
+
+  it('records an auditable agent run with actions proposed and no auto-sends', async () => {
+    const costModel = new CostModelService(new InMemoryCostModelRepository());
+    await costModel.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
+      provider: 'aws',
+      sourceUri: 'runtime-agent-fixture',
+      idempotencyKey: 'runtime-agent-fixture',
+      rows: statementRecords()
+    });
+    const repository = new InMemoryBillingAgentRepository();
+    const service = new BillingAgentService(
+      costModel,
+      repository,
+      new InMemoryBillingAgentEventPublisher(),
+      new NarrativeGeneratorService(createConfig({ COSTALYX_LLM_NARRATIVES_ENABLED: 'disabled' }))
+    );
+    const stakeholder = await service.createStatementStakeholder(
+      { name: 'Finance owner', email: 'finance@example.test', roleLabel: 'Budget owner', notificationChannel: 'email' },
+      actor,
+      'runtime-stakeholder'
+    );
+    await service.createBillingScope(
+      {
+        stakeholderId: stakeholder.id,
+        scopeType: 'account_group',
+        scopeRef: 'group-finance',
+        label: 'Finance account group',
+        scopeFilter: { accountIds: ['account-a'] }
+      },
+      actor,
+      'runtime-scope'
+    );
+
+    const run = await service.runAgentCycle({
+      tenantId: DEFAULT_TENANT_ID,
+      runType: 'statement_generation',
+      actor,
+      startedAt: '2026-07-06T12:00:00.000Z',
+      periodStart: '2026-06-01T00:00:00.000Z',
+      periodEnd: '2026-06-30T23:59:59.000Z'
+    });
+
+    expect(run).toEqual(
+      expect.objectContaining({
+        tenantId: DEFAULT_TENANT_ID,
+        runType: 'statement_generation',
+        startedAt: '2026-07-06T12:00:00.000Z',
+        finishedAt: expect.any(String)
+      })
+    );
+    expect(run.actionsTaken).toEqual([]);
+    expect(run.actionsProposed).toContainEqual(
+      expect.objectContaining({
+        action: 'statement_generation',
+        count: 1,
+        capped: false
+      })
+    );
+    expect(run.inputsSummary).toEqual(
+      expect.objectContaining({
+        periodStart: '2026-06-01T00:00:00.000Z',
+        periodEnd: '2026-06-30T23:59:59.000Z'
+      })
+    );
+    await expect(service.listAgentRuns({ tenantId: DEFAULT_TENANT_ID, page: 1, pageSize: 25 })).resolves.toEqual(
+      expect.objectContaining({ data: [run], meta: expect.objectContaining({ total: 1 }) })
+    );
+  });
+
+  it('caps per-run statement sends even after admin approval', async () => {
+    const costModel = new CostModelService(new InMemoryCostModelRepository());
+    await costModel.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
+      provider: 'aws',
+      sourceUri: 'runtime-cap-fixture',
+      idempotencyKey: 'runtime-cap-fixture',
+      rows: statementRecords()
+    });
+    const repository = new InMemoryBillingAgentRepository();
+    const service = new BillingAgentService(costModel, repository, new InMemoryBillingAgentEventPublisher());
+    const finance = await service.createStatementStakeholder(
+      { name: 'Finance owner', email: 'finance@example.test', roleLabel: 'Budget owner', notificationChannel: 'email' },
+      actor,
+      'cap-stakeholder-finance'
+    );
+    const engineering = await service.createStatementStakeholder(
+      { name: 'Engineering owner', email: 'engineering@example.test', roleLabel: 'Service owner', notificationChannel: 'email' },
+      actor,
+      'cap-stakeholder-engineering'
+    );
+    await service.createBillingScope(
+      {
+        stakeholderId: finance.id,
+        scopeType: 'account_group',
+        scopeRef: 'group-finance',
+        label: 'Finance account group',
+        scopeFilter: { accountIds: ['account-a'] }
+      },
+      actor,
+      'cap-scope-finance'
+    );
+    await service.createBillingScope(
+      {
+        stakeholderId: engineering.id,
+        scopeType: 'account_group',
+        scopeRef: 'group-engineering',
+        label: 'Engineering account group',
+        scopeFilter: { accountIds: ['account-b'] }
+      },
+      actor,
+      'cap-scope-engineering'
+    );
+    const generated = await service.generateStatements(
+      {
+        periodStart: '2026-06-01T00:00:00.000Z',
+        periodEnd: '2026-06-30T23:59:59.000Z'
+      },
+      actor,
+      'cap-generate'
+    );
+    for (const statement of generated.statements) {
+      await service.approveStatement(statement.id, actor, `cap-approve-${statement.id}`);
+    }
+
+    const run = await service.runAgentCycle({
+      tenantId: DEFAULT_TENANT_ID,
+      runType: 'statement_send',
+      actor,
+      startedAt: '2026-07-06T12:30:00.000Z',
+      sendLimit: 1
+    });
+
+    expect(run.actionsTaken).toContainEqual(
+      expect.objectContaining({
+        action: 'statement_send',
+        count: 1,
+        capped: true,
+        cap: 1
+      })
+    );
+    expect(run.actionsProposed).toContainEqual(
+      expect.objectContaining({
+        action: 'statement_send_skipped',
+        count: 1,
+        capped: true,
+        cap: 1
+      })
+    );
+    const sent = await service.listStatements({ tenantId: DEFAULT_TENANT_ID, status: 'sent', page: 1, pageSize: 25 });
+    const approved = await service.listStatements({ tenantId: DEFAULT_TENANT_ID, status: 'approved', page: 1, pageSize: 25 });
+    expect(sent.meta.total).toBe(1);
+    expect(approved.meta.total).toBe(1);
   });
 });
 

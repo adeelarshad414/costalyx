@@ -5,6 +5,10 @@ import { stableId } from '../cost-model/stable-id';
 import type { AuthenticatedUser } from '../security/token-verifier';
 import type { BillingAgentRepository } from './billing-agent.repository';
 import type {
+  AgentRun,
+  AgentRunActionSummary,
+  AgentRunCreateInput,
+  AgentRunQuery,
   AnomalyEvidence,
   BillingScope,
   BillingAnomaly,
@@ -468,6 +472,62 @@ export class PostgresBillingAgentRepository implements BillingAgentRepository, O
     );
   }
 
+  async createAgentRun(input: AgentRunCreateInput, actor: AuthenticatedUser): Promise<AgentRun> {
+    return this.withTransaction(async (client) => {
+      const saved = await client.query(
+        `INSERT INTO agent_runs
+           (id, tenant_id, run_type, started_at, finished_at, inputs_summary_json,
+            actions_taken_json, actions_proposed_json, errors_json, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         ON CONFLICT (id)
+         DO UPDATE SET finished_at = EXCLUDED.finished_at,
+                       inputs_summary_json = EXCLUDED.inputs_summary_json,
+                       actions_taken_json = EXCLUDED.actions_taken_json,
+                       actions_proposed_json = EXCLUDED.actions_proposed_json,
+                       errors_json = EXCLUDED.errors_json
+         RETURNING *`,
+        [
+          input.id,
+          input.tenantId,
+          input.runType,
+          input.startedAt,
+          input.finishedAt,
+          JSON.stringify(input.inputsSummary),
+          JSON.stringify(input.actionsTaken),
+          JSON.stringify(input.actionsProposed),
+          JSON.stringify(input.errors),
+          new Date().toISOString()
+        ]
+      );
+      await this.appendAudit(client, actor, 'agent_run_recorded', 'agent_run', input.id);
+      return mapAgentRun(saved.rows[0] as PgRow);
+    });
+  }
+
+  async listAgentRuns(query: AgentRunQuery) {
+    const clauses = ['tenant_id = $1'];
+    const params: Array<string | number> = [query.tenantId];
+    if (query.runType) {
+      params.push(query.runType);
+      clauses.push(`run_type = $${params.length}`);
+    }
+    const whereSql = `WHERE ${clauses.join(' AND ')}`;
+    const offset = (query.page - 1) * query.pageSize;
+    const data = await this.pool.query(
+      `SELECT *
+       FROM agent_runs
+       ${whereSql}
+       ORDER BY started_at DESC, id ASC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, query.pageSize, offset]
+    );
+    const total = await this.pool.query(`SELECT COUNT(id)::int AS total FROM agent_runs ${whereSql}`, params);
+    return {
+      data: data.rows.map((row) => mapAgentRun(row as PgRow)),
+      meta: { total: Number((total.rows[0] as PgRow | undefined)?.total ?? 0), page: query.page, pageSize: query.pageSize }
+    };
+  }
+
   private async recordSuppressionWithClient(client: Pick<PoolClient, 'query'> | PgPool, input: SuppressionInput): Promise<void> {
     await client.query(
       `INSERT INTO anomaly_suppressions
@@ -674,6 +734,20 @@ function mapStatementLineItem(row: PgRow): BillingStatementLineItem {
     amountUsd: moneyString(row.amount_usd),
     costRecordIds: toStringArray(row.cost_record_ids),
     evidence: toObject(row.evidence_json)
+  };
+}
+
+function mapAgentRun(row: PgRow): AgentRun {
+  return {
+    id: String(row.id),
+    tenantId: String(row.tenant_id),
+    runType: row.run_type as AgentRun['runType'],
+    startedAt: toIso(row.started_at),
+    finishedAt: toIso(row.finished_at),
+    inputsSummary: toObject(row.inputs_summary_json),
+    actionsTaken: toArray(row.actions_taken_json) as AgentRunActionSummary[],
+    actionsProposed: toArray(row.actions_proposed_json) as AgentRunActionSummary[],
+    errors: toArray(row.errors_json).map(String)
   };
 }
 
