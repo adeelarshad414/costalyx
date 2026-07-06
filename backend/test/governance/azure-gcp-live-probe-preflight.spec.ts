@@ -69,7 +69,7 @@ describe('Azure live probe preflight', () => {
     expect(JSON.stringify(output)).not.toContain('sas-token');
     expect(calls).toEqual([
       '/subscriptions/33333333-3333-4333-8333-333333333333',
-      'https://costalyxexports.blob.core.windows.net/billing/exports'
+      'https://costalyxexports.blob.core.windows.net/billing/exports/'
     ]);
     expect(azurePreflightExitCode(output)).toBe(0);
   });

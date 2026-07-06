@@ -24,6 +24,28 @@ const cloudConnection: CloudConnection = {
   createdAt: '2026-07-06T00:00:00.000Z'
 };
 
+const azureCloudConnection: CloudConnection = {
+  ...cloudConnection,
+  provider: 'azure',
+  externalTenantId: '33333333-3333-4333-8333-333333333333',
+  accessMode: 'azure_delegated_app',
+  readOnlyPrincipal: '44444444-4444-4444-8444-444444444444',
+  billingExportUri: 'https://costalyxexports.blob.core.windows.net/billing/exports/',
+  lastValidationCode: 'azure_probe_passed',
+  lastValidationMessage: 'Azure Cost Management and Blob export read probes passed.'
+};
+
+const gcpCloudConnection: CloudConnection = {
+  ...cloudConnection,
+  provider: 'gcp',
+  externalTenantId: 'billingAccounts/gcp-billing-001',
+  accessMode: 'gcp_workload_identity',
+  readOnlyPrincipal: 'projects/123456789/locations/global/workloadIdentityPools/costalyx/providers/billing',
+  billingExportUri: 'bigquery://billing-project.billing_export.gcp_billing_export_v1',
+  lastValidationCode: 'gcp_probe_passed',
+  lastValidationMessage: 'GCP Workload Identity and BigQuery billing export probes passed.'
+};
+
 describe('IngestionService', () => {
   it('loads a fixture source URI through the provider adapter and persists normalized rows', async () => {
     const costModel = new CostModelService(new InMemoryCostModelRepository());
@@ -83,6 +105,71 @@ describe('IngestionService', () => {
           sourceUri: 's3://customer-cur/costalyx/',
           resolvedSourceUri: 's3://customer-cur/costalyx/2026-07/cur.csv.gz',
           ingestedRows: 3,
+          duplicateRows: 0
+        })
+      }),
+      { subject: 'admin-user', role: 'admin', tenantId: DEFAULT_TENANT_ID }
+    );
+  });
+
+  it.each([
+    {
+      provider: 'azure' as const,
+      connection: azureCloudConnection,
+      sourceUri: 'https://costalyxexports.blob.core.windows.net/billing/exports/',
+      resolvedSourceUri: 'https://costalyxexports.blob.core.windows.net/billing/exports/2026-07/export.csv.gz',
+      fixture: 'azure-cost-export-sample.csv',
+      expectedRows: 2
+    },
+    {
+      provider: 'gcp' as const,
+      connection: gcpCloudConnection,
+      sourceUri: 'bigquery://billing-project.billing_export.gcp_billing_export_v1',
+      resolvedSourceUri: 'bigquery://billing-project.billing_export.gcp_billing_export_v1',
+      fixture: 'gcp-billing-export-sample.csv',
+      expectedRows: 2
+    }
+  ])('loads a $provider export through the registered cloud connection source reader', async (scenario) => {
+    const raw = readFileSync(`${process.cwd()}/test/fixtures/${scenario.fixture}`, 'utf8');
+    const costModel = new CostModelService(new InMemoryCostModelRepository());
+    const governance = {
+      getCloudConnection: jest.fn(async () => scenario.connection),
+      recordCloudConnectionRun: jest.fn()
+    };
+    const sourceReader: BillingSourceReader = {
+      read: jest.fn(async () => ({
+        raw,
+        resolvedSourceUri: scenario.resolvedSourceUri
+      }))
+    };
+    const service = new IngestionService(costModel, governance as never, sourceReader);
+
+    const batch = await service.createBatch({
+      tenantId: DEFAULT_TENANT_ID,
+      provider: scenario.provider,
+      cloudConnectionId: scenario.connection.id,
+      sourceUri: scenario.sourceUri,
+      idempotencyKey: `service-${scenario.provider}-export`,
+      actor: { subject: 'admin-user', role: 'admin', tenantId: DEFAULT_TENANT_ID }
+    });
+
+    expect(batch.status).toBe('complete');
+    expect(batch.sourceUri).toBe(scenario.resolvedSourceUri);
+    expect(batch.ingestedRows).toBe(scenario.expectedRows);
+    expect(sourceReader.read).toHaveBeenCalledWith({
+      provider: scenario.provider,
+      sourceUri: scenario.sourceUri,
+      cloudConnection: scenario.connection
+    });
+    expect(governance.recordCloudConnectionRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runType: 'ingestion',
+        status: 'succeeded',
+        evidence: expect.objectContaining({
+          provider: scenario.provider,
+          sourceUri: scenario.sourceUri,
+          resolvedSourceUri: scenario.resolvedSourceUri,
+          ingestedRows: scenario.expectedRows,
           duplicateRows: 0
         })
       }),

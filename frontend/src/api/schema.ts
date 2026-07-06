@@ -915,7 +915,7 @@ export interface components {
         };
         IngestionBatchCreate: {
             provider: components["schemas"]["CloudProvider"];
-            /** @description Provider-native source URI or object reference. AWS supports local fixture paths for development and s3://bucket/prefix/ CUR sources when cloudConnectionId references a tenant-owned AWS read-only connection. */
+            /** @description Provider-native source URI or object reference. Local fixture paths are supported for development. With a tenant-owned cloudConnectionId, AWS supports s3://bucket/prefix/ CUR sources, Azure supports unsigned Blob export URLs, and GCP supports bigquery://project.dataset.table billing export references. */
             sourceUri: string;
             /** Format: uuid */
             cloudConnectionId?: string;

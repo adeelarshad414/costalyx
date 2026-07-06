@@ -93,12 +93,15 @@ The frontend and API support:
    connection and, when scheduled ingestion is explicitly enabled, ingest each
    registered export URI into the same tenant-scoped run ledger. AWS CUR
    ingestion reads CSV/CSV.GZ objects directly from the registered S3 prefix
-   through the customer read-only role and generated external ID.
+   through the customer read-only role and generated external ID; Azure
+   ingestion reads CSV/CSV.GZ Cost Management exports from the registered Blob
+   prefix; GCP ingestion reads rows from the registered BigQuery billing export
+   table and converts them into the normalized adapter CSV contract.
 8. Billing exports are ingested with `tenant_id` and `cloud_connection_id`.
 9. Cost, reports, recommendations, savings, and audit rows stay tenant scoped.
 
 ## Next connector hardening
 - Execute live AWS/Azure/GCP probes against real customer cloud accounts once
   broker identities and read-only customer grants are supplied.
-- Add provider-native Azure Blob and GCP BigQuery scheduled export readers;
-  AWS S3 CUR object reads are implemented.
+- Expand real-cloud fixture coverage with customer-approved anonymized AWS,
+  Azure, and GCP export samples after the first live tenant onboarding.

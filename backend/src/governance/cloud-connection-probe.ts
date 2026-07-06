@@ -257,7 +257,7 @@ export function parseAzureBlobUri(value: string | null): AzureBlobExportLocation
     if (uri.protocol !== 'https:' || uri.search || !uri.hostname.endsWith('.blob.core.windows.net')) {
       return null;
     }
-    const [containerName, ...prefixParts] = uri.pathname.replace(/^\/+/, '').split('/').filter(Boolean);
+    const [containerName, ...prefixParts] = uri.pathname.replace(/^\/+/, '').split('/');
     if (!containerName) {
       return null;
     }

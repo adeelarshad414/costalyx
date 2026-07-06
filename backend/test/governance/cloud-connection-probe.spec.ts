@@ -67,7 +67,7 @@ describe('cloud connection probes', () => {
       accountName: 'costalyxexports',
       accountUrl: 'https://costalyxexports.blob.core.windows.net',
       containerName: 'billing',
-      prefix: 'exports'
+      prefix: 'exports/'
     });
     expect(parseAzureBlobUri('https://costalyxexports.blob.core.windows.net/billing/exports/?sig=secret')).toBeNull();
   });
@@ -178,7 +178,7 @@ describe('cloud connection probes', () => {
     expect(result.code).toBe('azure_probe_passed');
     expect(calls).toEqual([
       '/subscriptions/33333333-3333-4333-8333-333333333333',
-      'costalyxexports/billing/exports'
+      'costalyxexports/billing/exports/'
     ]);
   });
 

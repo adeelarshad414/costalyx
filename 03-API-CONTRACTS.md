@@ -65,10 +65,12 @@ least-privilege CUR S3 read policy, and customer-deployable CloudFormation
 and Terraform bodies for the readonly role. When the Costalyx broker principal
 or billing export URI is missing, the response returns an explicit status
 instead of fake deployment material.
-AWS ingestion can use an `s3://bucket/prefix/` source URI when
-`cloudConnectionId` references a tenant-owned AWS connection; Costalyx
-assumes the registered role with the generated external ID and only reads
-objects under that registered billing export prefix.
+Cloud-connected ingestion can use provider-native export references when
+`cloudConnectionId` references a tenant-owned connection: AWS
+`s3://bucket/prefix/` CUR sources, Azure unsigned Blob export URLs, and GCP
+`bigquery://project.dataset.table` billing export references. Costalyx uses
+the registered read-only connection, only reads within the registered export
+location, and records the resolved object/table reference in run evidence.
 Connection run evidence is tenant-scoped and contains sanitized operational
 facts only, never cloud credentials or signed export URLs.
 
