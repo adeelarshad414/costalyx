@@ -5,6 +5,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
+    "start:worker": "node dist/worker.js",
     "start:dev": "ts-node src/main.ts",
     "probe:aws-live": "ts-node src/governance/aws-live-probe-preflight.cli.ts",
     "probe:azure-live": "ts-node src/governance/azure-live-probe-preflight.cli.ts",

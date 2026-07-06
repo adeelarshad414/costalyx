@@ -118,6 +118,17 @@ export class PostgresGovernanceRepository implements GovernanceRepository, OnMod
     };
   }
 
+  async listCloudConnectionsForScheduler(): Promise<CloudConnection[]> {
+    const result = await this.pool.query(
+      `SELECT id, tenant_id, provider, display_name, external_tenant_id, access_mode, read_only_principal,
+              billing_export_uri, status, last_validated_at, last_validation_attempted_at,
+              last_validation_code, last_validation_message, created_at
+       FROM cloud_connections
+       ORDER BY created_at ASC, id ASC`
+    );
+    return result.rows.map((row) => mapCloudConnection(row as PgRow));
+  }
+
   async getCloudConnection(id: string, actor: AuthenticatedUser): Promise<CloudConnection> {
     const result = await this.pool.query(
       `SELECT id, tenant_id, provider, display_name, external_tenant_id, access_mode, read_only_principal,

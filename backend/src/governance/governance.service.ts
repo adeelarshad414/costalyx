@@ -42,6 +42,10 @@ export class GovernanceService {
     return this.repository.listCloudConnections(query, actor);
   }
 
+  listCloudConnectionsForScheduler(): Promise<CloudConnection[]> {
+    return this.repository.listCloudConnectionsForScheduler();
+  }
+
   getCloudConnection(id: string, actor: AuthenticatedUser): Promise<CloudConnection> {
     return this.repository.getCloudConnection(id, actor);
   }

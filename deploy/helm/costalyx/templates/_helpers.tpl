@@ -39,6 +39,10 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{ include "costalyx.fullname" . }}-frontend
 {{- end }}
 
+{{- define "costalyx.workerName" -}}
+{{ include "costalyx.fullname" . }}-worker
+{{- end }}
+
 {{- define "costalyx.backendServiceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
 {{- printf "%s-backend" (include "costalyx.fullname" .) }}
@@ -50,6 +54,14 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "costalyx.frontendServiceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
 {{- printf "%s-frontend" (include "costalyx.fullname" .) }}
+{{- else }}
+{{- "default" }}
+{{- end }}
+{{- end }}
+
+{{- define "costalyx.workerServiceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
+{{- printf "%s-worker" (include "costalyx.fullname" .) }}
 {{- else }}
 {{- "default" }}
 {{- end }}

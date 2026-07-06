@@ -88,6 +88,24 @@ Validation and ingestion attempts tied to a cloud connection are recorded in
 `GET /api/v1/cloud-connections/{id}/runs` to inspect last success/failure
 evidence without exposing cloud credential material.
 
+Production scheduled validation and ingestion runs through a dedicated worker
+process. Keep `COSTALYX_CLOUD_SCHEDULER_ENABLED` unset on API pods so
+horizontal backend scaling does not duplicate scheduled work. Run exactly one
+worker replica with `COSTALYX_CLOUD_SCHEDULER_ENABLED=enabled` and
+`COSTALYX_CLOUD_SCHEDULER_INTERVAL_MS` set to the desired cadence; values
+below 60000ms fall back to 900000ms. `COSTALYX_CLOUD_SCHEDULER_INGESTION_ENABLED`
+is intentionally opt-in. When it is set to `enabled`, the worker ingests the
+registered `billingExportUri` for each connection after validation using the
+current ingestion adapters/source-path support. When it is unset, the worker
+still records validation evidence and leaves export ingestion to operator or
+future provider-native object readers.
+
+Compose starts the worker with
+`npm --workspace backend run start:worker`. The Helm chart renders the worker
+Deployment only when `worker.enabled=true`; `worker.replicaCount` is capped at
+1 in the values schema because the scheduler is not a distributed lease-based
+job yet.
+
 To enable live AWS validation, the backend runtime must set
 `COSTALYX_LIVE_CLOUD_PROBES=enabled` and run with AWS credentials for the
 Costalyx-controlled broker principal. `COSTALYX_AWS_PROBE_REGION` may be set
@@ -195,3 +213,8 @@ Every deploy is a new immutable image tag; rollback = redeploy the previous
 tag. Database migrations being additive-only (per `02-DATA-MODEL.md`) means
 a code rollback never requires a destructive schema rollback in the common
 case.
+
+If the scheduler worker causes unexpected provider/API load, first disable or
+scale down only the worker Deployment/service in Compose or Helm, verify API
+health remains green, then redeploy the previous backend image tag if code
+rollback is still required.

@@ -26,6 +26,25 @@ principal that customers trust with the generated external ID. Set
 credentials and network access to provider APIs. `config.awsProbeRegion`
 can override the AWS probe region.
 
+## Scheduler Worker
+
+The API Deployment should stay horizontally scalable and scheduler-free.
+Enable the single-replica worker only after the backend image and runtime
+secret are ready:
+
+```bash
+helm upgrade --install costalyx ./deploy/helm/costalyx \
+  --namespace costalyx \
+  --set backend.image.tag="$COMMIT_SHA" \
+  --set frontend.image.tag="$COMMIT_SHA" \
+  --set worker.enabled=true
+```
+
+`worker.scheduler.ingestionEnabled=enabled` is optional and should be set
+only when registered export URIs are readable by the current ingestion
+adapter/source path. Validation evidence is recorded even when scheduled
+ingestion is disabled.
+
 ## Render
 
 ```bash

@@ -85,11 +85,15 @@ The frontend and API support:
 6. Validation and ingestion attempts write sanitized rows to
    `cloud_connection_runs`, and the portfolio UI surfaces latest run evidence
    per connection.
-7. Billing exports are ingested with `tenant_id` and `cloud_connection_id`.
-8. Cost, reports, recommendations, savings, and audit rows stay tenant scoped.
+7. A single scheduler worker can periodically validate every registered
+   connection and, when scheduled ingestion is explicitly enabled, ingest each
+   registered export URI into the same tenant-scoped run ledger.
+8. Billing exports are ingested with `tenant_id` and `cloud_connection_id`.
+9. Cost, reports, recommendations, savings, and audit rows stay tenant scoped.
 
 ## Next connector hardening
-- Add the production scheduler/worker loop that invokes the existing
-  validation and ingestion run ledger on a configured cadence per connection.
 - Execute live AWS/Azure/GCP probes against real customer cloud accounts once
   broker identities and read-only customer grants are supplied.
+- Add provider-native export object readers for scheduled ingestion beyond
+  the current registered export URI/source-path adapters, so the worker can
+  pull directly from S3, Azure Blob, and BigQuery exports in production.

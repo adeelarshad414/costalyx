@@ -80,6 +80,12 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
     );
   }
 
+  async listCloudConnectionsForScheduler(): Promise<CloudConnection[]> {
+    return [...this.cloudConnections.values()].sort(
+      (a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)
+    );
+  }
+
   async getCloudConnection(id: string, actor: AuthenticatedUser): Promise<CloudConnection> {
     const connection = this.cloudConnections.get(id);
     if (!connection || connection.tenantId !== actor.tenantId) {
