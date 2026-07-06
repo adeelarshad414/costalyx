@@ -28,10 +28,15 @@ FROM node:22.12.0-alpine AS runtime
 
 WORKDIR /srv/www
 ENV NODE_ENV=production
+ARG VITE_API_BASE_URL
+ARG VITE_KEYCLOAK_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_KEYCLOAK_URL=$VITE_KEYCLOAK_URL
 
 RUN addgroup -S costalyx && adduser -S -G costalyx costalyx
 
 COPY --from=build --chown=costalyx:costalyx /app/frontend/dist ./
+COPY --chown=costalyx:costalyx frontend/server.mjs /srv/server.mjs
 
 USER costalyx
 EXPOSE 8080
@@ -39,4 +44,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://127.0.0.1:8080/ >/dev/null || exit 1
 
-CMD ["busybox", "httpd", "-f", "-p", "8080", "-h", "/srv/www"]
+CMD ["node", "/srv/server.mjs"]

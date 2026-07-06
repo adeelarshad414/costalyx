@@ -251,6 +251,18 @@ object keys and strings, including authorization headers, tokens, passwords,
 client secrets, private keys, access keys, and env-style credential names
 before writing to stdout/stderr.
 
+## Browser and API security headers
+Backend responses emit baseline security headers for API surfaces:
+`Content-Security-Policy: default-src 'none'`, frame denial, no-sniff,
+no-referrer, a restrictive permissions policy, and HSTS outside local mode.
+
+The production frontend image serves the Vite build through Costalyx's Node
+static server rather than a headerless file server. It emits the same baseline
+browser headers plus a frontend CSP. `connect-src` and `frame-src` are derived
+from `VITE_API_BASE_URL`, `VITE_KEYCLOAK_URL`, and optional
+`COSTALYX_FRONTEND_CONNECT_ORIGINS`, so operators must keep those values on
+real HTTPS origins that match the deployed API and Keycloak realm.
+
 ## Rollback
 Every deploy is a new immutable image tag; rollback = redeploy the previous
 tag. Database migrations being additive-only (per `02-DATA-MODEL.md`) means
