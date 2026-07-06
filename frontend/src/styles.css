@@ -394,7 +394,8 @@ td {
   justify-content: space-between;
 }
 
-.anomaly-toolbar h2 {
+.anomaly-toolbar h2,
+.anomaly-toolbar h3 {
   margin: 0;
 }
 
@@ -453,6 +454,27 @@ td {
   font: inherit;
   min-width: 150px;
   padding: 0.62rem 0.7rem;
+}
+
+.statement-toolbar {
+  margin-top: 24px;
+}
+
+.statement-period-controls {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.statement-period-controls input {
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font: inherit;
+  padding: 0.58rem 0.7rem;
 }
 
 .anomaly-evidence {

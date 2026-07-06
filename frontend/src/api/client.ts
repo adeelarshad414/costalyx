@@ -48,6 +48,25 @@ type AnomaliesResponse = paths['/anomalies']['get']['responses']['200']['content
 type AnomalyStatusPatchRequest =
   paths['/anomalies/{id}']['patch']['requestBody']['content']['application/json'];
 type AnomalyResponse = paths['/anomalies/{id}']['patch']['responses']['200']['content']['application/json'];
+type StatementStakeholdersResponse =
+  paths['/billing-statement-stakeholders']['get']['responses']['200']['content']['application/json'];
+type StatementStakeholderCreateRequest =
+  paths['/billing-statement-stakeholders']['post']['requestBody']['content']['application/json'];
+type StatementStakeholderResponse =
+  paths['/billing-statement-stakeholders']['post']['responses']['201']['content']['application/json'];
+type BillingScopesResponse = paths['/billing-scopes']['get']['responses']['200']['content']['application/json'];
+type BillingScopeCreateRequest = paths['/billing-scopes']['post']['requestBody']['content']['application/json'];
+type BillingScopeResponse = paths['/billing-scopes']['post']['responses']['201']['content']['application/json'];
+type BillingStatementGenerateRequest =
+  paths['/billing-statements/generate']['post']['requestBody']['content']['application/json'];
+type BillingStatementGenerateResponse =
+  paths['/billing-statements/generate']['post']['responses']['201']['content']['application/json'];
+type BillingStatementsResponse =
+  paths['/billing-statements']['get']['responses']['200']['content']['application/json'];
+type BillingStatementResponse =
+  paths['/billing-statements/{id}']['get']['responses']['200']['content']['application/json'];
+type BillingStatementDisputeRequest =
+  paths['/billing-statements/{id}/dispute']['post']['requestBody']['content']['application/json'];
 type ExecutiveSummaryResponse =
   paths['/executive-summary']['get']['responses']['200']['content']['application/json'];
 type TcoEstimateRequest = paths['/tco/estimate']['post']['requestBody']['content']['application/json'];
@@ -65,6 +84,9 @@ type RecommendationStatus = NonNullable<
 >;
 type AnomalyStatus = NonNullable<NonNullable<paths['/anomalies']['get']['parameters']['query']>['status']>;
 type AnomalyType = NonNullable<NonNullable<paths['/anomalies']['get']['parameters']['query']>['type']>;
+type BillingStatementStatus = NonNullable<
+  NonNullable<paths['/billing-statements']['get']['parameters']['query']>['status']
+>;
 
 interface CostRecordQuery {
   provider?: CloudProvider;
@@ -101,6 +123,13 @@ interface RecommendationsQuery {
 interface AnomaliesQuery {
   type?: AnomalyType;
   status?: AnomalyStatus;
+  page?: number;
+  pageSize?: number;
+}
+
+interface BillingStatementsQuery {
+  status?: BillingStatementStatus;
+  stakeholderId?: string;
   page?: number;
   pageSize?: number;
 }
@@ -160,6 +189,24 @@ export interface CostalyxClient {
   scanBillingAnomalies?(): Promise<AnomalyScanResponse>;
   listAnomalies?(query?: AnomaliesQuery): Promise<AnomaliesResponse>;
   updateAnomalyStatus?(input: AnomalyStatusPatchRequest & { id: string; idempotencyKey: string }): Promise<AnomalyResponse>;
+  listStatementStakeholders?(): Promise<StatementStakeholdersResponse>;
+  createStatementStakeholder?(
+    input: StatementStakeholderCreateRequest & { idempotencyKey: string }
+  ): Promise<StatementStakeholderResponse>;
+  listBillingScopes?(): Promise<BillingScopesResponse>;
+  createBillingScope?(input: BillingScopeCreateRequest & { idempotencyKey: string }): Promise<BillingScopeResponse>;
+  generateBillingStatements?(
+    input: BillingStatementGenerateRequest & { idempotencyKey: string }
+  ): Promise<BillingStatementGenerateResponse>;
+  listBillingStatements?(query?: BillingStatementsQuery): Promise<BillingStatementsResponse>;
+  getBillingStatement?(input: { id: string }): Promise<BillingStatementResponse>;
+  approveBillingStatement?(input: { id: string; idempotencyKey: string }): Promise<BillingStatementResponse>;
+  sendBillingStatement?(input: { id: string; idempotencyKey: string }): Promise<BillingStatementResponse>;
+  disputeBillingStatement?(
+    input: BillingStatementDisputeRequest & { id: string; idempotencyKey: string }
+  ): Promise<BillingStatementResponse>;
+  exportBillingStatementCsv?(input: { id: string }): Promise<string>;
+  exportBillingStatementPdf?(input: { id: string }): Promise<string>;
   getExecutiveSummary(query?: ExecutiveSummaryQuery): Promise<ExecutiveSummaryResponse>;
   exportExecutiveSummaryPdf(): Promise<string>;
   estimateTco(input: TcoEstimateRequest & { idempotencyKey: string }): Promise<TcoEstimateResponse>;
@@ -596,6 +643,187 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
         throw new Error(`Anomaly status update failed with ${response.status}`);
       }
       return response.json() as Promise<AnomalyResponse>;
+    },
+
+    async listStatementStakeholders() {
+      const response = await fetch(`${baseUrl}/billing-statement-stakeholders`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Statement stakeholders request failed with ${response.status}`);
+      }
+      return response.json() as Promise<StatementStakeholdersResponse>;
+    },
+
+    async createStatementStakeholder({ idempotencyKey, ...body }) {
+      const response = await fetch(`${baseUrl}/billing-statement-stakeholders`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+          ...(await authHeaders())
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error(`Statement stakeholder create request failed with ${response.status}`);
+      }
+      return response.json() as Promise<StatementStakeholderResponse>;
+    },
+
+    async listBillingScopes() {
+      const response = await fetch(`${baseUrl}/billing-scopes`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Billing scopes request failed with ${response.status}`);
+      }
+      return response.json() as Promise<BillingScopesResponse>;
+    },
+
+    async createBillingScope({ idempotencyKey, ...body }) {
+      const response = await fetch(`${baseUrl}/billing-scopes`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+          ...(await authHeaders())
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error(`Billing scope create request failed with ${response.status}`);
+      }
+      return response.json() as Promise<BillingScopeResponse>;
+    },
+
+    async generateBillingStatements({ idempotencyKey, ...body }) {
+      const response = await fetch(`${baseUrl}/billing-statements/generate`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+          ...(await authHeaders())
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error(`Billing statement generation failed with ${response.status}`);
+      }
+      return response.json() as Promise<BillingStatementGenerateResponse>;
+    },
+
+    async listBillingStatements(query) {
+      const params = new URLSearchParams();
+      appendParam(params, 'status', query?.status);
+      appendParam(params, 'stakeholderId', query?.stakeholderId);
+      appendParam(params, 'page', query?.page);
+      appendParam(params, 'pageSize', query?.pageSize);
+      const response = await fetch(`${baseUrl}/billing-statements${queryString(params)}`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Billing statements request failed with ${response.status}`);
+      }
+      return response.json() as Promise<BillingStatementsResponse>;
+    },
+
+    async getBillingStatement({ id }) {
+      const response = await fetch(`${baseUrl}/billing-statements/${id}`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Billing statement request failed with ${response.status}`);
+      }
+      return response.json() as Promise<BillingStatementResponse>;
+    },
+
+    async approveBillingStatement({ id, idempotencyKey }) {
+      const response = await fetch(`${baseUrl}/billing-statements/${id}/approve`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Idempotency-Key': idempotencyKey,
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Billing statement approval failed with ${response.status}`);
+      }
+      return response.json() as Promise<BillingStatementResponse>;
+    },
+
+    async sendBillingStatement({ id, idempotencyKey }) {
+      const response = await fetch(`${baseUrl}/billing-statements/${id}/send`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Idempotency-Key': idempotencyKey,
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Billing statement send failed with ${response.status}`);
+      }
+      return response.json() as Promise<BillingStatementResponse>;
+    },
+
+    async disputeBillingStatement({ id, idempotencyKey, ...body }) {
+      const response = await fetch(`${baseUrl}/billing-statements/${id}/dispute`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+          ...(await authHeaders())
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error(`Billing statement dispute failed with ${response.status}`);
+      }
+      return response.json() as Promise<BillingStatementResponse>;
+    },
+
+    async exportBillingStatementCsv({ id }) {
+      const response = await fetch(`${baseUrl}/billing-statements/${id}/export.csv`, {
+        headers: {
+          Accept: 'text/csv',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Billing statement CSV export failed with ${response.status}`);
+      }
+      return response.text();
+    },
+
+    async exportBillingStatementPdf({ id }) {
+      const response = await fetch(`${baseUrl}/billing-statements/${id}/export.pdf`, {
+        headers: {
+          Accept: 'application/pdf',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Billing statement PDF export failed with ${response.status}`);
+      }
+      return response.text();
     },
 
     async getExecutiveSummary(query) {

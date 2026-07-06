@@ -488,6 +488,178 @@ export interface paths {
         patch: operations["updateAnomalyStatus"];
         trace?: never;
     };
+    "/billing-statement-stakeholders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List billing statement stakeholders */
+        get: operations["listStatementStakeholders"];
+        put?: never;
+        /** Create a billing statement stakeholder */
+        post: operations["createStatementStakeholder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing-scopes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List billing scopes */
+        get: operations["listBillingScopes"];
+        put?: never;
+        /** Create a billing scope */
+        post: operations["createBillingScope"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing-statements/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate stakeholder billing statements for a period */
+        post: operations["generateBillingStatements"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing-statements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List stakeholder billing statements */
+        get: operations["listBillingStatements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing-statements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a billing statement */
+        get: operations["getBillingStatement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing-statements/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a billing statement before sending */
+        post: operations["approveBillingStatement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing-statements/{id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send an approved billing statement */
+        post: operations["sendBillingStatement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing-statements/{id}/dispute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a billing statement dispute */
+        post: operations["disputeBillingStatement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing-statements/{id}/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export a billing statement as CSV */
+        get: operations["exportBillingStatementCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing-statements/{id}/export.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export a billing statement as PDF */
+        get: operations["exportBillingStatementPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports": {
         parameters: {
             query?: never;
@@ -1053,6 +1225,148 @@ export interface components {
             created: components["schemas"]["BillingAnomaly"][];
             totalOpen: number;
         };
+        StatementStakeholder: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tenantId: string;
+            name: string;
+            /** Format: email */
+            email: string;
+            roleLabel: string;
+            /** @enum {string} */
+            notificationChannel: "email" | "none";
+            /** Format: date-time */
+            createdAt: string;
+        };
+        StatementStakeholderCreate: {
+            name: string;
+            /** Format: email */
+            email: string;
+            roleLabel: string;
+            /** @enum {string} */
+            notificationChannel: "email" | "none";
+        };
+        /** @enum {string} */
+        BillingScopeType: "account_group" | "dimension" | "view";
+        BillingScopeFilter: {
+            accountIds?: string[];
+            accountExternalIds?: string[];
+            resourceIds?: string[];
+        };
+        BillingScope: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tenantId: string;
+            /** Format: uuid */
+            stakeholderId: string;
+            scopeType: components["schemas"]["BillingScopeType"];
+            scopeRef: string;
+            label: string;
+            scopeFilter: components["schemas"]["BillingScopeFilter"];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        BillingScopeCreate: {
+            /** Format: uuid */
+            stakeholderId: string;
+            scopeType: components["schemas"]["BillingScopeType"];
+            scopeRef: string;
+            label?: string;
+            scopeFilter?: components["schemas"]["BillingScopeFilter"];
+        };
+        /** @enum {string} */
+        BillingStatementStatus: "draft" | "pending_approval" | "approved" | "sent" | "disputed" | "void";
+        BillingStatementLineItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tenantId: string;
+            /** Format: uuid */
+            statementId: string;
+            /** @enum {string} */
+            lineType: "cost" | "anomaly" | "variance" | "unallocated";
+            description: string;
+            amountUsd: string;
+            costRecordIds: string[];
+            evidence: {
+                [key: string]: unknown;
+            };
+        };
+        BillingStatementReconciliation: {
+            tenantTotalUsd: string;
+            allocatedUniqueUsd: string;
+            unallocatedUsd: string;
+            overlapUsd: string;
+            reconcilesToTenantTotal: boolean;
+        };
+        BillingStatementScopeWarning: {
+            /** @enum {string} */
+            code: "overlap_detected" | "unallocated_spend_detected";
+            message: string;
+            amountUsd: string;
+            costRecordIds: string[];
+        };
+        BillingStatementVarianceMover: {
+            label: string;
+            currentUsd: string;
+            priorUsd: string;
+            deltaUsd: string;
+        };
+        BillingStatementDispute: {
+            previousStatus: components["schemas"]["BillingStatementStatus"];
+            note: string;
+            /** Format: date-time */
+            disputedAt: string;
+            disputedBy: string;
+        };
+        BillingStatementDisputeCreate: {
+            note: string;
+        };
+        BillingStatement: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tenantId: string;
+            /** Format: uuid */
+            stakeholderId: string;
+            stakeholderName: string;
+            /** Format: email */
+            stakeholderEmail: string;
+            /** Format: date-time */
+            periodStart: string;
+            /** Format: date-time */
+            periodEnd: string;
+            status: components["schemas"]["BillingStatementStatus"];
+            totalUsd: string;
+            /** Format: date-time */
+            generatedAt: string;
+            approvedBy: string | null;
+            /** Format: date-time */
+            sentAt: string | null;
+            narrativeMd: string;
+            openAnomalyCount: number;
+            lineItems: components["schemas"]["BillingStatementLineItem"][];
+            reconciliation: components["schemas"]["BillingStatementReconciliation"];
+            scopeWarnings: components["schemas"]["BillingStatementScopeWarning"][];
+            varianceTopMovers: components["schemas"]["BillingStatementVarianceMover"][];
+            dispute: components["schemas"]["BillingStatementDispute"] | null;
+            sendEvidence: {
+                [key: string]: unknown;
+            } | null;
+        };
+        BillingStatementGenerate: {
+            /** Format: date-time */
+            periodStart: string;
+            /** Format: date-time */
+            periodEnd: string;
+        };
+        BillingStatementGenerateResult: {
+            statements: components["schemas"]["BillingStatement"][];
+            reconciliation: components["schemas"]["BillingStatementReconciliation"];
+            scopeWarnings: components["schemas"]["BillingStatementScopeWarning"][];
+        };
         RealizedSaving: {
             /** Format: uuid */
             id: string;
@@ -1213,6 +1527,9 @@ export interface components {
         };
         PaginatedAnomalies: components["schemas"]["PaginatedResponse"] & {
             data?: components["schemas"]["BillingAnomaly"][];
+        };
+        PaginatedBillingStatements: components["schemas"]["PaginatedResponse"] & {
+            data?: components["schemas"]["BillingStatement"][];
         };
         PaginatedRealizedSavings: components["schemas"]["PaginatedResponse"] & {
             data?: components["schemas"]["RealizedSaving"][];
@@ -2335,6 +2652,334 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listStatementStakeholders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Statement stakeholders */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementStakeholder"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createStatementStakeholder: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required on every mutating request; duplicate keys return the original result. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatementStakeholderCreate"];
+            };
+        };
+        responses: {
+            /** @description Statement stakeholder created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementStakeholder"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listBillingScopes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Billing scopes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingScope"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createBillingScope: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required on every mutating request; duplicate keys return the original result. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingScopeCreate"];
+            };
+        };
+        responses: {
+            /** @description Billing scope created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingScope"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    generateBillingStatements: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required on every mutating request; duplicate keys return the original result. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingStatementGenerate"];
+            };
+        };
+        responses: {
+            /** @description Statements generated */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingStatementGenerateResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listBillingStatements: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                pageSize?: components["parameters"]["PageSize"];
+                status?: components["schemas"]["BillingStatementStatus"];
+                stakeholderId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated billing statements */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedBillingStatements"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getBillingStatement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Billing statement detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingStatement"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    approveBillingStatement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required on every mutating request; duplicate keys return the original result. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Billing statement approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingStatement"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    sendBillingStatement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required on every mutating request; duplicate keys return the original result. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Billing statement sent */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingStatement"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    disputeBillingStatement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required on every mutating request; duplicate keys return the original result. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingStatementDisputeCreate"];
+            };
+        };
+        responses: {
+            /** @description Billing statement disputed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingStatement"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    exportBillingStatementCsv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Billing statement CSV */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    exportBillingStatementPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Billing statement PDF */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];

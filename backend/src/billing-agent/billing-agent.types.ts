@@ -73,3 +73,116 @@ export interface DetectionConfig {
 }
 
 export type CostRecordWithTenant = NormalizedCostRecord & { tenantId?: string };
+
+export type BillingScopeType = 'account_group' | 'dimension' | 'view';
+export type BillingStatementStatus = 'draft' | 'pending_approval' | 'approved' | 'sent' | 'disputed' | 'void';
+export type StakeholderNotificationChannel = 'email' | 'none';
+
+export interface StatementStakeholder {
+  id: string;
+  tenantId: string;
+  name: string;
+  email: string;
+  roleLabel: string;
+  notificationChannel: StakeholderNotificationChannel;
+  createdAt: string;
+}
+
+export interface BillingScopeFilter {
+  accountIds?: string[];
+  accountExternalIds?: string[];
+  resourceIds?: string[];
+}
+
+export interface BillingScope {
+  id: string;
+  tenantId: string;
+  stakeholderId: string;
+  scopeType: BillingScopeType;
+  scopeRef: string;
+  label: string;
+  scopeFilter: BillingScopeFilter;
+  createdAt: string;
+}
+
+export interface BillingStatementLineItem {
+  id: string;
+  tenantId: string;
+  statementId: string;
+  lineType: 'cost' | 'anomaly' | 'variance' | 'unallocated';
+  description: string;
+  amountUsd: string;
+  costRecordIds: string[];
+  evidence: Record<string, unknown>;
+}
+
+export interface BillingStatementDispute {
+  previousStatus: BillingStatementStatus;
+  note: string;
+  disputedAt: string;
+  disputedBy: string;
+}
+
+export interface BillingStatementReconciliation {
+  tenantTotalUsd: string;
+  allocatedUniqueUsd: string;
+  unallocatedUsd: string;
+  overlapUsd: string;
+  reconcilesToTenantTotal: boolean;
+}
+
+export interface BillingStatementScopeWarning {
+  code: 'overlap_detected' | 'unallocated_spend_detected';
+  message: string;
+  amountUsd: string;
+  costRecordIds: string[];
+}
+
+export interface BillingStatementVarianceMover {
+  label: string;
+  currentUsd: string;
+  priorUsd: string;
+  deltaUsd: string;
+}
+
+export interface BillingStatement {
+  id: string;
+  tenantId: string;
+  stakeholderId: string;
+  stakeholderName: string;
+  stakeholderEmail: string;
+  periodStart: string;
+  periodEnd: string;
+  status: BillingStatementStatus;
+  totalUsd: string;
+  generatedAt: string;
+  approvedBy: string | null;
+  sentAt: string | null;
+  narrativeMd: string;
+  openAnomalyCount: number;
+  lineItems: BillingStatementLineItem[];
+  reconciliation: BillingStatementReconciliation;
+  scopeWarnings: BillingStatementScopeWarning[];
+  varianceTopMovers: BillingStatementVarianceMover[];
+  dispute: BillingStatementDispute | null;
+  sendEvidence: Record<string, unknown> | null;
+}
+
+export interface BillingStatementGenerateInput {
+  periodStart: string;
+  periodEnd: string;
+}
+
+export interface BillingStatementGenerateResult {
+  statements: BillingStatement[];
+  reconciliation: BillingStatementReconciliation;
+  scopeWarnings: BillingStatementScopeWarning[];
+}
+
+export interface BillingStatementQuery {
+  tenantId: string;
+  status?: BillingStatementStatus;
+  stakeholderId?: string;
+  page: number;
+  pageSize: number;
+}
