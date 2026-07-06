@@ -8,6 +8,7 @@ data:
   APP_ENV: {{ .Values.config.appEnv | quote }}
   KEYCLOAK_ISSUER_URL: {{ .Values.config.keycloakIssuerUrl | quote }}
   KEYCLOAK_JWKS_URL: {{ .Values.config.keycloakJwksUrl | quote }}
+  COSTALYX_ALLOWED_ORIGINS: {{ .Values.config.allowedOrigins | quote }}
   VAULT_ADDR: {{ .Values.config.vaultAddr | quote }}
   REDPANDA_BROKERS: {{ .Values.config.redpandaBrokers | quote }}
   COSTALYX_LIVE_CLOUD_PROBES: {{ .Values.config.liveCloudProbes | quote }}

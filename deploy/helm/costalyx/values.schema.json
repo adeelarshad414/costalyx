@@ -46,11 +46,20 @@
     },
     "config": {
       "type": "object",
-      "required": ["appEnv", "keycloakIssuerUrl", "keycloakJwksUrl", "vaultAddr", "useMocks", "seedFixtureData"],
+      "required": [
+        "appEnv",
+        "keycloakIssuerUrl",
+        "keycloakJwksUrl",
+        "allowedOrigins",
+        "vaultAddr",
+        "useMocks",
+        "seedFixtureData"
+      ],
       "properties": {
         "appEnv": { "type": "string", "minLength": 1 },
         "keycloakIssuerUrl": { "type": "string", "minLength": 1 },
         "keycloakJwksUrl": { "type": "string", "minLength": 1 },
+        "allowedOrigins": { "type": "string", "minLength": 1 },
         "vaultAddr": { "type": "string", "minLength": 1 },
         "redpandaBrokers": { "type": "string" },
         "liveCloudProbes": { "type": "string" },
