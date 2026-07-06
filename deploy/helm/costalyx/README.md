@@ -18,6 +18,14 @@ kubectl create secret generic costalyx-runtime-secrets \
 For production, source those values from Vault, External Secrets Operator,
 or the platform secret manager rather than typing them by hand.
 
+## Cloud Probe Config
+
+Set `config.awsBrokerPrincipalArn` to the Costalyx-controlled AWS IAM
+principal that customers trust with the generated external ID. Set
+`config.liveCloudProbes=enabled` only when the backend pods have broker AWS
+credentials and network access to provider APIs. `config.awsProbeRegion`
+can override the AWS probe region.
+
 ## Render
 
 ```bash

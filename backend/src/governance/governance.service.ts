@@ -6,6 +6,7 @@ import type { CreateCloudCredentialDto, RotateCloudCredentialDto } from './dto/c
 import type { CreateTenantDto } from './dto/tenant.dto';
 import type { CreateUserDto } from './dto/user.dto';
 import type { CreateViewDto } from './dto/view.dto';
+import { buildCloudConnectionOnboarding } from './cloud-connection-onboarding';
 import { GOVERNANCE_REPOSITORY, type GovernanceRepository } from './governance.repository';
 import type {
   AccountGroup,
@@ -13,6 +14,7 @@ import type {
   AuditLogEntry,
   CloudCredentialReference,
   CloudConnection,
+  CloudConnectionOnboarding,
   PageQuery,
   Paginated,
   SavedView,
@@ -37,6 +39,10 @@ export class GovernanceService {
     return this.repository.listCloudConnections(query, actor);
   }
 
+  getCloudConnection(id: string, actor: AuthenticatedUser): Promise<CloudConnection> {
+    return this.repository.getCloudConnection(id, actor);
+  }
+
   createCloudConnection(
     input: CreateCloudConnectionDto,
     actor: AuthenticatedUser,
@@ -47,6 +53,13 @@ export class GovernanceService {
 
   validateCloudConnection(id: string, actor: AuthenticatedUser, idempotencyKey: string): Promise<CloudConnection> {
     return this.repository.validateCloudConnection(id, actor, idempotencyKey);
+  }
+
+  async getCloudConnectionOnboarding(id: string, actor: AuthenticatedUser): Promise<CloudConnectionOnboarding> {
+    const connection = await this.getCloudConnection(id, actor);
+    return buildCloudConnectionOnboarding(connection, {
+      awsBrokerPrincipalArn: process.env.COSTALYX_AWS_BROKER_PRINCIPAL_ARN
+    });
   }
 
   listAccounts(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<Omit<AccountReference, 'vaultCredentialPath'>>> {

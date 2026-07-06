@@ -31,9 +31,11 @@ async function createApp(): Promise<INestApplication> {
 
 describeIfPostgres('Milestone B governance API with PostgreSQL persistence', () => {
   let pool: Pool;
+  const originalBrokerPrincipal = process.env.COSTALYX_AWS_BROKER_PRINCIPAL_ARN;
 
   beforeAll(async () => {
     pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    process.env.COSTALYX_AWS_BROKER_PRINCIPAL_ARN = 'arn:aws:iam::999999999999:role/CostalyxBroker';
     for (const migration of [
       '001_initial_cost_model.sql',
       '002_persisted_ingestion_idempotency.sql',
@@ -77,10 +79,15 @@ describeIfPostgres('Milestone B governance API with PostgreSQL persistence', () 
   });
 
   afterAll(async () => {
+    if (originalBrokerPrincipal) {
+      process.env.COSTALYX_AWS_BROKER_PRINCIPAL_ARN = originalBrokerPrincipal;
+    } else {
+      delete process.env.COSTALYX_AWS_BROKER_PRINCIPAL_ARN;
+    }
     await pool.end();
   });
 
-  it('persists account groups, credential references, users, and audit evidence across app instances', async () => {
+  it('persists portfolio records, onboarding policy evidence, and audit evidence across app instances', async () => {
     const writer = await createApp();
     const account = await request(writer.getHttpAdapter().getInstance())
       .post('/api/v1/accounts')
@@ -110,6 +117,20 @@ describeIfPostgres('Milestone B governance API with PostgreSQL persistence', () 
         accountId: account.body.id,
         displayName: 'AWS production billing',
         vaultPath: 'kv/costalyx/aws/prod-billing'
+      })
+      .expect(201);
+
+    const cloudConnection = await request(writer.getHttpAdapter().getInstance())
+      .post('/api/v1/cloud-connections')
+      .set('x-costalyx-role', 'admin')
+      .set('Idempotency-Key', 'pg-cloud-connection-create')
+      .send({
+        provider: 'aws',
+        displayName: 'AWS payer account',
+        externalTenantId: '123456789012',
+        accessMode: 'aws_assume_role',
+        readOnlyPrincipal: 'arn:aws:iam::123456789012:role/CostalyxReadOnlyBilling',
+        billingExportUri: 's3://customer-cur/costalyx/'
       })
       .expect(201);
 
@@ -144,6 +165,41 @@ describeIfPostgres('Milestone B governance API with PostgreSQL persistence', () 
       .expect(({ body }) => expect(body.data[0].id).toBe(credential.body.id));
 
     await request(reader.getHttpAdapter().getInstance())
+      .get('/api/v1/cloud-connections?page=1&pageSize=25')
+      .set('x-costalyx-role', 'viewer')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data[0]).toMatchObject({
+          id: cloudConnection.body.id,
+          displayName: 'AWS payer account',
+          status: 'pending_validation'
+        });
+        expect(body.data[0].externalId).toBe(`costalyx:${body.data[0].tenantId}:${cloudConnection.body.id}`);
+      });
+
+    await request(reader.getHttpAdapter().getInstance())
+      .get(`/api/v1/cloud-connections/${cloudConnection.body.id}/onboarding`)
+      .set('x-costalyx-role', 'admin')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          connectionId: cloudConnection.body.id,
+          status: 'ready',
+          brokerPrincipalArn: 'arn:aws:iam::999999999999:role/CostalyxBroker',
+          billingExportUri: 's3://customer-cur/costalyx/'
+        });
+        expect(body.trustPolicy.Statement[0].Principal.AWS).toBe('arn:aws:iam::999999999999:role/CostalyxBroker');
+        expect(body.trustPolicy.Statement[0].Condition.StringEquals['sts:ExternalId']).toBe(body.externalId);
+        expect(body.permissionsPolicy.Statement[0].Resource).toBe('arn:aws:s3:::customer-cur');
+        expect(JSON.stringify(body)).not.toContain('secret');
+      });
+
+    await request(reader.getHttpAdapter().getInstance())
+      .get(`/api/v1/cloud-connections/${cloudConnection.body.id}/onboarding`)
+      .set('x-costalyx-role', 'viewer')
+      .expect(403);
+
+    await request(reader.getHttpAdapter().getInstance())
       .get('/api/v1/users?page=1&pageSize=25')
       .set('x-costalyx-role', 'admin')
       .expect(200)
@@ -155,7 +211,13 @@ describeIfPostgres('Milestone B governance API with PostgreSQL persistence', () 
       .expect(200)
       .expect(({ body }) => {
         expect(body.data.map((entry: { action: string }) => entry.action)).toEqual(
-          expect.arrayContaining(['account_created', 'account_group_created', 'credential_created', 'role_change'])
+          expect.arrayContaining([
+            'account_created',
+            'account_group_created',
+            'cloud_connection_created',
+            'credential_created',
+            'role_change'
+          ])
         );
       });
     await reader.close();

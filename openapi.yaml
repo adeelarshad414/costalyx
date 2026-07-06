@@ -431,6 +431,28 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /cloud-connections/{id}/onboarding:
+    get:
+      tags: [accounts]
+      summary: Get provider-specific read-only onboarding policy templates
+      operationId: getCloudConnectionOnboarding
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Cloud connection onboarding template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloudConnectionOnboarding"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /accounts:
     get:
       tags: [accounts]
@@ -1463,6 +1485,45 @@ components:
           description: Read-only delegated principal reference only.
         billingExportUri:
           type: string
+
+    CloudConnectionOnboarding:
+      type: object
+      required:
+        - provider
+        - connectionId
+        - externalId
+        - status
+        - brokerPrincipalArn
+        - billingExportUri
+        - trustPolicy
+        - permissionsPolicy
+        - customerSteps
+      properties:
+        provider:
+          $ref: "#/components/schemas/CloudProvider"
+        connectionId:
+          type: string
+          format: uuid
+        externalId:
+          type: string
+          description: Costalyx-generated external ID used in the customer trust policy. Not a secret.
+        status:
+          type: string
+          enum: [ready, broker_principal_missing, broker_principal_invalid, billing_export_missing, provider_not_implemented]
+        brokerPrincipalArn:
+          type: ["string", "null"]
+        billingExportUri:
+          type: ["string", "null"]
+        trustPolicy:
+          type: ["object", "null"]
+          additionalProperties: true
+        permissionsPolicy:
+          type: ["object", "null"]
+          additionalProperties: true
+        customerSteps:
+          type: array
+          items:
+            type: string
 
     MoneyString:
       type: string

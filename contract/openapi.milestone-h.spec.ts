@@ -32,6 +32,7 @@ describe('Milestone H OpenAPI contract', () => {
     expect(spec.paths['/cloud-connections'].get['x-required-role']).toBe('viewer');
     expect(spec.paths['/cloud-connections'].post['x-required-role']).toBe('admin');
     expect(spec.paths['/cloud-connections/{id}/validation'].post['x-required-role']).toBe('admin');
+    expect(spec.paths['/cloud-connections/{id}/onboarding'].get['x-required-role']).toBe('admin');
     expect(spec.paths['/cloud-connections'].post.parameters).toContainEqual(
       expect.objectContaining({ $ref: '#/components/parameters/IdempotencyKey' })
     );
@@ -54,6 +55,10 @@ describe('Milestone H OpenAPI contract', () => {
     expect(responseProperties).toHaveProperty('externalId');
     expect(responseProperties).toHaveProperty('lastValidationCode');
     expect(JSON.stringify(responseProperties.status)).toContain('ready_for_live_probe');
+    expect(spec.components.schemas).toHaveProperty('CloudConnectionOnboarding');
+    expect(spec.components.schemas.CloudConnectionOnboarding.required).toEqual(
+      expect.arrayContaining(['externalId', 'trustPolicy', 'permissionsPolicy', 'customerSteps'])
+    );
     expect(createProperties).not.toHaveProperty('accessKeyId');
     expect(createProperties).not.toHaveProperty('secretAccessKey');
     expect(createProperties).not.toHaveProperty('clientSecret');

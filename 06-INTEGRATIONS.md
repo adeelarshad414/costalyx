@@ -38,6 +38,9 @@ in the customer IAM trust policy. When `COSTALYX_LIVE_CLOUD_PROBES=enabled`
 and the Costalyx broker has AWS credentials, validation performs STS
 `AssumeRole`, verifies the assumed AWS account ID, and lists the CUR S3
 prefix before marking the connection `validated`.
+The admin onboarding endpoint returns the trust policy and least-privilege
+S3 read policy when `COSTALYX_AWS_BROKER_PRINCIPAL_ARN` is configured; no
+customer secret or access key is accepted.
 
 ## Keycloak (OIDC)
 - Costalyx is registered as a confidential OIDC client — it is never its own

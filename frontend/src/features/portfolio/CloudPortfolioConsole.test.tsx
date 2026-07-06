@@ -5,6 +5,8 @@ import type { CostalyxClient } from '../../api/client';
 import { AuthProvider, type KeycloakAdapter } from '../../auth/AuthProvider';
 import { CloudPortfolioConsole } from './CloudPortfolioConsole';
 
+type CloudConnectionOnboarding = Awaited<ReturnType<NonNullable<CostalyxClient['getCloudConnectionOnboarding']>>>;
+
 function renderWithRole(ui: React.ReactElement, roles: string[]) {
   const adapter: KeycloakAdapter = {
     token: 'token-1',
@@ -36,6 +38,31 @@ const connection = {
   createdAt: '2026-07-06T00:00:00.000Z'
 } as const;
 
+const onboarding: CloudConnectionOnboarding = {
+  provider: 'aws',
+  connectionId: connection.id,
+  externalId: connection.externalId,
+  status: 'ready',
+  brokerPrincipalArn: 'arn:aws:iam::999999999999:role/CostalyxBroker',
+  billingExportUri: connection.billingExportUri,
+  trustPolicy: {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Principal: { AWS: 'arn:aws:iam::999999999999:role/CostalyxBroker' },
+        Action: 'sts:AssumeRole',
+        Condition: { StringEquals: { 'sts:ExternalId': connection.externalId } }
+      }
+    ]
+  },
+  permissionsPolicy: {
+    Version: '2012-10-17',
+    Statement: [{ Sid: 'CostalyxReadBillingExportObjects', Action: ['s3:GetObject'] }]
+  },
+  customerSteps: ['Create or update the AWS IAM role trust policy with the generated external ID.']
+};
+
 function createClient(overrides: Partial<CostalyxClient> = {}): CostalyxClient {
   return {
     listCostRecords: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
@@ -65,6 +92,7 @@ function createClient(overrides: Partial<CostalyxClient> = {}): CostalyxClient {
     listCloudConnections: async () => ({ data: [connection], meta: { total: 1, page: 1, pageSize: 100 } }),
     createCloudConnection: async () => connection,
     validateCloudConnection: async () => connection,
+    getCloudConnectionOnboarding: async () => onboarding,
     listAccounts: async () => ({ data: [], meta: { total: 4, page: 1, pageSize: 1 } }),
     listAccountGroups: async () => ({ data: [], meta: { total: 2, page: 1, pageSize: 1 } }),
     listRoles: async () => ({ data: [] }),
@@ -163,5 +191,20 @@ describe('CloudPortfolioConsole', () => {
         idempotencyKey: `cloud-connection-validation-${connection.id}`
       })
     );
+  });
+
+  it('lets admins load AWS onboarding policies for the selected connection', async () => {
+    const user = userEvent.setup();
+    const getCloudConnectionOnboarding = vi.fn(createClient().getCloudConnectionOnboarding);
+
+    renderWithRole(<CloudPortfolioConsole client={createClient({ getCloudConnectionOnboarding })} />, ['admin']);
+
+    await user.selectOptions(await screen.findByLabelText('Connection'), connection.id);
+    await user.click(screen.getByRole('button', { name: 'Load policies' }));
+
+    expect(getCloudConnectionOnboarding).toHaveBeenCalledWith({ id: connection.id });
+    expect(await screen.findByText('arn:aws:iam::999999999999:role/CostalyxBroker')).toHaveClass('font-mono-data');
+    expect(screen.getByText(/sts:ExternalId/)).toBeInTheDocument();
+    expect(screen.getByText(/CostalyxReadBillingExportObjects/)).toBeInTheDocument();
   });
 });

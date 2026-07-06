@@ -36,6 +36,11 @@ For AWS, Costalyx returns a generated `externalId` for each cloud connection:
 value in the IAM role trust policy. Costalyx does not ask the customer to
 invent or send an external ID, and the external ID is not treated as a
 secret.
+Admins can call `GET /api/v1/cloud-connections/{id}/onboarding` to retrieve
+the AWS trust policy and least-privilege CUR S3 read policy template. The
+trust policy is returned only when `COSTALYX_AWS_BROKER_PRINCIPAL_ARN` is
+configured with the Costalyx-controlled broker principal; otherwise the API
+returns an explicit `broker_principal_missing` state.
 
 ## Portfolio views
 The frontend and API support:
@@ -48,8 +53,8 @@ The frontend and API support:
 ## Current production path
 1. Operator provisions the Costalyx tenant and OIDC tenant claim.
 2. Admin registers the connection reference in Costalyx.
-3. For AWS, the admin copies the returned `externalId` into the customer IAM
-   role trust policy for the Costalyx broker principal.
+3. For AWS, the admin loads the onboarding template and gives the customer
+   the generated trust policy plus least-privilege CUR S3 read policy.
 4. Customer grants read-only cloud trust: AWS IAM role, Azure delegated
    app/workload identity, or GCP Workload Identity Federation principal.
 5. Costalyx validates the reference. With `COSTALYX_LIVE_CLOUD_PROBES`

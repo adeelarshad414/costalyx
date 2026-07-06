@@ -232,6 +232,47 @@ td {
   overflow-wrap: anywhere;
 }
 
+.onboarding-panel {
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 18px;
+  padding-top: 16px;
+}
+
+.onboarding-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.onboarding-grid h3 {
+  font-size: 0.95rem;
+  margin: 0 0 8px;
+}
+
+.onboarding-grid dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.onboarding-grid dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.policy-json {
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  padding: 12px;
+  white-space: pre-wrap;
+}
+
 .allocation-grid {
   display: grid;
   gap: 20px;
