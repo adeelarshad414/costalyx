@@ -18,6 +18,14 @@ kubectl create secret generic costalyx-runtime-secrets \
 For production, source those values from Vault, External Secrets Operator,
 or the platform secret manager rather than typing them by hand.
 
+## Browser Origin Policy
+
+Set `config.allowedOrigins` to the comma-separated browser origins allowed to
+call the API, for example `https://app.example.com,https://auth.example.com`.
+Use origins only: scheme, host, and optional port, with no path, query string,
+or fragment. Backend pods fail closed outside `APP_ENV=local` if
+`COSTALYX_ALLOWED_ORIGINS` is missing or malformed.
+
 ## Cloud Probe Config
 
 Set `config.awsBrokerPrincipalArn` to the Costalyx-controlled AWS IAM

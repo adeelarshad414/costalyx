@@ -73,6 +73,12 @@ just before deploy.
   (`CHANGE_ME_DEV_ONLY`) that fail a startup check if detected in a
   non-`local` environment
 - Production secrets sourced exclusively from Vault at container startup
+- Production API pods require `COSTALYX_ALLOWED_ORIGINS` as a comma-separated
+  allow-list of browser origins, for example
+  `https://app.example.com,https://auth.example.com`. Entries must be origins
+  only: scheme, host, and optional port, with no paths, query strings, or
+  fragments. Local development remains permissive when `APP_ENV=local`, but
+  non-local startup fails closed if the allow-list is missing or malformed.
 
 ## Production cloud onboarding inputs
 For a real customer launch, operators should collect read-only cloud access

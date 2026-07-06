@@ -34,6 +34,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL from Vault or the production secret store}
       KEYCLOAK_ISSUER_URL: ${KEYCLOAK_ISSUER_URL:?Set production Keycloak issuer URL}
       KEYCLOAK_JWKS_URL: ${KEYCLOAK_JWKS_URL:?Set production Keycloak JWKS URL}
+      COSTALYX_ALLOWED_ORIGINS: ${COSTALYX_ALLOWED_ORIGINS:?Set comma-separated production browser origins for CORS}
       VAULT_ADDR: ${VAULT_ADDR:?Set production Vault address}
       VAULT_TOKEN: ${VAULT_TOKEN:?Set runtime Vault token or workload identity token}
       REDPANDA_BROKERS: ${REDPANDA_BROKERS:-}

@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { createRuntimeLogger } from './common/json-logger';
+import { buildCorsOptions } from './config/cors';
 import { ProblemDetailsFilter } from './common/problem-details.filter';
 import { assertNoDummyValuesInNonLocalEnvironment } from './config/startup-secrets';
 
@@ -18,7 +19,7 @@ async function bootstrap() {
     })
   );
   app.useGlobalFilters(new ProblemDetailsFilter());
-  app.enableCors({ origin: true, credentials: false });
+  app.enableCors(buildCorsOptions());
 
   const port = Number(process.env.PORT ?? 3000);
   const host = process.env.HOST ?? '0.0.0.0';

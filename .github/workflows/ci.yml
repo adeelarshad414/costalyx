@@ -53,6 +53,7 @@ jobs:
           DATABASE_URL: postgresql://costalyx:placeholder-postgres-password@postgres:5432/costalyx
           KEYCLOAK_ISSUER_URL: https://auth.example.test/realms/costalyx
           KEYCLOAK_JWKS_URL: https://auth.example.test/realms/costalyx/protocol/openid-connect/certs
+          COSTALYX_ALLOWED_ORIGINS: https://app.example.test,https://auth.example.test
           VAULT_ADDR: https://vault.example.test
           VAULT_TOKEN: placeholder-vault-token
           VITE_API_BASE_URL: https://api.example.test/api/v1
