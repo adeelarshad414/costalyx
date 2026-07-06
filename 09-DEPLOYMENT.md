@@ -235,6 +235,16 @@ operator dashboards. Production Prometheus scraping should use an internal
 service account or gateway that presents an Admin bearer token, rather than
 making `/metrics` public.
 
+In production, the API and worker runtimes emit one JSON object per log line
+with `timestamp`, `level`, `service`, `context`, and `message` fields. JSON
+logging is enabled automatically when `NODE_ENV=production` or
+`APP_ENV=production`, and can be forced with `COSTALYX_LOG_FORMAT=json`.
+Local operators can set `COSTALYX_LOG_FORMAT=pretty` to keep Nest's default
+human-readable logs while debugging. The JSON logger redacts secret-shaped
+object keys and strings, including authorization headers, tokens, passwords,
+client secrets, private keys, access keys, and env-style credential names
+before writing to stdout/stderr.
+
 ## Rollback
 Every deploy is a new immutable image tag; rollback = redeploy the previous
 tag. Database migrations being additive-only (per `02-DATA-MODEL.md`) means
