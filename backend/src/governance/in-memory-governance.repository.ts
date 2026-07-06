@@ -2,24 +2,41 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { randomUUID } from 'node:crypto';
 import { InMemoryAuditLogStore, type AuditLogStore } from '../audit/audit-log.store';
 import { stableId } from '../cost-model/stable-id';
-import type { AuthenticatedUser } from '../security/token-verifier';
+import { DEFAULT_TENANT_ID, type AuthenticatedUser } from '../security/token-verifier';
 import type { CreateAccountDto, CreateAccountGroupDto, PatchAccountGroupDto } from './dto/account.dto';
+import { validateCloudConnectionShape, type CreateCloudConnectionDto } from './dto/cloud-connection.dto';
 import type { CreateCloudCredentialDto, RotateCloudCredentialDto } from './dto/cloud-credential.dto';
+import type { CreateTenantDto } from './dto/tenant.dto';
 import type { CreateUserDto } from './dto/user.dto';
 import { fixedRoles, type GovernanceRepository } from './governance.repository';
 import type {
   AccountGroup,
   AccountReference,
+  CloudConnection,
   CloudCredentialReference,
   CreateViewInput,
   PageQuery,
   Paginated,
   SavedView,
+  TenantRecord,
   UserRecord
 } from './governance.types';
 
 @Injectable()
 export class InMemoryGovernanceRepository implements GovernanceRepository {
+  private readonly tenants = new Map<string, TenantRecord>([
+    [
+      DEFAULT_TENANT_ID,
+      {
+        id: DEFAULT_TENANT_ID,
+        name: 'Default Tenant',
+        slug: 'default',
+        plan: 'business',
+        createdAt: new Date(0).toISOString()
+      }
+    ]
+  ]);
+  private readonly cloudConnections = new Map<string, CloudConnection>();
   private readonly accounts = new Map<string, AccountReference>();
   private readonly accountGroups = new Map<string, AccountGroup>();
   private readonly credentials = new Map<string, CloudCredentialReference>();
@@ -29,9 +46,91 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
 
   constructor(private readonly auditLog: AuditLogStore = new InMemoryAuditLogStore()) {}
 
-  async listAccounts(query: PageQuery): Promise<Paginated<Omit<AccountReference, 'vaultCredentialPath'>>> {
+  async listTenants(actor: AuthenticatedUser): Promise<{ data: TenantRecord[] }> {
+    return { data: [...this.tenants.values()].filter((tenant) => tenant.id === actor.tenantId) };
+  }
+
+  async createTenant(input: CreateTenantDto, actor: AuthenticatedUser, idempotencyKey: string): Promise<TenantRecord> {
+    return this.withIdempotency(actor, idempotencyKey, () => {
+      const slug = input.slug ?? slugify(input.name);
+      const tenant: TenantRecord = {
+        id: stableId(`tenant:${slug}`),
+        name: input.name,
+        slug,
+        plan: input.plan ?? 'business',
+        createdAt: new Date().toISOString()
+      };
+      this.tenants.set(tenant.id, tenant);
+      void this.auditLog.append(actor, 'tenant_created', 'tenant', tenant.id);
+      return tenant;
+    });
+  }
+
+  async listCloudConnections(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<CloudConnection>> {
     return paginate(
-      [...this.accounts.values()].map(({ vaultCredentialPath: _vaultCredentialPath, ...account }) => account),
+      [...this.cloudConnections.values()].filter((connection) => connection.tenantId === actor.tenantId),
+      query
+    );
+  }
+
+  async createCloudConnection(
+    input: CreateCloudConnectionDto,
+    actor: AuthenticatedUser,
+    idempotencyKey: string
+  ): Promise<CloudConnection> {
+    return this.withIdempotency(actor, idempotencyKey, () => {
+      const connection: CloudConnection = {
+        id: stableId(`cloud-connection:${actor.tenantId}:${input.provider}:${input.externalTenantId}`),
+        tenantId: actor.tenantId,
+        provider: input.provider,
+        displayName: input.displayName,
+        externalTenantId: input.externalTenantId,
+        accessMode: input.accessMode,
+        readOnlyPrincipal: input.readOnlyPrincipal,
+        billingExportUri: input.billingExportUri ?? null,
+        status: 'pending_validation',
+        lastValidatedAt: null,
+        createdAt: new Date().toISOString()
+      };
+      this.cloudConnections.set(connection.id, connection);
+      void this.auditLog.append(actor, 'cloud_connection_created', 'cloud_connection', connection.id);
+      return connection;
+    });
+  }
+
+  async validateCloudConnection(id: string, actor: AuthenticatedUser, idempotencyKey: string): Promise<CloudConnection> {
+    return this.withIdempotency(actor, idempotencyKey, () => {
+      const existing = this.cloudConnections.get(id);
+      if (!existing || existing.tenantId !== actor.tenantId) {
+        throw new NotFoundException(`Cloud connection ${id} was not found.`);
+      }
+      const isValid = validateCloudConnectionShape({
+        provider: existing.provider,
+        displayName: existing.displayName,
+        externalTenantId: existing.externalTenantId,
+        accessMode: existing.accessMode,
+        readOnlyPrincipal: existing.readOnlyPrincipal,
+        billingExportUri: existing.billingExportUri ?? undefined
+      });
+      const updated: CloudConnection = {
+        ...existing,
+        status: isValid ? 'validated' : 'validation_failed',
+        lastValidatedAt: new Date().toISOString()
+      };
+      this.cloudConnections.set(id, updated);
+      void this.auditLog.append(actor, 'cloud_connection_validated', 'cloud_connection', id);
+      return updated;
+    });
+  }
+
+  async listAccounts(
+    query: PageQuery,
+    actor: AuthenticatedUser
+  ): Promise<Paginated<Omit<AccountReference, 'vaultCredentialPath'>>> {
+    return paginate(
+      [...this.accounts.values()]
+        .filter((account) => account.tenantId === actor.tenantId)
+        .map(({ vaultCredentialPath: _vaultCredentialPath, ...account }) => account),
       query
     );
   }
@@ -41,11 +140,13 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
     actor: AuthenticatedUser,
     idempotencyKey: string
   ): Promise<AccountReference> {
-    return this.withIdempotency(idempotencyKey, () => {
+    return this.withIdempotency(actor, idempotencyKey, () => {
       const now = new Date().toISOString();
       const account: AccountReference = {
-        id: stableId(`account:${input.provider}:${input.externalAccountId}`),
+        id: stableId(`account:${actor.tenantId}:${input.provider}:${input.externalAccountId}`),
+        tenantId: actor.tenantId,
         provider: input.provider,
+        cloudConnectionId: input.cloudConnectionId ?? null,
         externalAccountId: input.externalAccountId,
         displayName: input.displayName,
         vendor: input.provider,
@@ -58,8 +159,11 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
     });
   }
 
-  async listAccountGroups(query: PageQuery): Promise<Paginated<AccountGroup>> {
-    return paginate([...this.accountGroups.values()], query);
+  async listAccountGroups(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<AccountGroup>> {
+    return paginate(
+      [...this.accountGroups.values()].filter((group) => group.tenantId === actor.tenantId),
+      query
+    );
   }
 
   async createAccountGroup(
@@ -67,9 +171,10 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
     actor: AuthenticatedUser,
     idempotencyKey: string
   ): Promise<AccountGroup> {
-    return this.withIdempotency(idempotencyKey, () => {
+    return this.withIdempotency(actor, idempotencyKey, () => {
       const group: AccountGroup = {
         id: randomUUID(),
+        tenantId: actor.tenantId,
         name: input.name,
         accountIds: [...input.accountIds],
         createdAt: new Date().toISOString()
@@ -86,9 +191,9 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
     actor: AuthenticatedUser,
     idempotencyKey: string
   ): Promise<AccountGroup> {
-    return this.withIdempotency(idempotencyKey, () => {
+    return this.withIdempotency(actor, idempotencyKey, () => {
       const existing = this.accountGroups.get(id);
-      if (!existing) {
+      if (!existing || existing.tenantId !== actor.tenantId) {
         throw new NotFoundException(`Account group ${id} was not found.`);
       }
       const updated = {
@@ -103,17 +208,22 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
   }
 
   async deleteAccountGroup(id: string, actor: AuthenticatedUser, idempotencyKey: string): Promise<void> {
-    this.withIdempotency(idempotencyKey, () => {
-      if (!this.accountGroups.delete(id)) {
+    this.withIdempotency(actor, idempotencyKey, () => {
+      const existing = this.accountGroups.get(id);
+      if (!existing || existing.tenantId !== actor.tenantId) {
         throw new NotFoundException(`Account group ${id} was not found.`);
       }
+      this.accountGroups.delete(id);
       void this.auditLog.append(actor, 'account_group_deleted', 'account_group', id);
       return { deleted: true };
     });
   }
 
-  async listCredentials(query: PageQuery): Promise<Paginated<CloudCredentialReference>> {
-    return paginate([...this.credentials.values()], query);
+  async listCredentials(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<CloudCredentialReference>> {
+    return paginate(
+      [...this.credentials.values()].filter((credential) => credential.tenantId === actor.tenantId),
+      query
+    );
   }
 
   async createCredential(
@@ -121,9 +231,10 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
     actor: AuthenticatedUser,
     idempotencyKey: string
   ): Promise<CloudCredentialReference> {
-    return this.withIdempotency(idempotencyKey, () => {
+    return this.withIdempotency(actor, idempotencyKey, () => {
       const credential: CloudCredentialReference = {
         id: randomUUID(),
+        tenantId: actor.tenantId,
         provider: input.provider,
         accountId: input.accountId,
         displayName: input.displayName,
@@ -143,9 +254,9 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
     actor: AuthenticatedUser,
     idempotencyKey: string
   ): Promise<CloudCredentialReference> {
-    return this.withIdempotency(idempotencyKey, () => {
+    return this.withIdempotency(actor, idempotencyKey, () => {
       const existing = this.credentials.get(id);
-      if (!existing) {
+      if (!existing || existing.tenantId !== actor.tenantId) {
         throw new NotFoundException(`Cloud credential ${id} was not found.`);
       }
       const updated = { ...existing, vaultPath: input.vaultPath, rotatedAt: new Date().toISOString() };
@@ -155,14 +266,18 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
     });
   }
 
-  async listUsers(query: PageQuery): Promise<Paginated<UserRecord>> {
-    return paginate([...this.users.values()], query);
+  async listUsers(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<UserRecord>> {
+    return paginate(
+      [...this.users.values()].filter((user) => user.tenantId === actor.tenantId),
+      query
+    );
   }
 
   async createUser(input: CreateUserDto, actor: AuthenticatedUser, idempotencyKey: string): Promise<UserRecord> {
-    return this.withIdempotency(idempotencyKey, () => {
+    return this.withIdempotency(actor, idempotencyKey, () => {
       const user: UserRecord = {
-        id: stableId(`user:${input.email.toLowerCase()}`),
+        id: stableId(`user:${actor.tenantId}:${input.email.toLowerCase()}`),
+        tenantId: actor.tenantId,
         email: input.email,
         displayName: input.displayName,
         roles: [...new Set(input.roles)]
@@ -177,22 +292,24 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
     return { data: fixedRoles };
   }
 
-  async listAuditLog(query: PageQuery) {
-    return this.auditLog.list(query);
+  async listAuditLog(query: PageQuery, actor: AuthenticatedUser) {
+    return this.auditLog.list(query, actor.tenantId);
   }
 
-  async listViews(query: PageQuery, role: AuthenticatedUser['role']): Promise<Paginated<SavedView>> {
+  async listViews(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<SavedView>> {
     return paginate(
-      [...this.views.values()].filter((view) => role === 'admin' || view.sharedRoleScope.includes(role)),
+      [...this.views.values()].filter(
+        (view) => view.orgId === actor.tenantId && (actor.role === 'admin' || view.sharedRoleScope.includes(actor.role))
+      ),
       query
     );
   }
 
   async createView(input: CreateViewInput, actor: AuthenticatedUser, idempotencyKey: string): Promise<SavedView> {
-    return this.withIdempotency(idempotencyKey, () => {
+    return this.withIdempotency(actor, idempotencyKey, () => {
       const view: SavedView = {
         id: randomUUID(),
-        orgId: stableId('org:default'),
+        orgId: actor.tenantId,
         name: input.name,
         filterJson: input.filterJson,
         ownerId: stableId(`actor:${actor.subject}`),
@@ -204,26 +321,36 @@ export class InMemoryGovernanceRepository implements GovernanceRepository {
     });
   }
 
-  async getViewForRole(id: string, role: AuthenticatedUser['role']): Promise<SavedView> {
+  async getViewForRole(id: string, actor: AuthenticatedUser): Promise<SavedView> {
     const view = this.views.get(id);
-    if (!view) {
+    if (!view || view.orgId !== actor.tenantId) {
       throw new NotFoundException(`View ${id} was not found.`);
     }
-    if (role !== 'admin' && !view.sharedRoleScope.includes(role)) {
-      throw new ForbiddenException(`View ${id} is not shared with ${role}.`);
+    if (actor.role !== 'admin' && !view.sharedRoleScope.includes(actor.role)) {
+      throw new ForbiddenException(`View ${id} is not shared with ${actor.role}.`);
     }
     return view;
   }
 
-  private withIdempotency<T>(idempotencyKey: string, create: () => T): T {
-    const existing = this.idempotentResponses.get(idempotencyKey);
+  private withIdempotency<T>(actor: AuthenticatedUser, idempotencyKey: string, create: () => T): T {
+    const scopedKey = `${actor.tenantId}:${idempotencyKey}`;
+    const existing = this.idempotentResponses.get(scopedKey);
     if (existing) {
       return existing as T;
     }
     const response = create();
-    this.idempotentResponses.set(idempotencyKey, response);
+    this.idempotentResponses.set(scopedKey, response);
     return response;
   }
+}
+
+function slugify(value: string): string {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 64);
+  return slug || 'tenant';
 }
 
 function paginate<T>(items: T[], query: PageQuery): Paginated<T> {

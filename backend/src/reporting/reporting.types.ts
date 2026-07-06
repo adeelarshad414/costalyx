@@ -21,8 +21,11 @@ export interface ReportQuery extends PageQuery {
 }
 
 export interface ReportRunQuery {
+  tenantId: string;
   provider?: CloudProvider;
   accountId?: string;
+  accountGroupId?: string;
+  cloudConnectionId?: string;
   service?: string;
   dimension?: string;
   from?: string;

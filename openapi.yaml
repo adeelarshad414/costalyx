@@ -26,6 +26,7 @@ tags:
   - name: reporting
   - name: tco
   - name: admin
+  - name: tenants
 security:
   - bearerAuth: []
 paths:
@@ -161,6 +162,16 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: accountGroupId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: cloudConnectionId
+          in: query
+          schema:
+            type: string
+            format: uuid
         - name: service
           in: query
           schema:
@@ -195,6 +206,16 @@ paths:
         - $ref: "#/components/parameters/ActiveViewId"
         - $ref: "#/components/parameters/Provider"
         - name: accountId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: accountGroupId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: cloudConnectionId
           in: query
           schema:
             type: string
@@ -248,6 +269,21 @@ paths:
       parameters:
         - $ref: "#/components/parameters/ActiveViewId"
         - $ref: "#/components/parameters/Provider"
+        - name: accountId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: accountGroupId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: cloudConnectionId
+          in: query
+          schema:
+            type: string
+            format: uuid
         - $ref: "#/components/parameters/DateFrom"
         - $ref: "#/components/parameters/DateTo"
         - name: dimensions
@@ -274,6 +310,126 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+
+  /tenants:
+    get:
+      tags: [tenants]
+      summary: List tenants available to the authenticated principal
+      operationId: listTenants
+      x-required-role: viewer
+      responses:
+        "200":
+          description: Tenant memberships
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Tenant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [tenants]
+      summary: Create a tenant shell
+      operationId: createTenant
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantCreate"
+      responses:
+        "201":
+          description: Tenant created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /cloud-connections:
+    get:
+      tags: [accounts]
+      summary: List read-only cloud account connections for the active tenant
+      operationId: listCloudConnections
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated cloud connections
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedCloudConnections"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [accounts]
+      summary: Register a read-only cloud connection reference
+      operationId: createCloudConnection
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloudConnectionCreate"
+      responses:
+        "201":
+          description: Cloud connection registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloudConnection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /cloud-connections/{id}/validation:
+    post:
+      tags: [accounts]
+      summary: Validate read-only cloud connection metadata
+      operationId: validateCloudConnection
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Cloud connection validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloudConnection"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /accounts:
     get:
@@ -745,6 +901,22 @@ paths:
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/ActiveViewId"
+        - $ref: "#/components/parameters/Provider"
+        - name: accountId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: accountGroupId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: cloudConnectionId
+          in: query
+          schema:
+            type: string
+            format: uuid
         - $ref: "#/components/parameters/DateFrom"
         - $ref: "#/components/parameters/DateTo"
       responses:
@@ -1172,6 +1344,102 @@ components:
       type: string
       enum: [viewer, analyst, admin]
 
+    Tenant:
+      type: object
+      required: [id, name, slug, plan, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        plan:
+          type: string
+          enum: [starter, business, enterprise]
+        createdAt:
+          type: string
+          format: date-time
+
+    TenantCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        plan:
+          type: string
+          enum: [starter, business, enterprise]
+
+    CloudConnection:
+      type: object
+      required:
+        - id
+        - tenantId
+        - provider
+        - displayName
+        - externalTenantId
+        - accessMode
+        - readOnlyPrincipal
+        - billingExportUri
+        - status
+        - lastValidatedAt
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        provider:
+          $ref: "#/components/schemas/CloudProvider"
+        displayName:
+          type: string
+        externalTenantId:
+          type: string
+          description: AWS account ID, Azure tenant/billing scope ID, or GCP billing account/project parent.
+        accessMode:
+          type: string
+          enum: [aws_assume_role, azure_delegated_app, gcp_workload_identity]
+        readOnlyPrincipal:
+          type: string
+          description: Role ARN, delegated app ID, or workload identity provider reference. Never a secret.
+        billingExportUri:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending_validation, validated, validation_failed]
+        lastValidatedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    CloudConnectionCreate:
+      type: object
+      required: [provider, displayName, externalTenantId, accessMode, readOnlyPrincipal]
+      additionalProperties: false
+      properties:
+        provider:
+          $ref: "#/components/schemas/CloudProvider"
+        displayName:
+          type: string
+        externalTenantId:
+          type: string
+        accessMode:
+          type: string
+          enum: [aws_assume_role, azure_delegated_app, gcp_workload_identity]
+        readOnlyPrincipal:
+          type: string
+          description: Read-only delegated principal reference only.
+        billingExportUri:
+          type: string
+
     MoneyString:
       type: string
       pattern: '^-?[0-9]+(\.[0-9]{1,8})?$'
@@ -1194,13 +1462,19 @@ components:
 
     Account:
       type: object
-      required: [id, provider, externalAccountId, displayName, vendor, createdAt]
+      required: [id, tenantId, provider, cloudConnectionId, externalAccountId, displayName, vendor, createdAt]
       properties:
         id:
           type: string
           format: uuid
+        tenantId:
+          type: string
+          format: uuid
         provider:
           $ref: "#/components/schemas/CloudProvider"
+        cloudConnectionId:
+          type: ["string", "null"]
+          format: uuid
         externalAccountId:
           type: string
         displayName:
@@ -1221,15 +1495,21 @@ components:
           type: string
         displayName:
           type: string
+        cloudConnectionId:
+          type: string
+          format: uuid
         vaultCredentialPath:
           type: string
           description: Vault/OpenBao path reference only; never a plaintext secret.
 
     AccountGroup:
       type: object
-      required: [id, name, accountIds, createdAt]
+      required: [id, tenantId, name, accountIds, createdAt]
       properties:
         id:
+          type: string
+          format: uuid
+        tenantId:
           type: string
           format: uuid
         name:
@@ -1268,9 +1548,12 @@ components:
 
     CloudCredential:
       type: object
-      required: [id, provider, accountId, displayName, vaultPath, createdAt, rotatedAt]
+      required: [id, tenantId, provider, accountId, displayName, vaultPath, createdAt, rotatedAt]
       properties:
         id:
+          type: string
+          format: uuid
+        tenantId:
           type: string
           format: uuid
         provider:
@@ -1503,11 +1786,17 @@ components:
         id:
           type: string
           format: uuid
+        tenantId:
+          type: string
+          format: uuid
         provider:
           $ref: "#/components/schemas/CloudProvider"
         status:
           type: string
           enum: [pending, processing, complete, failed]
+        cloudConnectionId:
+          type: ["string", "null"]
+          format: uuid
         sourceUri:
           type: string
         createdAt:
@@ -1532,6 +1821,9 @@ components:
         sourceUri:
           type: string
           description: Provider-native source URI or object reference.
+        cloudConnectionId:
+          type: string
+          format: uuid
 
     IngestionError:
       type: object
@@ -1558,6 +1850,9 @@ components:
       required: [id, type, resourceId, estimatedSavingsUsd, status, createdAt]
       properties:
         id:
+          type: string
+          format: uuid
+        tenantId:
           type: string
           format: uuid
         type:
@@ -1593,6 +1888,9 @@ components:
         - verificationSource
       properties:
         id:
+          type: string
+          format: uuid
+        tenantId:
           type: string
           format: uuid
         recommendationId:
@@ -1770,9 +2068,12 @@ components:
 
     User:
       type: object
-      required: [id, email, displayName, roles]
+      required: [id, tenantId, email, displayName, roles]
       properties:
         id:
+          type: string
+          format: uuid
+        tenantId:
           type: string
           format: uuid
         email:
@@ -1820,9 +2121,12 @@ components:
 
     AuditLogEntry:
       type: object
-      required: [id, actorId, action, targetType, targetId, prevHash, hash, createdAt]
+      required: [id, tenantId, actorId, action, targetType, targetId, prevHash, hash, createdAt]
       properties:
         id:
+          type: string
+          format: uuid
+        tenantId:
           type: string
           format: uuid
         actorId:
@@ -1869,6 +2173,15 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/AccountGroup"
+    PaginatedCloudConnections:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/CloudConnection"
     PaginatedCloudCredentials:
       allOf:
         - $ref: "#/components/schemas/PaginatedResponse"

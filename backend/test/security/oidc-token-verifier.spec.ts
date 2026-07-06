@@ -1,5 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { extractRoleFromClaims, resolveJwksUrl } from '../../src/security/oidc-token-verifier';
+import { DEFAULT_TENANT_ID } from '../../src/security/token-verifier';
 
 describe('extractRoleFromClaims', () => {
   it('selects the highest fixed Costalyx role from Keycloak realm roles', () => {
@@ -8,7 +9,7 @@ describe('extractRoleFromClaims', () => {
         sub: 'user-1',
         realm_access: { roles: ['viewer', 'admin'] }
       })
-    ).toEqual({ subject: 'user-1', role: 'admin' });
+    ).toEqual({ subject: 'user-1', role: 'admin', tenantId: DEFAULT_TENANT_ID });
   });
 
   it('accepts Keycloak client roles for the Costalyx web client', () => {
@@ -19,7 +20,17 @@ describe('extractRoleFromClaims', () => {
           'costalyx-web': { roles: ['analyst'] }
         }
       })
-    ).toEqual({ subject: 'user-2', role: 'analyst' });
+    ).toEqual({ subject: 'user-2', role: 'analyst', tenantId: DEFAULT_TENANT_ID });
+  });
+
+  it('extracts a tenant claim when present', () => {
+    expect(
+      extractRoleFromClaims({
+        sub: 'user-4',
+        tenant_id: '11111111-1111-4111-8111-111111111111',
+        realm_access: { roles: ['viewer'] }
+      })
+    ).toEqual({ subject: 'user-4', role: 'viewer', tenantId: '11111111-1111-4111-8111-111111111111' });
   });
 
   it('rejects authenticated tokens without a fixed Costalyx role', () => {

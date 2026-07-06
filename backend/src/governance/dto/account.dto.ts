@@ -15,6 +15,10 @@ export class CreateAccountDto {
   displayName!: string;
 
   @IsOptional()
+  @IsUUID('4')
+  cloudConnectionId?: string;
+
+  @IsOptional()
   @IsString()
   @MinLength(1)
   vaultCredentialPath?: string;

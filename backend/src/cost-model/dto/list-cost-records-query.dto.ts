@@ -4,6 +4,7 @@ import type { CloudProvider, CostExplorerDimension } from '../cost-record.types'
 
 const costExplorerDimensions: CostExplorerDimension[] = [
   'provider',
+  'account',
   'service',
   'leaseType',
   'transactionType',
@@ -18,6 +19,14 @@ export class ListCostRecordsQueryDto {
   @IsOptional()
   @IsString()
   accountId?: string;
+
+  @IsOptional()
+  @IsString()
+  accountGroupId?: string;
+
+  @IsOptional()
+  @IsString()
+  cloudConnectionId?: string;
 
   @IsOptional()
   @IsString()
@@ -53,6 +62,18 @@ export class CostExplorerFlowQueryDto {
   @IsOptional()
   @IsEnum(['aws', 'azure', 'gcp'])
   provider?: CloudProvider;
+
+  @IsOptional()
+  @IsString()
+  accountId?: string;
+
+  @IsOptional()
+  @IsString()
+  accountGroupId?: string;
+
+  @IsOptional()
+  @IsString()
+  cloudConnectionId?: string;
 
   @IsOptional()
   @IsISO8601()

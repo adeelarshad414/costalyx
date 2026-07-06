@@ -8,11 +8,31 @@ provisioned speculatively in Milestone A.
 ## Core tables (additive-only; every change is a new column/table, never a
 destructive alter)
 
+### `tenants`
+`id, name, slug, plan, created_at`
+
+Costalyx is tenant-scoped at the API and persistence layers. Every request
+derives `tenant_id` from a validated OIDC tenant claim (`costalyx_tenant_id`,
+`tenant_id`, or `org_id`). Local development falls back to the documented
+default tenant only when the local header/test path is active.
+
+### `cloud_connections`
+`id, tenant_id, provider, display_name, external_tenant_id, access_mode,
+read_only_principal, billing_export_uri, status, last_validated_at,
+created_at`
+
+This table models customer-owned cloud estates. It stores only identifiers
+and read-only trust references: AWS role ARN, Azure delegated application
+identifier, or GCP Workload Identity provider/principal. It never stores
+cloud access keys, client secrets, service-account keys, or passwords.
+
 ### `cost_records` (append-only, temporal)
 | Column | Type | Notes |
 |---|---|---|
 | `id` | uuid pk | |
+| `tenant_id` | uuid | tenant boundary for every cost row |
 | `provider` | enum(aws, azure, gcp) | |
+| `cloud_connection_id` | fk → `cloud_connections.id` | nullable for legacy/imported rows |
 | `account_id` | fk → `accounts.id` | |
 | `resource_id` | text | provider-native resource identifier |
 | `service_name` | text | e.g. AWS RDS, Azure VM |
@@ -33,11 +53,14 @@ time, so the single-source-of-truth pricing constant can't drift from a
 cached total.
 
 ### `accounts`
-`id, provider, external_account_id, display_name, vendor, created_at`
+`id, tenant_id, provider, cloud_connection_id, external_account_id,
+display_name, vendor, created_at`
 
 ### `account_groups` / `account_group_members`
 Many-to-many join table — mirrors the Cloudability "Account Groups" pattern
 but implemented as a proper join table, not a denormalized array column.
+Groups are tenant-scoped and can be used to filter cost records separately
+or as part of a collective portfolio view.
 
 ### `dimensions` (unbounded, dynamic — NOT fixed-slot)
 `id, org_id, name, created_by, created_at`
@@ -52,12 +75,13 @@ Many tag keys can map to one dimension.
 `resource_id, tag_key, tag_value, source (native | manual | inferred)`
 
 ### `recommendations`
-`id, type (rightsizing | ri_purchase | idle | commitment_gap), resource_id,
-estimated_savings_usd, status (open | applied | dismissed), created_at`
+`id, tenant_id, type (rightsizing | ri_purchase | idle | commitment_gap),
+resource_id, estimated_savings_usd, status (open | applied | dismissed),
+created_at`
 
 ### `realized_savings`
-`id, recommendation_id, applied_at, baseline_cost_usd, actual_cost_usd,
-delta_usd, verification_source (ingested_billing)`
+`id, tenant_id, recommendation_id, applied_at, baseline_cost_usd,
+actual_cost_usd, delta_usd, verification_source (ingested_billing)`
 Delta must trace back to actual ingested `cost_records`, never a static
 estimate carried forward.
 
@@ -70,7 +94,8 @@ Milestone A/B: fixed enum (`viewer`, `analyst`, `admin`). Milestone-later:
 enum — never replacing it, per the same fixed→custom pattern used in Postura.
 
 ### `audit_log` (hash-chained, per Postura's proven pattern)
-`id, actor_id, action, target_type, target_id, prev_hash, hash, created_at`
+`id, tenant_id, actor_id, action, target_type, target_id, prev_hash, hash,
+created_at`
 Hash computed over a canonicalized JSON representation of the row; reuse the
 JSON.stringify undefined-vs-null normalization fix already proven in the
 Postura reference implementation to avoid the same class of bug recurring
@@ -79,6 +104,9 @@ here.
 ## Indexing notes
 - `cost_records`: composite index on `(account_id, valid_from, valid_to)` and
   `(provider, service_name)` for the Resource Inventory and Explorer queries
+- `cost_records`: tenant/provider/service and tenant/fingerprint indexes for
+  multi-tenant Resource Inventory, Explorer, and duplicate detection
+- `cloud_connections`: tenant/provider index for portfolio switchers
 - `resource_tags`: index on `(tag_key, tag_value)` for dimension mapping joins
 
 ## Migration discipline

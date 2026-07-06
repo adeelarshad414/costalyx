@@ -157,6 +157,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List tenants available to the authenticated principal */
+        get: operations["listTenants"];
+        put?: never;
+        /** Create a tenant shell */
+        post: operations["createTenant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cloud-connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List read-only cloud account connections for the active tenant */
+        get: operations["listCloudConnections"];
+        put?: never;
+        /** Register a read-only cloud connection reference */
+        post: operations["createCloudConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cloud-connections/{id}/validation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate read-only cloud connection metadata */
+        post: operations["validateCloudConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/accounts": {
         parameters: {
             query?: never;
@@ -536,6 +589,53 @@ export interface components {
         LeaseType: "on_demand" | "reserved" | "savings_plan" | "spot";
         /** @enum {string} */
         RoleName: "viewer" | "analyst" | "admin";
+        Tenant: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            /** @enum {string} */
+            plan: "starter" | "business" | "enterprise";
+            /** Format: date-time */
+            createdAt: string;
+        };
+        TenantCreate: {
+            name: string;
+            slug?: string;
+            /** @enum {string} */
+            plan?: "starter" | "business" | "enterprise";
+        };
+        CloudConnection: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tenantId: string;
+            provider: components["schemas"]["CloudProvider"];
+            displayName: string;
+            /** @description AWS account ID, Azure tenant/billing scope ID, or GCP billing account/project parent. */
+            externalTenantId: string;
+            /** @enum {string} */
+            accessMode: "aws_assume_role" | "azure_delegated_app" | "gcp_workload_identity";
+            /** @description Role ARN, delegated app ID, or workload identity provider reference. Never a secret. */
+            readOnlyPrincipal: string;
+            billingExportUri: string | null;
+            /** @enum {string} */
+            status: "pending_validation" | "validated" | "validation_failed";
+            /** Format: date-time */
+            lastValidatedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CloudConnectionCreate: {
+            provider: components["schemas"]["CloudProvider"];
+            displayName: string;
+            externalTenantId: string;
+            /** @enum {string} */
+            accessMode: "aws_assume_role" | "azure_delegated_app" | "gcp_workload_identity";
+            /** @description Read-only delegated principal reference only. */
+            readOnlyPrincipal: string;
+            billingExportUri?: string;
+        };
         /** @example 1234.5600 */
         MoneyString: string;
         ListMeta: {
@@ -546,7 +646,11 @@ export interface components {
         Account: {
             /** Format: uuid */
             id: string;
+            /** Format: uuid */
+            tenantId: string;
             provider: components["schemas"]["CloudProvider"];
+            /** Format: uuid */
+            cloudConnectionId: string | null;
             externalAccountId: string;
             displayName: string;
             vendor: string;
@@ -557,12 +661,16 @@ export interface components {
             provider: components["schemas"]["CloudProvider"];
             externalAccountId: string;
             displayName: string;
+            /** Format: uuid */
+            cloudConnectionId?: string;
             /** @description Vault/OpenBao path reference only; never a plaintext secret. */
             vaultCredentialPath?: string;
         };
         AccountGroup: {
             /** Format: uuid */
             id: string;
+            /** Format: uuid */
+            tenantId: string;
             name: string;
             accountIds: string[];
             /** Format: date-time */
@@ -579,6 +687,8 @@ export interface components {
         CloudCredential: {
             /** Format: uuid */
             id: string;
+            /** Format: uuid */
+            tenantId: string;
             provider: components["schemas"]["CloudProvider"];
             /** Format: uuid */
             accountId: string;
@@ -687,9 +797,13 @@ export interface components {
         IngestionBatch: {
             /** Format: uuid */
             id: string;
+            /** Format: uuid */
+            tenantId?: string;
             provider: components["schemas"]["CloudProvider"];
             /** @enum {string} */
             status: "pending" | "processing" | "complete" | "failed";
+            /** Format: uuid */
+            cloudConnectionId?: string | null;
             sourceUri?: string;
             /** Format: date-time */
             createdAt: string;
@@ -702,6 +816,8 @@ export interface components {
             provider: components["schemas"]["CloudProvider"];
             /** @description Provider-native source URI or object reference. */
             sourceUri: string;
+            /** Format: uuid */
+            cloudConnectionId?: string;
         };
         IngestionError: {
             /** Format: uuid */
@@ -716,6 +832,8 @@ export interface components {
         Recommendation: {
             /** Format: uuid */
             id: string;
+            /** Format: uuid */
+            tenantId?: string;
             /** @enum {string} */
             type: "rightsizing" | "ri_purchase" | "idle" | "commitment_gap";
             resourceId: string;
@@ -731,6 +849,8 @@ export interface components {
         RealizedSaving: {
             /** Format: uuid */
             id: string;
+            /** Format: uuid */
+            tenantId?: string;
             /** Format: uuid */
             recommendationId: string;
             /** Format: date-time */
@@ -817,6 +937,8 @@ export interface components {
         User: {
             /** Format: uuid */
             id: string;
+            /** Format: uuid */
+            tenantId: string;
             /** Format: email */
             email: string;
             displayName: string;
@@ -841,6 +963,8 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
+            tenantId: string;
+            /** Format: uuid */
             actorId: string;
             action: string;
             targetType: string;
@@ -858,6 +982,9 @@ export interface components {
         };
         PaginatedAccountGroups: components["schemas"]["PaginatedResponse"] & {
             data?: components["schemas"]["AccountGroup"][];
+        };
+        PaginatedCloudConnections: components["schemas"]["PaginatedResponse"] & {
+            data?: components["schemas"]["CloudConnection"][];
         };
         PaginatedCloudCredentials: components["schemas"]["PaginatedResponse"] & {
             data?: components["schemas"]["CloudCredential"][];
@@ -1113,6 +1240,8 @@ export interface operations {
                 pageSize?: components["parameters"]["PageSize"];
                 provider?: components["parameters"]["Provider"];
                 accountId?: string;
+                accountGroupId?: string;
+                cloudConnectionId?: string;
                 service?: string;
                 from?: components["parameters"]["DateFrom"];
                 to?: components["parameters"]["DateTo"];
@@ -1146,6 +1275,8 @@ export interface operations {
             query?: {
                 provider?: components["parameters"]["Provider"];
                 accountId?: string;
+                accountGroupId?: string;
+                cloudConnectionId?: string;
                 from?: components["parameters"]["DateFrom"];
                 to?: components["parameters"]["DateTo"];
                 dimension?: string;
@@ -1202,6 +1333,9 @@ export interface operations {
         parameters: {
             query?: {
                 provider?: components["parameters"]["Provider"];
+                accountId?: string;
+                accountGroupId?: string;
+                cloudConnectionId?: string;
                 from?: components["parameters"]["DateFrom"];
                 to?: components["parameters"]["DateTo"];
                 /** @description Ordered dimensions to drill through */
@@ -1229,6 +1363,143 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    listTenants: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tenant memberships */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Tenant"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createTenant: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required on every mutating request; duplicate keys return the original result. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantCreate"];
+            };
+        };
+        responses: {
+            /** @description Tenant created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tenant"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listCloudConnections: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                pageSize?: components["parameters"]["PageSize"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated cloud connections */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCloudConnections"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createCloudConnection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required on every mutating request; duplicate keys return the original result. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloudConnectionCreate"];
+            };
+        };
+        responses: {
+            /** @description Cloud connection registered */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudConnection"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    validateCloudConnection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required on every mutating request; duplicate keys return the original result. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cloud connection validation result */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudConnection"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     listAccounts: {
@@ -1750,6 +2021,10 @@ export interface operations {
     runReport: {
         parameters: {
             query?: {
+                provider?: components["parameters"]["Provider"];
+                accountId?: string;
+                accountGroupId?: string;
+                cloudConnectionId?: string;
                 from?: components["parameters"]["DateFrom"];
                 to?: components["parameters"]["DateTo"];
             };

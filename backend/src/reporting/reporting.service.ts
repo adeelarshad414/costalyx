@@ -50,7 +50,7 @@ export class ReportingService {
     };
   }
 
-  async runReport(id: string, query: ReportRunQuery = {}): Promise<ReportRun> {
+  async runReport(id: string, query: ReportRunQuery): Promise<ReportRun> {
     const report = cannedReports.find((candidate) => candidate.id === id);
     if (!report) {
       throw new NotFoundException(`Report ${id} was not found.`);

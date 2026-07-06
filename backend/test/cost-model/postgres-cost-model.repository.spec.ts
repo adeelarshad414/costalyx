@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { PostgresCostModelRepository } from '../../src/cost-model/postgres-cost-model.repository';
 import type { NormalizedCostRecord } from '../../src/cost-model/cost-record.types';
+import { DEFAULT_TENANT_ID } from '../../src/security/token-verifier';
 
 type QueryResult = { rows: unknown[]; rowCount?: number };
 
@@ -33,8 +34,10 @@ class FakePool {
 
 const batchRow = {
   id: '11111111-1111-4111-8111-111111111111',
+  tenant_id: DEFAULT_TENANT_ID,
   provider: 'aws',
   status: 'complete',
+  cloud_connection_id: null,
   source_uri: 'backend/test/fixtures/aws-cur-sample.csv',
   created_at: new Date('2026-01-01T00:00:00.000Z'),
   completed_at: new Date('2026-01-01T00:00:00.000Z'),
@@ -75,6 +78,7 @@ describe('PostgresCostModelRepository', () => {
     const repository = new PostgresCostModelRepository(pool as never);
 
     const result = await repository.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'backend/test/fixtures/aws-cur-sample.csv',
       idempotencyKey: 'idem-1',
@@ -103,6 +107,7 @@ describe('PostgresCostModelRepository', () => {
     const repository = new PostgresCostModelRepository(pool as never);
 
     const result = await repository.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'backend/test/fixtures/aws-cur-sample.csv',
       idempotencyKey: 'idem-2',
@@ -124,7 +129,9 @@ describe('PostgresCostModelRepository', () => {
         rows: [
           {
             id: normalizedRow.id,
+            tenant_id: DEFAULT_TENANT_ID,
             provider: 'aws',
+            cloud_connection_id: null,
             account_id: normalizedRow.accountId,
             account_external_id: normalizedRow.accountExternalId,
             resource_id: normalizedRow.resourceId,
@@ -149,7 +156,7 @@ describe('PostgresCostModelRepository', () => {
     ]);
     const repository = new PostgresCostModelRepository(pool as never);
 
-    const result = await repository.listRecords({ page: 1, pageSize: 25 });
+    const result = await repository.listRecords({ tenantId: DEFAULT_TENANT_ID, page: 1, pageSize: 25 });
 
     expect(result.data[0].costTotalUsd).toBe('0.20000000');
     expect(pool.client.queries[0].sql).toContain('(cr.hourly_rate_usd * cr.usage_hours)');
@@ -159,6 +166,6 @@ describe('PostgresCostModelRepository', () => {
     const pool = new FakePool([{ rows: [], rowCount: 0 }]);
     const repository = new PostgresCostModelRepository(pool as never);
 
-    await expect(repository.getBatch('missing')).rejects.toThrow(NotFoundException);
+    await expect(repository.getBatch('missing', DEFAULT_TENANT_ID)).rejects.toThrow(NotFoundException);
   });
 });

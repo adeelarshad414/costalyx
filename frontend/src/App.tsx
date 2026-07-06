@@ -8,6 +8,7 @@ import { GovernanceConsole } from './features/governance/GovernanceConsole';
 import { IngestionOverview } from './features/ingestion/IngestionOverview';
 import { InsightsConsole } from './features/insights/InsightsConsole';
 import { OptimizationConsole } from './features/optimization/OptimizationConsole';
+import { CloudPortfolioConsole } from './features/portfolio/CloudPortfolioConsole';
 import { ReportingConsole } from './features/reporting/ReportingConsole';
 
 export function App() {
@@ -31,6 +32,7 @@ export function App() {
         ) : null}
       </header>
       <AuthBoundary>
+        <CloudPortfolioConsole client={client} />
         <IngestionOverview client={client} />
         <ExecutiveConsole client={client} />
         <InsightsConsole client={client} />

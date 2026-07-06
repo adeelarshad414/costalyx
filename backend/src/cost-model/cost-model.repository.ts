@@ -10,17 +10,22 @@ export const COST_MODEL_REPOSITORY = Symbol('COST_MODEL_REPOSITORY');
 
 export interface CostModelRepository {
   saveIngestion(input: {
+    tenantId: string;
     provider: CloudProvider;
+    cloudConnectionId?: string;
     sourceUri: string;
     idempotencyKey: string;
     rows: NormalizedCostRecord[];
   }): Promise<IngestionBatch>;
 
-  getBatch(id: string): Promise<IngestionBatch>;
+  getBatch(id: string, tenantId: string): Promise<IngestionBatch>;
 
   listRecords(query: {
+    tenantId: string;
     provider?: CloudProvider;
     accountId?: string;
+    accountGroupId?: string;
+    cloudConnectionId?: string;
     service?: string;
     dimension?: string;
     from?: string;
@@ -32,9 +37,12 @@ export interface CostModelRepository {
     meta: { total: number; page: number; pageSize: number };
   }>;
 
-  getSummary(query?: {
+  getSummary(query: {
+    tenantId: string;
     provider?: CloudProvider;
     accountId?: string;
+    accountGroupId?: string;
+    cloudConnectionId?: string;
     service?: string;
     dimension?: string;
     from?: string;
@@ -47,9 +55,12 @@ export interface CostModelRepository {
     isEstimate: boolean;
   }>;
 
-  getExplorerFlow(query?: {
+  getExplorerFlow(query: {
+    tenantId: string;
     provider?: CloudProvider;
     accountId?: string;
+    accountGroupId?: string;
+    cloudConnectionId?: string;
     service?: string;
     dimension?: string;
     from?: string;

@@ -69,6 +69,21 @@ completes, not just before deploy.
   non-`local` environment
 - Production secrets sourced exclusively from Vault at container startup
 
+## Production cloud onboarding inputs
+For a real customer launch, operators should collect read-only cloud access
+references, not secret material.
+
+| Provider | Required production input | Verification |
+|---|---|---|
+| AWS | Role ARN, external ID, payer/member account ID, CUR S3 URI or equivalent export URI | Assume role, list/read billing export location, ingest a small CUR fixture/export sample |
+| Azure | Tenant ID, subscription or management-group scope, delegated app/workload identity principal, Cost Management export URI when used | Token acquisition, Reader/Cost Management Reader scope check, export read test |
+| GCP | Billing account or project ID, Workload Identity Federation provider/principal, BigQuery billing export dataset/table | Federated token exchange, billing export read query with row limit |
+
+Each connected account must be associated with the authenticated tenant and
+may be grouped into account groups for separate and collective portfolio
+views. Production validation must never require customer-owned long-lived
+access keys.
+
 ## Observability hook (future integration point with Lumen)
 Backend exposes Prometheus-compatible `/metrics` and structured JSON logs
 from day one, even before a Lumen integration is wired, so the two open

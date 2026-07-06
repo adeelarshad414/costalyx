@@ -1,6 +1,7 @@
 import type { NormalizedCostRecord } from '../../src/cost-model/cost-record.types';
 import { CostModelService } from '../../src/cost-model/cost-model.service';
 import { InMemoryCostModelRepository } from '../../src/cost-model/in-memory-cost-model.repository';
+import { DEFAULT_TENANT_ID } from '../../src/security/token-verifier';
 
 function record(overrides: Partial<NormalizedCostRecord> = {}): NormalizedCostRecord {
   return {
@@ -36,12 +37,14 @@ describe('CostModelService', () => {
     const service = createService();
 
     const first = await service.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'fixture.csv',
       idempotencyKey: 'first',
       rows: [record()]
     });
     const second = await service.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'fixture.csv',
       idempotencyKey: 'second',
@@ -50,7 +53,7 @@ describe('CostModelService', () => {
 
     expect(first.ingestedRows).toBe(1);
     expect(second.duplicateRows).toBe(1);
-    await expect(service.listRecords({ page: 1, pageSize: 25 })).resolves.toMatchObject({
+    await expect(service.listRecords({ tenantId: DEFAULT_TENANT_ID, page: 1, pageSize: 25 })).resolves.toMatchObject({
       meta: { total: 1 }
     });
   });
@@ -58,12 +61,14 @@ describe('CostModelService', () => {
   it('replays the exact response for duplicate idempotency keys', async () => {
     const service = createService();
     const first = await service.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'fixture.csv',
       idempotencyKey: 'same-key',
       rows: [record()]
     });
     const replay = await service.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'fixture.csv',
       idempotencyKey: 'same-key',
@@ -76,13 +81,14 @@ describe('CostModelService', () => {
   it('returns computed summary totals from stored hourly rates and usage hours', async () => {
     const service = createService();
     await service.saveIngestion({
+      tenantId: DEFAULT_TENANT_ID,
       provider: 'aws',
       sourceUri: 'fixture.csv',
       idempotencyKey: 'summary',
       rows: [record(), record({ id: 'row-2', resourceId: 'resource-2', fingerprint: 'fingerprint-2', costTotalUsd: '1.00000000', isEstimate: true })]
     });
 
-    await expect(service.getSummary()).resolves.toEqual({
+    await expect(service.getSummary({ tenantId: DEFAULT_TENANT_ID })).resolves.toEqual({
       totalCostUsd: '1.41600000',
       resourceCount: 2,
       untaggedCount: 2,

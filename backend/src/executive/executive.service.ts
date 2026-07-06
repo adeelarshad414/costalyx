@@ -24,10 +24,10 @@ export class ExecutiveService {
 
   constructor(private readonly costModel: CostModelService) {}
 
-  async getExecutiveSummary(query: ExecutiveSummaryQuery = {}): Promise<ExecutiveSummary> {
+  async getExecutiveSummary(tenantId: string, query: ExecutiveSummaryQuery = {}): Promise<ExecutiveSummary> {
     const [summary, records] = await Promise.all([
-      this.costModel.getSummary(),
-      this.costModel.listRecords({ page: 1, pageSize: 200 })
+      this.costModel.getSummary({ tenantId }),
+      this.costModel.listRecords({ tenantId, page: 1, pageSize: 200 })
     ]);
     const revenueBaselineUsd = query.revenueBaselineUsd ?? defaultRevenueBaselineUsd;
     const budgetBaselineUsd = query.budgetBaselineUsd ?? defaultBudgetBaselineUsd;
@@ -55,8 +55,8 @@ export class ExecutiveService {
     };
   }
 
-  async exportExecutiveSummary(): Promise<string> {
-    const summary = await this.getExecutiveSummary();
+  async exportExecutiveSummary(tenantId: string): Promise<string> {
+    const summary = await this.getExecutiveSummary(tenantId);
     return buildPdfDocument([
       'Costalyx Executive Summary',
       `Total spend USD ${summary.totalSpendUsd}`,
@@ -65,8 +65,9 @@ export class ExecutiveService {
     ]);
   }
 
-  estimateTco(input: TcoEstimateRequest, idempotencyKey: string): TcoEstimateResponse {
-    const existing = this.tcoIdempotencyResponses.get(idempotencyKey);
+  estimateTco(input: TcoEstimateRequest, tenantId: string, idempotencyKey: string): TcoEstimateResponse {
+    const scopedKey = `${tenantId}:${idempotencyKey}`;
+    const existing = this.tcoIdempotencyResponses.get(scopedKey);
     if (existing) {
       return existing;
     }
@@ -83,7 +84,7 @@ export class ExecutiveService {
       gcp: providerEstimate(usageHours, providerHourlyRatesUsd.gcp ?? defaultRates.gcp, Boolean(providerHourlyRatesUsd.gcp)),
       tolerancePercent: '0.0000'
     };
-    this.tcoIdempotencyResponses.set(idempotencyKey, response);
+    this.tcoIdempotencyResponses.set(scopedKey, response);
     return response;
   }
 }

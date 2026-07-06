@@ -10,30 +10,40 @@ import type {
 } from './cost-record.types';
 import { stableId } from './stable-id';
 
+type StoredCostRecord = NormalizedCostRecord & {
+  tenantId: string;
+  cloudConnectionId: string | null;
+};
+
 @Injectable()
 export class InMemoryCostModelRepository implements CostModelRepository {
   private readonly batches = new Map<string, IngestionBatch>();
   private readonly idempotencyResponses = new Map<string, IngestionBatch>();
-  private readonly recordsByFingerprint = new Map<string, NormalizedCostRecord>();
+  private readonly recordsByFingerprint = new Map<string, StoredCostRecord>();
 
   constructor(private readonly allocation?: Pick<AllocationRepository, 'summarizeDimensionMatches'>) {}
 
   async saveIngestion(input: {
+    tenantId: string;
     provider: CloudProvider;
+    cloudConnectionId?: string;
     sourceUri: string;
     idempotencyKey: string;
     rows: NormalizedCostRecord[];
   }): Promise<IngestionBatch> {
-    const existing = this.idempotencyResponses.get(input.idempotencyKey);
+    const scopedKey = `${input.tenantId}:${input.idempotencyKey}`;
+    const existing = this.idempotencyResponses.get(scopedKey);
     if (existing) {
       return existing;
     }
 
     const now = new Date().toISOString();
     const batch: IngestionBatch = {
-      id: stableId(`batch:${input.provider}:${input.sourceUri}:${input.idempotencyKey}`),
+      id: stableId(`batch:${input.tenantId}:${input.provider}:${input.sourceUri}:${input.idempotencyKey}`),
+      tenantId: input.tenantId,
       provider: input.provider,
       status: 'complete',
+      cloudConnectionId: input.cloudConnectionId ?? null,
       sourceUri: input.sourceUri,
       createdAt: now,
       completedAt: now,
@@ -42,31 +52,41 @@ export class InMemoryCostModelRepository implements CostModelRepository {
     };
 
     input.rows.forEach((row) => {
-      const storedRow = { ...row, sourceBatchId: batch.id, ingestedAt: now };
-      if (this.recordsByFingerprint.has(storedRow.fingerprint)) {
+      const storedRow = {
+        ...row,
+        tenantId: input.tenantId,
+        cloudConnectionId: input.cloudConnectionId ?? null,
+        sourceBatchId: batch.id,
+        ingestedAt: now
+      };
+      const fingerprintKey = `${input.tenantId}:${storedRow.fingerprint}`;
+      if (this.recordsByFingerprint.has(fingerprintKey)) {
         batch.duplicateRows += 1;
         return;
       }
-      this.recordsByFingerprint.set(storedRow.fingerprint, storedRow);
+      this.recordsByFingerprint.set(fingerprintKey, storedRow);
       batch.ingestedRows += 1;
     });
 
     this.batches.set(batch.id, batch);
-    this.idempotencyResponses.set(input.idempotencyKey, batch);
+    this.idempotencyResponses.set(scopedKey, batch);
     return batch;
   }
 
-  async getBatch(id: string): Promise<IngestionBatch> {
+  async getBatch(id: string, tenantId: string): Promise<IngestionBatch> {
     const batch = this.batches.get(id);
-    if (!batch) {
+    if (!batch || batch.tenantId !== tenantId) {
       throw new NotFoundException(`Ingestion batch ${id} was not found.`);
     }
     return batch;
   }
 
   async listRecords(query: {
+    tenantId: string;
     provider?: CloudProvider;
     accountId?: string;
+    accountGroupId?: string;
+    cloudConnectionId?: string;
     service?: string;
     dimension?: string;
     from?: string;
@@ -78,6 +98,7 @@ export class InMemoryCostModelRepository implements CostModelRepository {
     if (query.dimension && this.allocation) {
       const matchSummary = await this.allocation.summarizeDimensionMatches(
         query.dimension,
+        query.tenantId,
         allRows.map((row) => row.resourceId)
       );
       allRows = allRows.filter((row) => matchSummary.matchingResourceIds.has(row.resourceId));
@@ -91,13 +112,16 @@ export class InMemoryCostModelRepository implements CostModelRepository {
 
   async getSummary(
     query: {
+      tenantId: string;
       provider?: CloudProvider;
       accountId?: string;
+      accountGroupId?: string;
+      cloudConnectionId?: string;
       service?: string;
       dimension?: string;
       from?: string;
       to?: string;
-    } = {}
+    }
   ) {
     let rows = this.filterRows(query);
     let untaggedCount = rows.length;
@@ -105,6 +129,7 @@ export class InMemoryCostModelRepository implements CostModelRepository {
       const filteredResourceIds = new Set(rows.map((row) => row.resourceId));
       const matchSummary = await this.allocation.summarizeDimensionMatches(
         query.dimension,
+        query.tenantId,
         rows.map((row) => row.resourceId)
       );
       rows = rows.filter((row) => matchSummary.matchingResourceIds.has(row.resourceId));
@@ -122,15 +147,18 @@ export class InMemoryCostModelRepository implements CostModelRepository {
 
   async getExplorerFlow(
     query: {
+      tenantId: string;
       provider?: CloudProvider;
       accountId?: string;
+      accountGroupId?: string;
+      cloudConnectionId?: string;
       service?: string;
       dimension?: string;
       from?: string;
       to?: string;
       dimensions?: CostExplorerDimension[];
       costFloorUsd?: string;
-    } = {}
+    }
   ) {
     return buildCostExplorerFlow({
       records: this.filterRows(query),
@@ -140,16 +168,20 @@ export class InMemoryCostModelRepository implements CostModelRepository {
   }
 
   private filterRows(query: {
+    tenantId: string;
     provider?: CloudProvider;
     accountId?: string;
+    cloudConnectionId?: string;
     service?: string;
     from?: string;
     to?: string;
   }) {
     return [...this.recordsByFingerprint.values()].filter((row) => {
       return (
+        row.tenantId === query.tenantId &&
         (!query.provider || row.provider === query.provider) &&
         (!query.accountId || row.accountId === query.accountId) &&
+        (!query.cloudConnectionId || row.cloudConnectionId === query.cloudConnectionId) &&
         (!query.service || row.serviceName === query.service) &&
         withinDateRange(row, query)
       );

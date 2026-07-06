@@ -117,6 +117,131 @@ describe('createCostalyxClient', () => {
     );
   });
 
+  it('sends bearer auth and idempotency keys for tenant cloud portfolio routes', async () => {
+    const cloudConnection = {
+      id: '11111111-1111-4111-8111-111111111111',
+      tenantId: '00000000-0000-4000-8000-000000000001',
+      provider: 'aws',
+      displayName: 'AWS production payer',
+      externalTenantId: '123456789012',
+      accessMode: 'aws_assume_role',
+      readOnlyPrincipal: 'arn:aws:iam::123456789012:role/CostalyxReadOnlyBilling',
+      billingExportUri: 's3://customer-cur/costalyx/',
+      status: 'validated',
+      lastValidatedAt: '2026-07-06T00:00:00.000Z',
+      createdAt: '2026-07-06T00:00:00.000Z'
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: [{ id: 'tenant-1', name: 'Acme', slug: 'acme', plan: 'business', createdAt: '2026-07-06T00:00:00.000Z' }] })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: 'tenant-1', name: 'Acme', slug: 'acme', plan: 'business', createdAt: '2026-07-06T00:00:00.000Z' })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: [cloudConnection], meta: { total: 1, page: 1, pageSize: 50 } })
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => cloudConnection })
+      .mockResolvedValueOnce({ ok: true, json: async () => cloudConnection })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 1 } })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 1 } })
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createCostalyxClient({
+      baseUrl: 'http://api.test/api/v1',
+      getAccessToken: async () => 'signed-keycloak-token'
+    });
+
+    await client.listTenants?.();
+    await client.createTenant?.({ name: 'Acme', slug: 'acme', idempotencyKey: 'tenant-key-1' });
+    await client.listCloudConnections?.({ page: 1, pageSize: 50 });
+    await client.createCloudConnection?.({
+      provider: 'aws',
+      displayName: cloudConnection.displayName,
+      externalTenantId: cloudConnection.externalTenantId,
+      accessMode: 'aws_assume_role',
+      readOnlyPrincipal: cloudConnection.readOnlyPrincipal,
+      billingExportUri: cloudConnection.billingExportUri,
+      idempotencyKey: 'connection-key-1'
+    });
+    await client.validateCloudConnection?.({ id: cloudConnection.id, idempotencyKey: 'validation-key-1' });
+    await client.listAccounts?.({ page: 1, pageSize: 1 });
+    await client.listAccountGroups?.({ page: 1, pageSize: 1 });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'http://api.test/api/v1/tenants',
+      expect.objectContaining({
+        headers: { Accept: 'application/json', Authorization: 'Bearer signed-keycloak-token' }
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'http://api.test/api/v1/tenants',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer signed-keycloak-token',
+          'Idempotency-Key': 'tenant-key-1'
+        }),
+        body: JSON.stringify({ name: 'Acme', slug: 'acme' })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      'http://api.test/api/v1/cloud-connections?page=1&pageSize=50',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer signed-keycloak-token' })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      'http://api.test/api/v1/cloud-connections',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer signed-keycloak-token',
+          'Idempotency-Key': 'connection-key-1'
+        })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
+      `http://api.test/api/v1/cloud-connections/${cloudConnection.id}/validation`,
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer signed-keycloak-token',
+          'Idempotency-Key': 'validation-key-1'
+        })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      6,
+      'http://api.test/api/v1/accounts?page=1&pageSize=1',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer signed-keycloak-token' })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      7,
+      'http://api.test/api/v1/account-groups?page=1&pageSize=1',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer signed-keycloak-token' })
+      })
+    );
+  });
+
   it('loads cost explorer flow with filters, dimensions, and bearer auth', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

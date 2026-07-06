@@ -3,14 +3,14 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { ProblemDetailsFilter } from '../../src/common/problem-details.filter';
-import { AUTH_TOKEN_VERIFIER, type TokenVerifier } from '../../src/security/token-verifier';
+import { AUTH_TOKEN_VERIFIER, DEFAULT_TENANT_ID, type TokenVerifier } from '../../src/security/token-verifier';
 
 describe('Bearer token RBAC integration', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
     const viewerVerifier: TokenVerifier = {
-      verifyBearerToken: jest.fn().mockResolvedValue({ subject: 'viewer-user', role: 'viewer' })
+      verifyBearerToken: jest.fn().mockResolvedValue({ subject: 'viewer-user', role: 'viewer', tenantId: DEFAULT_TENANT_ID })
     };
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule]

@@ -2,11 +2,14 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { JWTPayload } from 'jose';
 import { parseRole, type Role } from './roles';
-import type { AuthenticatedUser, TokenVerifier } from './token-verifier';
+import { DEFAULT_TENANT_ID, normalizeTenantId, type AuthenticatedUser, type TokenVerifier } from './token-verifier';
 
 interface KeycloakClaims extends JWTPayload {
   realm_access?: { roles?: unknown };
   resource_access?: Record<string, { roles?: unknown }>;
+  tenant_id?: unknown;
+  costalyx_tenant_id?: unknown;
+  org_id?: unknown;
 }
 
 const roleRank: Record<Role, number> = {
@@ -73,7 +76,13 @@ export function extractRoleFromClaims(claims: KeycloakClaims, clientId = 'costal
     throw new UnauthorizedException('Bearer token has no Costalyx role.');
   }
 
-  return { subject, role };
+  const tenantId =
+    normalizeTenantId(claims.costalyx_tenant_id) ??
+    normalizeTenantId(claims.tenant_id) ??
+    normalizeTenantId(claims.org_id) ??
+    DEFAULT_TENANT_ID;
+
+  return { subject, role, tenantId };
 }
 
 function rolesFrom(value: unknown): Role[] {

@@ -34,14 +34,45 @@ describeIfPostgres('Milestone A ingestion API with PostgreSQL persistence', () =
 
   beforeAll(async () => {
     pool = new Pool({ connectionString: process.env.DATABASE_URL });
-    for (const migration of ['001_initial_cost_model.sql', '002_persisted_ingestion_idempotency.sql']) {
+    for (const migration of [
+      '001_initial_cost_model.sql',
+      '002_persisted_ingestion_idempotency.sql',
+      '003_rbac_trust_tiers.sql',
+      '004_governance_idempotency.sql',
+      '005_dynamic_allocation.sql',
+      '006_optimization.sql',
+      '007_reporting_views.sql',
+      '008_multitenant_cloud_portfolio.sql'
+    ]) {
       const sql = readFileSync(join(process.cwd(), 'migrations', migration), 'utf8');
       await pool.query(sql);
     }
   });
 
   beforeEach(async () => {
-    await pool.query('TRUNCATE cost_records, accounts, ingestion_batches CASCADE');
+    await pool.query(
+      `TRUNCATE
+        realized_savings,
+        recommendations,
+        optimization_idempotency,
+        allocation_idempotency,
+        governance_idempotency,
+        views,
+        resource_tags,
+        dimension_tag_mappings,
+        dimensions,
+        audit_log,
+        user_roles,
+        users,
+        cloud_credentials,
+        account_group_members,
+        account_groups,
+        cloud_connections,
+        cost_records,
+        accounts,
+        ingestion_batches
+       CASCADE`
+    );
   });
 
   afterAll(async () => {

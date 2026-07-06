@@ -1,15 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { InMemoryAuditLogStore, type AuditLogStore } from '../audit/audit-log.store';
-import { stableId } from '../cost-model/stable-id';
 import type { PageQuery, Paginated } from '../governance/governance.types';
 import type { AuthenticatedUser } from '../security/token-verifier';
 import type { AllocationRepository } from './allocation.repository';
 import type { Dimension, DimensionMapping, DimensionMatchSummary, ResourceTag } from './allocation.types';
 import type { CreateDimensionDto, CreateDimensionMappingDto } from './dto/dimension.dto';
 import type { ListResourceTagsQueryDto, UpsertResourceTagDto } from './dto/resource-tag.dto';
-
-const defaultOrgId = stableId('org:default');
 
 @Injectable()
 export class InMemoryAllocationRepository implements AllocationRepository {
@@ -20,8 +17,11 @@ export class InMemoryAllocationRepository implements AllocationRepository {
 
   constructor(private readonly auditLog: AuditLogStore = new InMemoryAuditLogStore()) {}
 
-  async listDimensions(query: PageQuery): Promise<Paginated<Dimension>> {
-    return paginate([...this.dimensions.values()], query);
+  async listDimensions(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<Dimension>> {
+    return paginate(
+      [...this.dimensions.values()].filter((dimension) => dimension.orgId === actor.tenantId),
+      query
+    );
   }
 
   async createDimension(
@@ -29,12 +29,12 @@ export class InMemoryAllocationRepository implements AllocationRepository {
     actor: AuthenticatedUser,
     idempotencyKey: string
   ): Promise<Dimension> {
-    return this.withIdempotency(idempotencyKey, async () => {
+    return this.withIdempotency(actor.tenantId, idempotencyKey, async () => {
       const dimension: Dimension = {
         id: randomUUID(),
-        orgId: defaultOrgId,
+        orgId: actor.tenantId,
         name: input.name,
-        createdBy: stableId(`actor:${actor.subject}`),
+        createdBy: actor.subject,
         createdAt: new Date().toISOString()
       };
       this.dimensions.set(dimension.id, dimension);
@@ -49,8 +49,9 @@ export class InMemoryAllocationRepository implements AllocationRepository {
     actor: AuthenticatedUser,
     idempotencyKey: string
   ): Promise<DimensionMapping> {
-    return this.withIdempotency(idempotencyKey, async () => {
-      if (!this.dimensions.has(dimensionId)) {
+    return this.withIdempotency(actor.tenantId, idempotencyKey, async () => {
+      const dimension = this.dimensions.get(dimensionId);
+      if (!dimension || dimension.orgId !== actor.tenantId) {
         throw new NotFoundException(`Dimension ${dimensionId} was not found.`);
       }
       const mapping: DimensionMapping = {
@@ -65,9 +66,10 @@ export class InMemoryAllocationRepository implements AllocationRepository {
     });
   }
 
-  async listResourceTags(query: ListResourceTagsQueryDto): Promise<Paginated<ResourceTag>> {
+  async listResourceTags(query: ListResourceTagsQueryDto, actor: AuthenticatedUser): Promise<Paginated<ResourceTag>> {
     const tags = [...this.resourceTags.values()]
-      .filter((tag) => tag.resourceId === query.resourceId)
+      .filter((tag) => tag.resourceId === resourceTagStorageKey(actor.tenantId, query.resourceId))
+      .map((tag) => ({ ...tag, resourceId: query.resourceId }))
       .sort((left, right) => left.tagKey.localeCompare(right.tagKey));
     return paginate(tags, query);
   }
@@ -77,45 +79,51 @@ export class InMemoryAllocationRepository implements AllocationRepository {
     actor: AuthenticatedUser,
     idempotencyKey: string
   ): Promise<ResourceTag> {
-    return this.withIdempotency(idempotencyKey, async () => {
+    return this.withIdempotency(actor.tenantId, idempotencyKey, async () => {
       const tag: ResourceTag = {
-        resourceId: input.resourceId,
+        resourceId: resourceTagStorageKey(actor.tenantId, input.resourceId),
         tagKey: input.tagKey,
         tagValue: input.tagValue,
         source: input.source
       };
       this.resourceTags.set(resourceTagKey(tag.resourceId, tag.tagKey), tag);
       await this.auditLog.append(actor, 'resource_tag_upserted', 'resource_tag', `${tag.resourceId}:${tag.tagKey}`);
-      return tag;
+      return { ...tag, resourceId: input.resourceId };
     });
   }
 
-  async summarizeDimensionMatches(dimensionId: string, resourceIds: string[]): Promise<DimensionMatchSummary> {
+  async summarizeDimensionMatches(dimensionId: string, tenantId: string, resourceIds: string[]): Promise<DimensionMatchSummary> {
+    const dimension = this.dimensions.get(dimensionId);
+    if (!dimension || dimension.orgId !== tenantId) {
+      return { matchingResourceIds: new Set(), taggedResourceIds: new Set() };
+    }
     const mappings = [...this.mappings.values()].filter((mapping) => mapping.dimensionId === dimensionId);
     const resourceIdSet = new Set(resourceIds);
     const taggedResourceIds = new Set<string>();
     const matchingResourceIds = new Set<string>();
 
     for (const tag of this.resourceTags.values()) {
-      if (!resourceIdSet.has(tag.resourceId)) {
+      const resourceId = decodeResourceTagStorageKey(tenantId, tag.resourceId);
+      if (!resourceIdSet.has(resourceId)) {
         continue;
       }
-      taggedResourceIds.add(tag.resourceId);
+      taggedResourceIds.add(resourceId);
       if (mappings.some((mapping) => matchesMapping(tag, mapping))) {
-        matchingResourceIds.add(tag.resourceId);
+        matchingResourceIds.add(resourceId);
       }
     }
 
     return { matchingResourceIds, taggedResourceIds };
   }
 
-  private async withIdempotency<T>(idempotencyKey: string, create: () => Promise<T>): Promise<T> {
-    const existing = this.idempotentResponses.get(idempotencyKey);
+  private async withIdempotency<T>(tenantId: string, idempotencyKey: string, create: () => Promise<T>): Promise<T> {
+    const scopedKey = `${tenantId}:${idempotencyKey}`;
+    const existing = this.idempotentResponses.get(scopedKey);
     if (existing) {
       return existing as T;
     }
     const response = await create();
-    this.idempotentResponses.set(idempotencyKey, response);
+    this.idempotentResponses.set(scopedKey, response);
     return response;
   }
 }
@@ -126,6 +134,15 @@ function matchesMapping(tag: ResourceTag, mapping: DimensionMapping): boolean {
 
 function resourceTagKey(resourceId: string, tagKey: string): string {
   return `${resourceId}\u0000${tagKey}`;
+}
+
+function resourceTagStorageKey(tenantId: string, resourceId: string): string {
+  return `${tenantId}:${resourceId}`;
+}
+
+function decodeResourceTagStorageKey(tenantId: string, resourceId: string): string {
+  const prefix = `${tenantId}:`;
+  return resourceId.startsWith(prefix) ? resourceId.slice(prefix.length) : resourceId;
 }
 
 function paginate<T>(items: T[], query: PageQuery): Paginated<T> {

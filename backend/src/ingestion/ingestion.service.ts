@@ -18,7 +18,13 @@ export class IngestionService {
 
   constructor(private readonly costModel: CostModelService) {}
 
-  async createBatch(input: { provider: CloudProvider; sourceUri: string; idempotencyKey: string }) {
+  async createBatch(input: {
+    tenantId: string;
+    provider: CloudProvider;
+    cloudConnectionId?: string;
+    sourceUri: string;
+    idempotencyKey: string;
+  }) {
     const adapter = this.adapters[input.provider];
     const sourcePath = resolve(process.cwd(), '..', input.sourceUri);
 
@@ -34,7 +40,7 @@ export class IngestionService {
     }
   }
 
-  getBatch(id: string) {
-    return this.costModel.getBatch(id);
+  getBatch(id: string, tenantId: string) {
+    return this.costModel.getBatch(id, tenantId);
   }
 }

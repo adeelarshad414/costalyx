@@ -1,6 +1,6 @@
 export type CloudProvider = 'aws' | 'azure' | 'gcp';
 export type LeaseType = 'on_demand' | 'reserved' | 'savings_plan' | 'spot';
-export type CostExplorerDimension = 'provider' | 'service' | 'leaseType' | 'transactionType' | 'usageFamily';
+export type CostExplorerDimension = 'provider' | 'account' | 'service' | 'leaseType' | 'transactionType' | 'usageFamily';
 
 export interface NormalizedCostRecord {
   id: string;
@@ -26,8 +26,10 @@ export interface NormalizedCostRecord {
 
 export interface IngestionBatch {
   id: string;
+  tenantId: string;
   provider: CloudProvider;
   status: 'pending' | 'processing' | 'complete' | 'failed';
+  cloudConnectionId: string | null;
   sourceUri: string;
   createdAt: string;
   completedAt: string | null;

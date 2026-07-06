@@ -15,6 +15,9 @@
 
 ## Auth
 - OIDC via Keycloak; API validates bearer JWTs, no session cookies
+- Tenant boundary comes from the validated OIDC token claim
+  (`costalyx_tenant_id`, `tenant_id`, or `org_id`). Clients do not choose
+  tenant scope by query string.
 - `403` (not a filtered `200`) for any role-insufficient request — enforced
   by a NestJS guard on every controller, tested per `08-TESTING-STRATEGY.md`
 
@@ -30,13 +33,27 @@ GET    /api/v1/ingestion/batches/:id/errors row-level ingestion errors
 ### Cost data
 ```
 GET  /api/v1/cost-records                   filterable by provider, account,
-                                             service, date range, dimension
+                                             accountGroupId,
+                                             cloudConnectionId, service,
+                                             date range, dimension
 GET  /api/v1/cost-records/summary           pre-aggregated totals (used by
                                              Resource Inventory KPI cards)
 GET  /api/v1/cost-records/export            authenticated CSV export
 GET  /api/v1/cost-explorer/flow             Sankey-shaped response:
                                              { nodes: [], links: [] }
 ```
+
+### Tenants & Cloud Connections
+```
+GET/POST /api/v1/tenants                    tenant membership/admin surface
+GET/POST /api/v1/cloud-connections          read-only AWS/Azure/GCP
+                                             connection references
+POST     /api/v1/cloud-connections/:id/validation
+```
+
+Cloud connection requests store only a read-only principal reference and an
+optional billing export URI. No access keys, client secrets, passwords, or
+base64 credential blobs are accepted.
 
 ### Accounts & Groups
 ```
@@ -69,7 +86,9 @@ GET   /api/v1/realized-savings
 ### Reporting
 ```
 GET   /api/v1/reports                       canned report catalog
-GET   /api/v1/reports/:id/run
+GET   /api/v1/reports/:id/run               filterable by provider, account,
+                                             accountGroupId,
+                                             cloudConnectionId, date range
 GET/POST /api/v1/views
 ```
 

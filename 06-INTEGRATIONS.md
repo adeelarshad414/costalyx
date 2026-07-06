@@ -17,6 +17,21 @@ Each ingestion run writes to `ingestion_batches` first (status: pending →
 processing → complete/failed), and only commits `cost_records` on success —
 partial batches never leave `cost_records` in an inconsistent state.
 
+## Customer cloud account onboarding
+Customers should not share long-lived cloud secrets with Costalyx. The
+default integration model is a read-only trust relationship created in the
+customer cloud account, then registered in Costalyx as a `cloud_connection`.
+
+| Provider | Customer grants | Costalyx stores |
+|---|---|---|
+| AWS | Read-only IAM role for billing/CUR access, assumable by the Costalyx-controlled principal with an external ID | Role ARN, payer/member account ID, optional CUR S3 URI |
+| Azure | Reader/Cost Management Reader scope delegated to the Costalyx app registration or workload identity | Tenant/subscription ID, app/principal ID, optional export URI |
+| GCP | Billing Account Viewer / BigQuery read role through Workload Identity Federation | Billing account/project ID, workload identity provider/principal, BigQuery export reference |
+
+A tenant may register multiple AWS, Azure, and GCP connections. UI and API
+reads can show each connection separately, by account group, or collectively
+at the tenant level.
+
 ## Keycloak (OIDC)
 - Costalyx is registered as a confidential OIDC client — it is never its own
   identity provider
@@ -25,10 +40,11 @@ partial batches never leave `cost_records` in an inconsistent state.
   round-trip on every request, while still catching revocations promptly
 
 ## Vault / OpenBao (secrets)
-- All cloud billing credentials (AWS role ARNs + external ID, Azure service
-  principal secrets, GCP service account keys) are stored exclusively in
-  Vault, referenced by path from Postgres — **never stored, cached, or
-  logged in plaintext or base64 anywhere in the application layer**
+- Cloud access is federated/read-only by default. Postgres stores cloud
+  connection references only. Vault stores Costalyx-owned broker credentials
+  and any legacy static fallback secrets; customer access keys, client
+  secrets, service-account keys, passwords, plaintext secrets, and base64
+  credential blobs are never accepted through the normal onboarding API.
 - Vault dynamic secrets used for the app's own DB credentials where
   supported, with a documented static-credential fallback for self-hosters
   who haven't set up Vault dynamic DB secrets yet

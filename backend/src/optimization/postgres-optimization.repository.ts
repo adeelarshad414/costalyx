@@ -37,14 +37,14 @@ export class PostgresOptimizationRepository implements OptimizationRepository, O
     }
   }
 
-  async syncRecommendations(candidates: RecommendationCandidate[]): Promise<void> {
+  async syncRecommendations(tenantId: string, candidates: RecommendationCandidate[]): Promise<void> {
     for (const candidate of candidates) {
       await this.pool.query(
         `INSERT INTO recommendations
-           (id, type, resource_id, estimated_savings_usd, status, created_at,
+           (id, tenant_id, type, resource_id, estimated_savings_usd, status, created_at,
             baseline_cost_usd, actual_cost_usd, delta_usd, verification_source)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'ingested_billing')
-         ON CONFLICT (id) DO UPDATE
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'ingested_billing')
+         ON CONFLICT (tenant_id, id) DO UPDATE
            SET estimated_savings_usd = EXCLUDED.estimated_savings_usd,
                baseline_cost_usd = EXCLUDED.baseline_cost_usd,
                actual_cost_usd = EXCLUDED.actual_cost_usd,
@@ -52,6 +52,7 @@ export class PostgresOptimizationRepository implements OptimizationRepository, O
          WHERE recommendations.status = 'open'`,
         [
           candidate.recommendation.id,
+          tenantId,
           candidate.recommendation.type,
           candidate.recommendation.resourceId,
           candidate.recommendation.estimatedSavingsUsd,
@@ -66,8 +67,8 @@ export class PostgresOptimizationRepository implements OptimizationRepository, O
   }
 
   async listRecommendations(query: RecommendationQuery) {
-    const clauses: string[] = [];
-    const params: string[] = [];
+    const clauses: string[] = ['tenant_id = $1'];
+    const params: string[] = [query.tenantId];
     if (query.status) {
       params.push(query.status);
       clauses.push(`status = $${params.length}`);
@@ -75,7 +76,7 @@ export class PostgresOptimizationRepository implements OptimizationRepository, O
     const whereSql = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
     const offset = (query.page - 1) * query.pageSize;
     const result = await this.pool.query(
-      `SELECT id, type, resource_id, estimated_savings_usd::text, status, created_at
+      `SELECT id, tenant_id, type, resource_id, estimated_savings_usd::text, status, created_at
        FROM recommendations
        ${whereSql}
        ORDER BY created_at ASC, id ASC
@@ -96,17 +97,20 @@ export class PostgresOptimizationRepository implements OptimizationRepository, O
     idempotencyKey: string
   ): Promise<Recommendation> {
     return this.withTransaction((client) =>
-      this.withIdempotency(client, idempotencyKey, async () => {
-        const existing = await client.query('SELECT * FROM recommendations WHERE id = $1', [id]);
+      this.withIdempotency(client, actor.tenantId, idempotencyKey, async () => {
+        const existing = await client.query('SELECT * FROM recommendations WHERE id = $1 AND tenant_id = $2', [
+          id,
+          actor.tenantId
+        ]);
         if (!existing.rows[0]) {
           throw new NotFoundException(`Recommendation ${id} was not found.`);
         }
         const saved = await client.query(
           `UPDATE recommendations
            SET status = $1
-           WHERE id = $2
-           RETURNING id, type, resource_id, estimated_savings_usd::text, status, created_at`,
-          [input.status, id]
+           WHERE id = $2 AND tenant_id = $3
+           RETURNING id, tenant_id, type, resource_id, estimated_savings_usd::text, status, created_at`,
+          [input.status, id, actor.tenantId]
         );
         if (input.status === 'applied') {
           await this.createRealizedSaving(client, existing.rows[0] as PgRow, actor);
@@ -119,14 +123,17 @@ export class PostgresOptimizationRepository implements OptimizationRepository, O
   async listRealizedSavings(query: RealizedSavingsQuery) {
     const offset = (query.page - 1) * query.pageSize;
     const result = await this.pool.query(
-      `SELECT id, recommendation_id, applied_at, baseline_cost_usd::text, actual_cost_usd::text, delta_usd::text,
+      `SELECT id, tenant_id, recommendation_id, applied_at, baseline_cost_usd::text, actual_cost_usd::text, delta_usd::text,
               verification_source
        FROM realized_savings
+       WHERE tenant_id = $3
        ORDER BY applied_at DESC, id ASC
        LIMIT $1 OFFSET $2`,
-      [query.pageSize, offset]
+      [query.pageSize, offset, query.tenantId]
     );
-    const total = await this.pool.query('SELECT COUNT(id)::int AS total FROM realized_savings');
+    const total = await this.pool.query('SELECT COUNT(id)::int AS total FROM realized_savings WHERE tenant_id = $1', [
+      query.tenantId
+    ]);
     return {
       data: result.rows.map((row) => mapRealizedSaving(row as PgRow)),
       meta: { total: Number((total.rows[0] as PgRow | undefined)?.total ?? 0), page: query.page, pageSize: query.pageSize }
@@ -150,20 +157,24 @@ export class PostgresOptimizationRepository implements OptimizationRepository, O
 
   private async withIdempotency<T>(
     client: PoolClient,
+    tenantId: string,
     idempotencyKey: string,
     create: () => Promise<T>
   ): Promise<T> {
-    const existing = await client.query('SELECT response_json FROM optimization_idempotency WHERE idempotency_key = $1', [
-      idempotencyKey
-    ]);
+    const scopedIdempotencyKey = tenantScopedStorageValue(tenantId, idempotencyKey);
+    const existing = await client.query(
+      'SELECT response_json FROM optimization_idempotency WHERE tenant_id = $1 AND idempotency_key = ANY($2::text[])',
+      [tenantId, tenantStorageCandidates(tenantId, idempotencyKey)]
+    );
     if (existing.rows[0]) {
       return (existing.rows[0] as PgRow).response_json as T;
     }
     const response = await create();
     await client.query(
-      `INSERT INTO optimization_idempotency (idempotency_key, response_json, created_at)
-       VALUES ($1, $2, $3)`,
-      [idempotencyKey, JSON.stringify(response), new Date().toISOString()]
+      `INSERT INTO optimization_idempotency (tenant_id, idempotency_key, response_json, created_at)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (tenant_id, idempotency_key) DO NOTHING`,
+      [tenantId, scopedIdempotencyKey, JSON.stringify(response), new Date().toISOString()]
     );
     return response;
   }
@@ -174,11 +185,12 @@ export class PostgresOptimizationRepository implements OptimizationRepository, O
     }
     await client.query(
       `INSERT INTO realized_savings
-         (id, recommendation_id, applied_at, baseline_cost_usd, actual_cost_usd, delta_usd, verification_source)
-       VALUES ($1, $2, $3, $4, $5, $6, 'ingested_billing')
-       ON CONFLICT (recommendation_id) DO NOTHING`,
+         (id, tenant_id, recommendation_id, applied_at, baseline_cost_usd, actual_cost_usd, delta_usd, verification_source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'ingested_billing')
+       ON CONFLICT (tenant_id, recommendation_id) DO NOTHING`,
       [
         randomUUID(),
+        actor.tenantId,
         row.id,
         new Date().toISOString(),
         row.baseline_cost_usd,
@@ -197,9 +209,13 @@ async function appendAudit(
   targetType: string,
   targetId: string
 ): Promise<void> {
-  const previous = await client.query('SELECT hash FROM audit_log ORDER BY created_at DESC, id DESC LIMIT 1');
+  const previous = await client.query(
+    'SELECT hash FROM audit_log WHERE tenant_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1',
+    [actor.tenantId]
+  );
   const entryWithoutHash = {
     id: randomUUID(),
+    tenantId: actor.tenantId,
     actorId: stableId(`actor:${actor.subject}`),
     action,
     targetType,
@@ -209,10 +225,11 @@ async function appendAudit(
   };
   const hash = createHash('sha256').update(canonicalJson(entryWithoutHash)).digest('hex');
   await client.query(
-    `INSERT INTO audit_log (id, actor_id, action, target_type, target_id, prev_hash, hash, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    `INSERT INTO audit_log (id, tenant_id, actor_id, action, target_type, target_id, prev_hash, hash, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
     [
       entryWithoutHash.id,
+      actor.tenantId,
       entryWithoutHash.actorId,
       action,
       targetType,
@@ -227,6 +244,7 @@ async function appendAudit(
 function mapRecommendation(row: PgRow): Recommendation {
   return {
     id: String(row.id),
+    tenantId: String(row.tenant_id),
     type: row.type as Recommendation['type'],
     resourceId: String(row.resource_id),
     estimatedSavingsUsd: Number(row.estimated_savings_usd ?? 0).toFixed(8),
@@ -238,6 +256,7 @@ function mapRecommendation(row: PgRow): Recommendation {
 function mapRealizedSaving(row: PgRow): RealizedSaving {
   return {
     id: String(row.id),
+    tenantId: String(row.tenant_id),
     recommendationId: String(row.recommendation_id),
     appliedAt: toIso(row.applied_at),
     baselineCostUsd: Number(row.baseline_cost_usd ?? 0).toFixed(8),
@@ -253,4 +272,12 @@ function toIso(value: unknown): string {
 
 function canonicalJson(value: unknown): string {
   return JSON.stringify(value, Object.keys(value as Record<string, unknown>).sort());
+}
+
+function tenantScopedStorageValue(tenantId: string, value: string): string {
+  return `${tenantId}:${value}`;
+}
+
+function tenantStorageCandidates(tenantId: string, value: string): string[] {
+  return [tenantScopedStorageValue(tenantId, value), value];
 }

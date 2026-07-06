@@ -3,7 +3,13 @@ import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { PUBLIC_ROUTE_KEY, REQUIRED_ROLE_KEY } from './roles.decorator';
 import { hasRequiredRole, parseRole, type Role } from './roles';
-import { AUTH_TOKEN_VERIFIER, type AuthenticatedUser, type TokenVerifier } from './token-verifier';
+import {
+  AUTH_TOKEN_VERIFIER,
+  DEFAULT_TENANT_ID,
+  normalizeTenantId,
+  type AuthenticatedUser,
+  type TokenVerifier
+} from './token-verifier';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -47,7 +53,11 @@ export class RolesGuard implements CanActivate {
 
     const headerFallbackRole = this.allowTestRoleHeader() ? parseRole(headers['x-costalyx-role']) : null;
     if (headerFallbackRole) {
-      return { subject: 'local-test-user', role: headerFallbackRole };
+      return {
+        subject: 'local-test-user',
+        role: headerFallbackRole,
+        tenantId: normalizeTenantId(headers['x-costalyx-tenant-id']) ?? DEFAULT_TENANT_ID
+      };
     }
 
     throw new UnauthorizedException(
