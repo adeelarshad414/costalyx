@@ -225,9 +225,15 @@ Costalyx broker identity can query one row from the billing export table. It
 must not print service-account JSON, private keys, or OAuth tokens.
 
 ## Observability hook (future integration point with Lumen)
-Backend exposes Prometheus-compatible `/metrics` and structured JSON logs
-from day one, even before a Lumen integration is wired, so the two open
-source projects can be connected without a retrofit.
+Backend exposes an Admin-gated Prometheus-compatible `/metrics` endpoint and
+structured JSON logs from day one, even before a Lumen integration is wired,
+so the two open source projects can be connected without a retrofit. The
+metrics endpoint intentionally avoids tenant IDs, account IDs, role ARNs,
+export URIs, and credential-shaped values; it emits process health,
+scheduler configuration, and cloud-connection counts by provider/status for
+operator dashboards. Production Prometheus scraping should use an internal
+service account or gateway that presents an Admin bearer token, rather than
+making `/metrics` public.
 
 ## Rollback
 Every deploy is a new immutable image tag; rollback = redeploy the previous
