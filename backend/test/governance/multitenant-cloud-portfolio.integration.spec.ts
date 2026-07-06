@@ -33,6 +33,26 @@ describe('Multi-tenant cloud portfolio', () => {
     await app.close();
   });
 
+  it('rejects secret-bearing cloud connection references before they can be persisted', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/cloud-connections')
+      .set('x-costalyx-role', 'admin')
+      .set('x-costalyx-tenant-id', tenantA)
+      .set('Idempotency-Key', 'connection-secret-reject')
+      .send({
+        provider: 'azure',
+        displayName: 'Signed Azure export',
+        externalTenantId: '11111111-1111-4111-8111-111111111111',
+        accessMode: 'azure_delegated_app',
+        readOnlyPrincipal: '22222222-2222-4222-8222-222222222222',
+        billingExportUri: 'https://storage.example.test/costalyx/exports/?sig=do-not-store'
+      })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(JSON.stringify(body)).toContain('must not include access keys');
+      });
+  });
+
   it('keeps cloud connections and ingested cost rows isolated per tenant', async () => {
     const createConnection = await request(app.getHttpServer())
       .post('/api/v1/cloud-connections')

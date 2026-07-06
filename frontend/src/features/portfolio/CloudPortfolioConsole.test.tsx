@@ -204,6 +204,7 @@ describe('CloudPortfolioConsole', () => {
 
     expect(getCloudConnectionOnboarding).toHaveBeenCalledWith({ id: connection.id });
     expect(await screen.findByText('arn:aws:iam::999999999999:role/CostalyxBroker')).toHaveClass('font-mono-data');
+    expect(screen.getByText('Create or update the AWS IAM role trust policy with the generated external ID.')).toBeInTheDocument();
     expect(screen.getByText(/sts:ExternalId/)).toBeInTheDocument();
     expect(screen.getByText(/CostalyxReadBillingExportObjects/)).toBeInTheDocument();
   });

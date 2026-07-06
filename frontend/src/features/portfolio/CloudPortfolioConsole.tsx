@@ -355,6 +355,11 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
                     <dd className="font-mono-data">{onboarding.brokerPrincipalArn ?? 'not configured'}</dd>
                   </div>
                 </dl>
+                <ol className="onboarding-steps">
+                  {onboarding.customerSteps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
                 <div>
                   <h3>Trust policy</h3>
                   <pre className="policy-json">{JSON.stringify(onboarding.trustPolicy, null, 2)}</pre>

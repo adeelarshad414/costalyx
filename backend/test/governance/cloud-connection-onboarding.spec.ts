@@ -69,7 +69,31 @@ describe('cloud connection onboarding templates', () => {
     });
   });
 
-  it('does not generate policies for provider templates that are not implemented yet', () => {
+  it('builds Azure readonly role assignment guidance', () => {
+    const onboarding = buildCloudConnectionOnboarding({
+      ...connection,
+      provider: 'azure',
+      externalTenantId: '11111111-1111-4111-8111-111111111111',
+      accessMode: 'azure_delegated_app',
+      readOnlyPrincipal: '22222222-2222-4222-8222-222222222222',
+      billingExportUri: 'https://storage.example.test/costalyx/exports/'
+    });
+
+    expect(onboarding.status).toBe('ready');
+    expect(onboarding.trustPolicy).toBeNull();
+    expect(onboarding.permissionsPolicy).toMatchObject({
+      provider: 'azure',
+      principalId: '22222222-2222-4222-8222-222222222222',
+      billingScope: '/subscriptions/11111111-1111-4111-8111-111111111111',
+      roleAssignments: expect.arrayContaining([
+        expect.objectContaining({ roleDefinitionName: 'Reader' }),
+        expect.objectContaining({ roleDefinitionName: 'Cost Management Reader' }),
+        expect.objectContaining({ roleDefinitionName: 'Storage Blob Data Reader' })
+      ])
+    });
+  });
+
+  it('builds GCP Workload Identity and BigQuery billing-export IAM guidance', () => {
     const onboarding = buildCloudConnectionOnboarding({
       ...connection,
       provider: 'gcp',
@@ -78,8 +102,39 @@ describe('cloud connection onboarding templates', () => {
       billingExportUri: 'bigquery://billing-project.billing_export.gcp_billing_export_v1'
     });
 
-    expect(onboarding.status).toBe('provider_not_implemented');
+    expect(onboarding.status).toBe('ready');
     expect(onboarding.trustPolicy).toBeNull();
-    expect(onboarding.permissionsPolicy).toBeNull();
+    expect(onboarding.permissionsPolicy).toMatchObject({
+      provider: 'gcp',
+      principalSet:
+        'principalSet://iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/costalyx/*',
+      bindings: expect.arrayContaining([
+        expect.objectContaining({ role: 'roles/billing.viewer' }),
+        expect.objectContaining({ role: 'roles/bigquery.dataViewer', resource: 'billing-project.billing_export' }),
+        expect.objectContaining({ role: 'roles/bigquery.jobUser', resource: 'billing-project' })
+      ]),
+      export: {
+        projectId: 'billing-project',
+        datasetId: 'billing_export',
+        tableId: 'gcp_billing_export_v1'
+      }
+    });
+  });
+
+  it('requires a BigQuery export URI before GCP export-read validation can be prepared', () => {
+    const onboarding = buildCloudConnectionOnboarding({
+      ...connection,
+      provider: 'gcp',
+      accessMode: 'gcp_workload_identity',
+      readOnlyPrincipal: 'projects/123456789/locations/global/workloadIdentityPools/costalyx/providers/billing',
+      billingExportUri: null
+    });
+
+    expect(onboarding.status).toBe('billing_export_missing');
+    expect(onboarding.permissionsPolicy).toMatchObject({
+      provider: 'gcp',
+      principalSet:
+        'principalSet://iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/costalyx/*'
+    });
   });
 });

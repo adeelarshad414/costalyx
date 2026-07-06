@@ -637,6 +637,7 @@ export interface components {
             accessMode: "aws_assume_role" | "azure_delegated_app" | "gcp_workload_identity";
             /** @description Role ARN, delegated app ID, or workload identity provider reference. Never a secret. */
             readOnlyPrincipal: string;
+            /** @description Billing export location only. Signed URLs, SAS tokens, access tokens, query credentials, and embedded secrets are rejected. */
             billingExportUri: string | null;
             /** @enum {string} */
             status: "pending_validation" | "ready_for_live_probe" | "validated" | "validation_failed";
@@ -656,8 +657,9 @@ export interface components {
             externalTenantId: string;
             /** @enum {string} */
             accessMode: "aws_assume_role" | "azure_delegated_app" | "gcp_workload_identity";
-            /** @description Read-only delegated principal reference only. */
+            /** @description Read-only delegated principal reference only. Access keys, client secrets, service-account JSON, and base64 credential blobs are rejected. */
             readOnlyPrincipal: string;
+            /** @description Unsigned billing export location. Do not submit presigned URLs, SAS URLs, access tokens, or credential-bearing query strings. */
             billingExportUri?: string;
         };
         CloudConnectionOnboarding: {
@@ -666,13 +668,17 @@ export interface components {
             connectionId: string;
             /** @description Costalyx-generated external ID used in the customer trust policy. Not a secret. */
             externalId: string;
-            /** @enum {string} */
+            /**
+             * @description Readiness of provider-specific onboarding templates. Azure and GCP templates use `ready` when role/IAM guidance can be generated.
+             * @enum {string}
+             */
             status: "ready" | "broker_principal_missing" | "broker_principal_invalid" | "billing_export_missing" | "provider_not_implemented";
             brokerPrincipalArn: string | null;
             billingExportUri: string | null;
             trustPolicy: {
                 [key: string]: unknown;
             } | null;
+            /** @description Provider-specific readonly permission template: AWS IAM policy, Azure role assignment guidance, or GCP IAM binding guidance. */
             permissionsPolicy: {
                 [key: string]: unknown;
             } | null;
