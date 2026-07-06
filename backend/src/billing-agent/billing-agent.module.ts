@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AUDIT_LOG_STORE, type AuditLogStore } from '../audit/audit-log.store';
+import { AuditLogModule } from '../audit/audit-log.module';
 import { CostModelModule } from '../cost-model/cost-model.module';
 import { BillingAgentController } from './billing-agent.controller';
 import { InMemoryBillingAgentEventPublisher, BILLING_AGENT_EVENT_PUBLISHER } from './billing-agent-event.publisher';
@@ -9,16 +11,16 @@ import { InMemoryBillingAgentRepository } from './in-memory-billing-agent.reposi
 import { PostgresBillingAgentRepository } from './postgres-billing-agent.repository';
 
 @Module({
-  imports: [CostModelModule],
+  imports: [CostModelModule, AuditLogModule],
   controllers: [BillingAgentController],
   providers: [
     BillingAgentService,
     {
       provide: BILLING_AGENT_REPOSITORY,
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
+      inject: [ConfigService, AUDIT_LOG_STORE],
+      useFactory: (config: ConfigService, auditLog: AuditLogStore) => {
         const databaseUrl = config.get<string>('DATABASE_URL');
-        return databaseUrl ? new PostgresBillingAgentRepository(databaseUrl) : new InMemoryBillingAgentRepository();
+        return databaseUrl ? new PostgresBillingAgentRepository(databaseUrl) : new InMemoryBillingAgentRepository(auditLog);
       }
     },
     {

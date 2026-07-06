@@ -992,6 +992,306 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /billing-statement-stakeholders:
+    get:
+      tags: [billing-agent]
+      summary: List billing statement stakeholders
+      operationId: listStatementStakeholders
+      x-required-role: admin
+      responses:
+        "200":
+          description: Statement stakeholders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StatementStakeholder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [billing-agent]
+      summary: Create a billing statement stakeholder
+      operationId: createStatementStakeholder
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatementStakeholderCreate"
+      responses:
+        "201":
+          description: Statement stakeholder created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatementStakeholder"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /billing-scopes:
+    get:
+      tags: [billing-agent]
+      summary: List billing scopes
+      operationId: listBillingScopes
+      x-required-role: admin
+      responses:
+        "200":
+          description: Billing scopes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BillingScope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [billing-agent]
+      summary: Create a billing scope
+      operationId: createBillingScope
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillingScopeCreate"
+      responses:
+        "201":
+          description: Billing scope created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingScope"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /billing-statements/generate:
+    post:
+      tags: [billing-agent]
+      summary: Generate stakeholder billing statements for a period
+      operationId: generateBillingStatements
+      x-required-role: analyst
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillingStatementGenerate"
+      responses:
+        "201":
+          description: Statements generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatementGenerateResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /billing-statements:
+    get:
+      tags: [billing-agent]
+      summary: List stakeholder billing statements
+      operationId: listBillingStatements
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/BillingStatementStatus"
+        - name: stakeholderId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Paginated billing statements
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedBillingStatements"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /billing-statements/{id}:
+    get:
+      tags: [billing-agent]
+      summary: Get a billing statement
+      operationId: getBillingStatement
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Billing statement detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatement"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /billing-statements/{id}/approve:
+    post:
+      tags: [billing-agent]
+      summary: Approve a billing statement before sending
+      operationId: approveBillingStatement
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Billing statement approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /billing-statements/{id}/send:
+    post:
+      tags: [billing-agent]
+      summary: Send an approved billing statement
+      operationId: sendBillingStatement
+      x-required-role: admin
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Billing statement sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /billing-statements/{id}/dispute:
+    post:
+      tags: [billing-agent]
+      summary: Record a billing statement dispute
+      operationId: disputeBillingStatement
+      x-required-role: analyst
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillingStatementDisputeCreate"
+      responses:
+        "200":
+          description: Billing statement disputed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /billing-statements/{id}/export.csv:
+    get:
+      tags: [billing-agent]
+      summary: Export a billing statement as CSV
+      operationId: exportBillingStatementCsv
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Billing statement CSV
+          content:
+            text/csv:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /billing-statements/{id}/export.pdf:
+    get:
+      tags: [billing-agent]
+      summary: Export a billing statement as PDF
+      operationId: exportBillingStatementPdf
+      x-required-role: viewer
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Billing statement PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /reports:
     get:
       tags: [reporting]
@@ -2284,6 +2584,323 @@ components:
           type: integer
           minimum: 0
 
+    StatementStakeholder:
+      type: object
+      required: [id, tenantId, name, email, roleLabel, notificationChannel, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        roleLabel:
+          type: string
+        notificationChannel:
+          type: string
+          enum: [email, none]
+        createdAt:
+          type: string
+          format: date-time
+
+    StatementStakeholderCreate:
+      type: object
+      required: [name, email, roleLabel, notificationChannel]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        roleLabel:
+          type: string
+        notificationChannel:
+          type: string
+          enum: [email, none]
+
+    BillingScopeType:
+      type: string
+      enum: [account_group, dimension, view]
+
+    BillingScopeFilter:
+      type: object
+      additionalProperties: false
+      properties:
+        accountIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        accountExternalIds:
+          type: array
+          items:
+            type: string
+        resourceIds:
+          type: array
+          items:
+            type: string
+
+    BillingScope:
+      type: object
+      required: [id, tenantId, stakeholderId, scopeType, scopeRef, label, scopeFilter, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        stakeholderId:
+          type: string
+          format: uuid
+        scopeType:
+          $ref: "#/components/schemas/BillingScopeType"
+        scopeRef:
+          type: string
+        label:
+          type: string
+        scopeFilter:
+          $ref: "#/components/schemas/BillingScopeFilter"
+        createdAt:
+          type: string
+          format: date-time
+
+    BillingScopeCreate:
+      type: object
+      required: [stakeholderId, scopeType, scopeRef]
+      additionalProperties: false
+      properties:
+        stakeholderId:
+          type: string
+          format: uuid
+        scopeType:
+          $ref: "#/components/schemas/BillingScopeType"
+        scopeRef:
+          type: string
+        label:
+          type: string
+        scopeFilter:
+          $ref: "#/components/schemas/BillingScopeFilter"
+
+    BillingStatementStatus:
+      type: string
+      enum: [draft, pending_approval, approved, sent, disputed, void]
+
+    BillingStatementLineItem:
+      type: object
+      required: [id, tenantId, statementId, lineType, description, amountUsd, costRecordIds, evidence]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        statementId:
+          type: string
+          format: uuid
+        lineType:
+          type: string
+          enum: [cost, anomaly, variance, unallocated]
+        description:
+          type: string
+        amountUsd:
+          type: string
+          pattern: '^-?[0-9]+(\.[0-9]{2})$'
+        costRecordIds:
+          type: array
+          items:
+            type: string
+        evidence:
+          type: object
+          additionalProperties: true
+
+    BillingStatementReconciliation:
+      type: object
+      required: [tenantTotalUsd, allocatedUniqueUsd, unallocatedUsd, overlapUsd, reconcilesToTenantTotal]
+      properties:
+        tenantTotalUsd:
+          type: string
+        allocatedUniqueUsd:
+          type: string
+        unallocatedUsd:
+          type: string
+        overlapUsd:
+          type: string
+        reconcilesToTenantTotal:
+          type: boolean
+
+    BillingStatementScopeWarning:
+      type: object
+      required: [code, message, amountUsd, costRecordIds]
+      properties:
+        code:
+          type: string
+          enum: [overlap_detected, unallocated_spend_detected]
+        message:
+          type: string
+        amountUsd:
+          type: string
+        costRecordIds:
+          type: array
+          items:
+            type: string
+
+    BillingStatementVarianceMover:
+      type: object
+      required: [label, currentUsd, priorUsd, deltaUsd]
+      properties:
+        label:
+          type: string
+        currentUsd:
+          type: string
+        priorUsd:
+          type: string
+        deltaUsd:
+          type: string
+
+    BillingStatementDispute:
+      type: object
+      required: [previousStatus, note, disputedAt, disputedBy]
+      properties:
+        previousStatus:
+          $ref: "#/components/schemas/BillingStatementStatus"
+        note:
+          type: string
+        disputedAt:
+          type: string
+          format: date-time
+        disputedBy:
+          type: string
+
+    BillingStatementDisputeCreate:
+      type: object
+      required: [note]
+      additionalProperties: false
+      properties:
+        note:
+          type: string
+          minLength: 1
+
+    BillingStatement:
+      type: object
+      required:
+        - id
+        - tenantId
+        - stakeholderId
+        - stakeholderName
+        - stakeholderEmail
+        - periodStart
+        - periodEnd
+        - status
+        - totalUsd
+        - generatedAt
+        - approvedBy
+        - sentAt
+        - narrativeMd
+        - openAnomalyCount
+        - lineItems
+        - reconciliation
+        - scopeWarnings
+        - varianceTopMovers
+        - dispute
+        - sendEvidence
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        stakeholderId:
+          type: string
+          format: uuid
+        stakeholderName:
+          type: string
+        stakeholderEmail:
+          type: string
+          format: email
+        periodStart:
+          type: string
+          format: date-time
+        periodEnd:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/BillingStatementStatus"
+        totalUsd:
+          type: string
+          pattern: '^-?[0-9]+(\.[0-9]{2})$'
+        generatedAt:
+          type: string
+          format: date-time
+        approvedBy:
+          type: ["string", "null"]
+        sentAt:
+          type: ["string", "null"]
+          format: date-time
+        narrativeMd:
+          type: string
+        openAnomalyCount:
+          type: integer
+          minimum: 0
+        lineItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillingStatementLineItem"
+        reconciliation:
+          $ref: "#/components/schemas/BillingStatementReconciliation"
+        scopeWarnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillingStatementScopeWarning"
+        varianceTopMovers:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillingStatementVarianceMover"
+        dispute:
+          oneOf:
+            - $ref: "#/components/schemas/BillingStatementDispute"
+            - type: "null"
+        sendEvidence:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: "null"
+
+    BillingStatementGenerate:
+      type: object
+      required: [periodStart, periodEnd]
+      additionalProperties: false
+      properties:
+        periodStart:
+          type: string
+          format: date-time
+        periodEnd:
+          type: string
+          format: date-time
+
+    BillingStatementGenerateResult:
+      type: object
+      required: [statements, reconciliation, scopeWarnings]
+      properties:
+        statements:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillingStatement"
+        reconciliation:
+          $ref: "#/components/schemas/BillingStatementReconciliation"
+        scopeWarnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillingStatementScopeWarning"
+
     RealizedSaving:
       type: object
       required:
@@ -2653,6 +3270,15 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/BillingAnomaly"
+    PaginatedBillingStatements:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/BillingStatement"
     PaginatedRealizedSavings:
       allOf:
         - $ref: "#/components/schemas/PaginatedResponse"

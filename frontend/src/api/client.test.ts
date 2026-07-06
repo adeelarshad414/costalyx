@@ -154,6 +154,112 @@ describe('createCostalyxClient', () => {
     );
   });
 
+  it('uses bearer auth and idempotency keys for stakeholder statement workflows', async () => {
+    const statement = {
+      id: '33333333-3333-4333-8333-333333333333',
+      tenantId: '00000000-0000-4000-8000-000000000001',
+      stakeholderId: '44444444-4444-4444-8444-444444444444',
+      stakeholderName: 'Finance Partner',
+      stakeholderEmail: 'finance-partner@example.test',
+      periodStart: '2026-06-01T00:00:00.000Z',
+      periodEnd: '2026-06-30T23:59:59.000Z',
+      status: 'pending_approval',
+      totalUsd: '10.00',
+      generatedAt: '2026-07-06T00:00:00.000Z',
+      approvedBy: null,
+      sentAt: null,
+      narrativeMd: 'Finance Partner is assigned $10.00 for June.',
+      openAnomalyCount: 0,
+      lineItems: [],
+      reconciliation: {
+        tenantTotalUsd: '10.00',
+        allocatedUniqueUsd: '10.00',
+        unallocatedUsd: '0.00',
+        overlapUsd: '0.00',
+        reconcilesToTenantTotal: true
+      },
+      scopeWarnings: [],
+      varianceTopMovers: [],
+      dispute: null,
+      sendEvidence: null
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ statements: [statement], reconciliation: statement.reconciliation, scopeWarnings: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [statement], meta: { total: 1, page: 1, pageSize: 50 } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ...statement, status: 'approved', approvedBy: 'actor-1' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ...statement, status: 'sent', approvedBy: 'actor-1', sentAt: '2026-07-06T00:00:00.000Z' }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ...statement,
+          status: 'disputed',
+          dispute: {
+            previousStatus: 'sent',
+            note: 'Allocation review requested.',
+            disputedAt: '2026-07-06T00:00:00.000Z',
+            disputedBy: 'actor-1'
+          }
+        })
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createCostalyxClient({
+      baseUrl: 'http://api.test/api/v1',
+      getAccessToken: async () => 'signed-keycloak-token'
+    });
+
+    await client.generateBillingStatements?.({
+      periodStart: '2026-06-01T00:00:00.000Z',
+      periodEnd: '2026-06-30T23:59:59.000Z',
+      idempotencyKey: 'statement-generate-key'
+    });
+    await client.listBillingStatements?.({ status: 'pending_approval', pageSize: 50 });
+    await client.approveBillingStatement?.({ id: statement.id, idempotencyKey: 'statement-approve-key' });
+    await client.sendBillingStatement?.({ id: statement.id, idempotencyKey: 'statement-send-key' });
+    await client.disputeBillingStatement?.({
+      id: statement.id,
+      note: 'Allocation review requested.',
+      idempotencyKey: 'statement-dispute-key'
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'http://api.test/api/v1/billing-statements/generate',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer signed-keycloak-token',
+          'Idempotency-Key': 'statement-generate-key'
+        })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'http://api.test/api/v1/billing-statements?status=pending_approval&pageSize=50',
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer signed-keycloak-token' }) })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      `http://api.test/api/v1/billing-statements/${statement.id}/approve`,
+      expect.objectContaining({ method: 'POST', headers: expect.objectContaining({ 'Idempotency-Key': 'statement-approve-key' }) })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      `http://api.test/api/v1/billing-statements/${statement.id}/send`,
+      expect.objectContaining({ method: 'POST', headers: expect.objectContaining({ 'Idempotency-Key': 'statement-send-key' }) })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
+      `http://api.test/api/v1/billing-statements/${statement.id}/dispute`,
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'Idempotency-Key': 'statement-dispute-key' }),
+        body: JSON.stringify({ note: 'Allocation review requested.' })
+      })
+    );
+  });
+
   it('loads fixed roles and exports cost records with bearer auth', async () => {
     const fetchMock = vi
       .fn()

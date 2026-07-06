@@ -45,6 +45,46 @@ const anomaly = {
   assignedOwnerId: null
 };
 
+const statement = {
+  id: '33333333-3333-4333-8333-333333333333',
+  tenantId: '00000000-0000-4000-8000-000000000001',
+  stakeholderId: '44444444-4444-4444-8444-444444444444',
+  stakeholderName: 'Finance Partner',
+  stakeholderEmail: 'finance-partner@example.test',
+  periodStart: '2026-06-01T00:00:00.000Z',
+  periodEnd: '2026-06-30T23:59:59.000Z',
+  status: 'pending_approval' as const,
+  totalUsd: '10.00',
+  generatedAt: '2026-07-06T00:00:00.000Z',
+  approvedBy: null,
+  sentAt: null,
+  narrativeMd: 'Finance Partner is assigned $10.00 for June.',
+  openAnomalyCount: 0,
+  lineItems: [
+    {
+      id: '55555555-5555-4555-8555-555555555555',
+      tenantId: '00000000-0000-4000-8000-000000000001',
+      statementId: '33333333-3333-4333-8333-333333333333',
+      lineType: 'cost' as const,
+      description: 'Billing owner account group spend',
+      amountUsd: '10.00',
+      costRecordIds: ['66666666-6666-4666-8666-666666666666'],
+      evidence: { scopeType: 'account_group' }
+    }
+  ],
+  reconciliation: {
+    tenantTotalUsd: '12.00',
+    allocatedUniqueUsd: '10.00',
+    unallocatedUsd: '2.00',
+    overlapUsd: '0.00',
+    reconcilesToTenantTotal: true
+  },
+  scopeWarnings: [],
+  varianceTopMovers: [],
+  dispute: null,
+  sendEvidence: null
+};
+
 function createClient(overrides: Partial<CostalyxClient> = {}): CostalyxClient {
   return {
     listCostRecords: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 25 } }),
@@ -141,6 +181,70 @@ describe('BillingAgentConsole', () => {
       expect.objectContaining({ id: anomaly.id, status: 'false_positive', falsePositiveReason: 'planned_change' })
     );
     expect(await screen.findByRole('heading', { name: 'No open anomalies' })).toBeInTheDocument();
+  });
+
+  it('renders stakeholder statements and wires generation, approval, delivery, dispute, and exports', async () => {
+    const user = userEvent.setup();
+    const generateBillingStatements = vi.fn(async () => ({
+      statements: [statement],
+      reconciliation: statement.reconciliation,
+      scopeWarnings: []
+    }));
+    const approveBillingStatement = vi.fn(async () => ({ ...statement, status: 'approved' as const, approvedBy: 'actor-1' }));
+    const sendBillingStatement = vi.fn(async () => ({ ...statement, status: 'sent' as const, approvedBy: 'actor-1', sentAt: '2026-07-06T00:00:00.000Z' }));
+    const disputeBillingStatement = vi.fn(async () => ({
+      ...statement,
+      status: 'disputed' as const,
+      dispute: {
+        previousStatus: 'sent' as const,
+        note: 'Stakeholder requested allocation review.',
+        disputedAt: '2026-07-06T00:00:00.000Z',
+        disputedBy: 'actor-1'
+      }
+    }));
+    const exportBillingStatementCsv = vi.fn(async () => 'statement_id,total\n');
+    const exportBillingStatementPdf = vi.fn(async () => '%PDF-1.4');
+    const listBillingStatements = vi.fn(async () => ({ data: [statement], meta: { total: 1, page: 1, pageSize: 50 } }));
+
+    renderWithRole(
+      <BillingAgentConsole
+        client={createClient({
+          listAnomalies: async () => ({ data: [], meta: { total: 0, page: 1, pageSize: 50 } }),
+          listBillingStatements,
+          generateBillingStatements,
+          approveBillingStatement,
+          sendBillingStatement,
+          disputeBillingStatement,
+          exportBillingStatementCsv,
+          exportBillingStatementPdf
+        })}
+      />,
+      ['admin']
+    );
+
+    await waitFor(() => expect(screen.getByText('Finance Partner')).toBeInTheDocument());
+    expect(screen.getByText('$10.00')).toHaveClass('font-mono-data');
+
+    await user.click(screen.getByRole('button', { name: 'CSV' }));
+    await user.click(screen.getByRole('button', { name: 'PDF' }));
+    await user.click(screen.getByRole('button', { name: /Generate/ }));
+    await user.click(screen.getByRole('button', { name: /Approve/ }));
+    await user.click(screen.getByRole('button', { name: /Send/ }));
+    await user.click(screen.getByRole('button', { name: /Dispute/ }));
+
+    expect(exportBillingStatementCsv).toHaveBeenCalledWith({ id: statement.id });
+    expect(exportBillingStatementPdf).toHaveBeenCalledWith({ id: statement.id });
+    expect(generateBillingStatements).toHaveBeenCalledWith(
+      expect.objectContaining({
+        periodStart: '2026-06-01T00:00:00.000Z',
+        periodEnd: '2026-06-30T23:59:59.000Z'
+      })
+    );
+    expect(approveBillingStatement).toHaveBeenCalledWith(expect.objectContaining({ id: statement.id }));
+    expect(sendBillingStatement).toHaveBeenCalledWith(expect.objectContaining({ id: statement.id }));
+    expect(disputeBillingStatement).toHaveBeenCalledWith(
+      expect.objectContaining({ id: statement.id, note: 'Stakeholder requested allocation review.' })
+    );
   });
 
   it('renders empty and error states', async () => {

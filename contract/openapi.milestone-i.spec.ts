@@ -57,4 +57,31 @@ describe('Milestone I OpenAPI contract', () => {
     );
     expect(spec.components.schemas.AnomalyScanResult.required).toEqual(['created', 'totalOpen']);
   });
+
+  it('documents stakeholder statement workflow with approval-gated send actions', () => {
+    expect(spec.paths['/billing-statement-stakeholders'].post['x-required-role']).toBe('admin');
+    expect(spec.paths['/billing-scopes'].post['x-required-role']).toBe('admin');
+    expect(spec.paths['/billing-statements/generate'].post['x-required-role']).toBe('analyst');
+    expect(spec.paths['/billing-statements'].get['x-required-role']).toBe('viewer');
+    expect(spec.paths['/billing-statements/{id}/approve'].post['x-required-role']).toBe('admin');
+    expect(spec.paths['/billing-statements/{id}/send'].post['x-required-role']).toBe('admin');
+    expect(spec.paths['/billing-statements/{id}/dispute'].post['x-required-role']).toBe('analyst');
+    expect(spec.paths['/billing-statements/{id}/send'].post.parameters).toContainEqual(
+      expect.objectContaining({ $ref: '#/components/parameters/IdempotencyKey' })
+    );
+    expect(spec.components.schemas.BillingStatementStatus.enum).toEqual([
+      'draft',
+      'pending_approval',
+      'approved',
+      'sent',
+      'disputed',
+      'void'
+    ]);
+    expect(spec.components.schemas.BillingStatement.required).toEqual(
+      expect.arrayContaining(['lineItems', 'reconciliation', 'scopeWarnings', 'approvedBy', 'sentAt'])
+    );
+    expect(spec.components.schemas.BillingStatementReconciliation.required).toEqual(
+      expect.arrayContaining(['tenantTotalUsd', 'allocatedUniqueUsd', 'unallocatedUsd', 'overlapUsd'])
+    );
+  });
 });
