@@ -69,6 +69,7 @@ config:
   liveCloudProbes: ""
   awsBrokerPrincipalArn: ""
   awsProbeRegion: ""
+  awsIngestionRegion: ""
   useMocks: "false"
   seedFixtureData: "false"
 

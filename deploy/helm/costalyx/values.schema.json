@@ -56,6 +56,7 @@
         "liveCloudProbes": { "type": "string" },
         "awsBrokerPrincipalArn": { "type": "string" },
         "awsProbeRegion": { "type": "string" },
+        "awsIngestionRegion": { "type": "string" },
         "useMocks": { "type": "string", "enum": ["false"] },
         "seedFixtureData": { "type": "string", "enum": ["false"] }
       }

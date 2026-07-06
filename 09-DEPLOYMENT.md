@@ -95,10 +95,13 @@ worker replica with `COSTALYX_CLOUD_SCHEDULER_ENABLED=enabled` and
 `COSTALYX_CLOUD_SCHEDULER_INTERVAL_MS` set to the desired cadence; values
 below 60000ms fall back to 900000ms. `COSTALYX_CLOUD_SCHEDULER_INGESTION_ENABLED`
 is intentionally opt-in. When it is set to `enabled`, the worker ingests the
-registered `billingExportUri` for each connection after validation using the
-current ingestion adapters/source-path support. When it is unset, the worker
-still records validation evidence and leaves export ingestion to operator or
-future provider-native object readers.
+registered `billingExportUri` for each connection after validation. AWS CUR
+ingestion reads CSV or CSV.GZ objects directly from S3 by assuming the
+registered read-only role with the generated external ID; the requested
+`s3://` source must remain inside the registered billing export prefix.
+Azure Blob and GCP BigQuery scheduled export object readers remain future
+hardening items. When scheduled ingestion is unset, the worker still records
+validation evidence.
 
 Compose starts the worker with
 `npm --workspace backend run start:worker`. The Helm chart renders the worker
@@ -113,6 +116,9 @@ to override the default probe region; otherwise `AWS_REGION`,
 `AWS_DEFAULT_REGION`, or `us-east-1` is used. If live probes are not enabled,
 valid AWS connections remain `ready_for_live_probe` and are not falsely
 reported as `validated`.
+`COSTALYX_AWS_INGESTION_REGION` may be set separately for S3 CUR object
+reads; otherwise the ingestion path falls back to `COSTALYX_AWS_PROBE_REGION`,
+`AWS_REGION`, `AWS_DEFAULT_REGION`, or `us-east-1`.
 
 Before marking the first real AWS customer connection validated, run the
 same STS/CUR path from the repo root with operator-provided references only:

@@ -56,6 +56,10 @@ GET      /api/v1/cloud-connections/:id/runs validation/ingestion run
 Cloud connection requests store only a read-only principal reference and an
 optional billing export URI. No access keys, client secrets, passwords, or
 base64 credential blobs are accepted.
+AWS ingestion can use an `s3://bucket/prefix/` source URI when
+`cloudConnectionId` references a tenant-owned AWS connection; Costalyx
+assumes the registered role with the generated external ID and only reads
+objects under that registered billing export prefix.
 Connection run evidence is tenant-scoped and contains sanitized operational
 facts only, never cloud credentials or signed export URLs.
 

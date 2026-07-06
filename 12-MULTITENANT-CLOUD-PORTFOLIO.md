@@ -87,13 +87,14 @@ The frontend and API support:
    per connection.
 7. A single scheduler worker can periodically validate every registered
    connection and, when scheduled ingestion is explicitly enabled, ingest each
-   registered export URI into the same tenant-scoped run ledger.
+   registered export URI into the same tenant-scoped run ledger. AWS CUR
+   ingestion reads CSV/CSV.GZ objects directly from the registered S3 prefix
+   through the customer read-only role and generated external ID.
 8. Billing exports are ingested with `tenant_id` and `cloud_connection_id`.
 9. Cost, reports, recommendations, savings, and audit rows stay tenant scoped.
 
 ## Next connector hardening
 - Execute live AWS/Azure/GCP probes against real customer cloud accounts once
   broker identities and read-only customer grants are supplied.
-- Add provider-native export object readers for scheduled ingestion beyond
-  the current registered export URI/source-path adapters, so the worker can
-  pull directly from S3, Azure Blob, and BigQuery exports in production.
+- Add provider-native Azure Blob and GCP BigQuery scheduled export readers;
+  AWS S3 CUR object reads are implemented.
