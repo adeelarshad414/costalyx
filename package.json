@@ -18,6 +18,7 @@
     "test:contract": "vitest run contract",
     "test:contract:live": "vitest run contract/live",
     "ci:live-contract": "node scripts/run-live-contract.mjs",
+    "probe:aws-live": "npm --workspace backend run probe:aws-live",
     "test:e2e": "playwright test",
     "test:e2e:keycloak": "node scripts/run-keycloak-e2e.mjs",
     "migration:check": "node scripts/check-additive-migrations.mjs",

@@ -92,6 +92,28 @@ to override the default probe region; otherwise `AWS_REGION`,
 valid AWS connections remain `ready_for_live_probe` and are not falsely
 reported as `validated`.
 
+Before marking the first real AWS customer connection validated, run the
+same STS/CUR path from the repo root with operator-provided references only:
+
+```bash
+export COSTALYX_TENANT_ID=tenant-id-from-oidc-or-provisioning
+export COSTALYX_AWS_CUSTOMER_ACCOUNT_ID=123456789012
+export COSTALYX_AWS_READONLY_ROLE_ARN=arn:aws:iam::123456789012:role/CostalyxReadOnlyBilling
+export COSTALYX_AWS_CUR_S3_URI=s3://customer-cur-bucket/costalyx/
+export AWS_PROFILE=costalyx-broker
+npm run probe:aws-live
+```
+
+`COSTALYX_CLOUD_CONNECTION_ID` is optional. Set it when validating a
+connection that already exists in the API; otherwise the preflight derives
+the same tenant/provider/account connection ID used for a first-time
+registration. The command prints the sanitized connection reference, the
+generated external ID to place in the customer role trust policy, and a
+validation result. It must exit `0` only after STS `AssumeRole`, account-ID
+verification, and a CUR S3 prefix read all pass. It must not print AWS
+secret access keys, session tokens, customer access keys, SAS tokens, or
+service-account JSON.
+
 To generate customer-ready AWS onboarding templates, set
 `COSTALYX_AWS_BROKER_PRINCIPAL_ARN` to the IAM role/account principal that
 will assume customer read-only roles. `GET /api/v1/cloud-connections/{id}/onboarding`

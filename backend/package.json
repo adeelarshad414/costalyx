@@ -6,6 +6,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "start:dev": "ts-node src/main.ts",
+    "probe:aws-live": "ts-node src/governance/aws-live-probe-preflight.cli.ts",
     "test": "jest --runInBand",
     "test:coverage": "jest --coverage --runInBand --testPathIgnorePatterns=integration"
   },
