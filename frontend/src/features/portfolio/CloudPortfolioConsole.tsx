@@ -425,6 +425,18 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
                   <h3>Permissions policy</h3>
                   <pre className="policy-json">{JSON.stringify(onboarding.permissionsPolicy, null, 2)}</pre>
                 </div>
+                {onboarding.deploymentTemplates ? (
+                  <>
+                    <div>
+                      <h3>{onboarding.deploymentTemplates.cloudFormation.fileName}</h3>
+                      <pre className="policy-json">{onboarding.deploymentTemplates.cloudFormation.body}</pre>
+                    </div>
+                    <div>
+                      <h3>{onboarding.deploymentTemplates.terraform.fileName}</h3>
+                      <pre className="policy-json">{onboarding.deploymentTemplates.terraform.body}</pre>
+                    </div>
+                  </>
+                ) : null}
               </div>
             ) : null}
           </section>

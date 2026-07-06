@@ -14,7 +14,9 @@ GCP accounts with read-only roles/federated principals, inspect each
 connection separately, group accounts for ownership views, and roll
 everything up into one portfolio.
 For AWS, Costalyx returns a tenant-scoped external ID that the customer
-places in their IAM role trust policy; live validation then assumes the role
+places in their IAM role trust policy. The admin onboarding endpoint also
+generates connection-specific CloudFormation and Terraform for the customer
+readonly IAM role and CUR S3 policy; live validation then assumes the role
 and checks the CUR S3 export before the connection is marked validated.
 Operators can preflight real customer connections with `npm run probe:aws-live`,
 `npm run probe:azure-live`, or `npm run probe:gcp-live` using only

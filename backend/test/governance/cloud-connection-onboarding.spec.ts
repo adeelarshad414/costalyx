@@ -25,6 +25,7 @@ describe('cloud connection onboarding templates', () => {
 
     expect(onboarding.status).toBe('broker_principal_missing');
     expect(onboarding.trustPolicy).toBeNull();
+    expect(onboarding.deploymentTemplates).toBeNull();
     expect(onboarding.permissionsPolicy).toMatchObject({
       Statement: expect.arrayContaining([
         expect.objectContaining({ Action: ['s3:ListBucket'], Resource: 'arn:aws:s3:::customer-cur' }),
@@ -67,6 +68,26 @@ describe('cloud connection onboarding templates', () => {
         })
       ]
     });
+    expect(onboarding.deploymentTemplates?.cloudFormation).toMatchObject({
+      fileName: 'costalyx-aws-readonly-role.yaml',
+      format: 'cloudformation-yaml'
+    });
+    expect(onboarding.deploymentTemplates?.terraform).toMatchObject({
+      fileName: 'costalyx_aws_readonly_role.tf',
+      format: 'terraform-hcl'
+    });
+    expect(onboarding.deploymentTemplates?.cloudFormation.body).toContain('CostalyxReadOnlyBillingRole');
+    expect(onboarding.deploymentTemplates?.cloudFormation.body).toContain('arn:aws:iam::999999999999:role/CostalyxBroker');
+    expect(onboarding.deploymentTemplates?.cloudFormation.body).toContain(connection.externalId);
+    expect(onboarding.deploymentTemplates?.cloudFormation.body).toContain("Default: 'customer-cur'");
+    expect(onboarding.deploymentTemplates?.cloudFormation.body).toContain("Default: 'costalyx/'");
+    expect(onboarding.deploymentTemplates?.terraform.body).toContain('data "aws_iam_policy_document" "costalyx_assume_role"');
+    expect(onboarding.deploymentTemplates?.terraform.body).toContain('actions = ["sts:AssumeRole"]');
+    expect(onboarding.deploymentTemplates?.terraform.body).toContain('actions   = ["s3:ListBucket"]');
+    expect(onboarding.deploymentTemplates?.terraform.body).toContain('actions = ["s3:GetObject"]');
+    expect(onboarding.deploymentTemplates?.terraform.body).toContain('"customer-cur"');
+    expect(onboarding.deploymentTemplates?.terraform.body).toContain('"costalyx/"');
+    expect(JSON.stringify(onboarding.deploymentTemplates)).not.toMatch(/secretAccessKey|accessKeyId|clientSecret/i);
   });
 
   it('builds Azure readonly role assignment guidance', () => {

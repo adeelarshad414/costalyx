@@ -48,6 +48,9 @@ GET  /api/v1/cost-explorer/flow             Sankey-shaped response:
 GET/POST /api/v1/tenants                    tenant membership/admin surface
 GET/POST /api/v1/cloud-connections          read-only AWS/Azure/GCP
                                              connection references
+GET      /api/v1/cloud-connections/:id/onboarding
+                                             customer-side trust, IAM, and
+                                             provider setup templates
 POST     /api/v1/cloud-connections/:id/validation
 GET      /api/v1/cloud-connections/:id/runs validation/ingestion run
                                              evidence for the connection
@@ -56,6 +59,12 @@ GET      /api/v1/cloud-connections/:id/runs validation/ingestion run
 Cloud connection requests store only a read-only principal reference and an
 optional billing export URI. No access keys, client secrets, passwords, or
 base64 credential blobs are accepted.
+The onboarding response is additive and provider-specific. For ready AWS
+connections, it includes the generated external-ID trust policy,
+least-privilege CUR S3 read policy, and customer-deployable CloudFormation
+and Terraform bodies for the readonly role. When the Costalyx broker principal
+or billing export URI is missing, the response returns an explicit status
+instead of fake deployment material.
 AWS ingestion can use an `s3://bucket/prefix/` source URI when
 `cloudConnectionId` references a tenant-owned AWS connection; Costalyx
 assumes the registered role with the generated external ID and only reads

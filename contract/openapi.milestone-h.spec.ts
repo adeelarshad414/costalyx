@@ -62,6 +62,16 @@ describe('Milestone H OpenAPI contract', () => {
     expect(spec.components.schemas.CloudConnectionOnboarding.required).toEqual(
       expect.arrayContaining(['externalId', 'trustPolicy', 'permissionsPolicy', 'customerSteps'])
     );
+    expect(spec.components.schemas.CloudConnectionOnboarding.properties).toHaveProperty('deploymentTemplates');
+    expect(spec.components.schemas).toHaveProperty('CloudConnectionDeploymentTemplate');
+    expect(spec.components.schemas.CloudConnectionDeploymentTemplate.required).toEqual(
+      expect.arrayContaining(['fileName', 'format', 'body'])
+    );
+    expect(JSON.stringify(spec.components.schemas.CloudConnectionDeploymentTemplate)).toContain('cloudformation-yaml');
+    expect(JSON.stringify(spec.components.schemas.CloudConnectionDeploymentTemplate)).toContain('terraform-hcl');
+    expect(JSON.stringify(spec.components.schemas.CloudConnectionDeploymentTemplate)).not.toMatch(
+      /secretAccessKey|accessKeyId|clientSecret|password/i
+    );
     expect(spec.components.schemas).toHaveProperty('CloudConnectionRun');
     expect(spec.components.schemas.CloudConnectionRun.required).toEqual(
       expect.arrayContaining(['cloudConnectionId', 'runType', 'status', 'startedAt', 'completedAt', 'evidence'])

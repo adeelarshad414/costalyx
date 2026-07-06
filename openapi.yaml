@@ -1556,10 +1556,45 @@ components:
           type: ["object", "null"]
           description: "Provider-specific readonly permission template: AWS IAM policy, Azure role assignment guidance, or GCP IAM binding guidance."
           additionalProperties: true
+        deploymentTemplates:
+          $ref: "#/components/schemas/CloudConnectionDeploymentTemplatesNullable"
         customerSteps:
           type: array
           items:
             type: string
+
+    CloudConnectionDeploymentTemplatesNullable:
+      description: Provider-specific customer-side IaC artifacts. Present for AWS when the broker principal and billing export URI are ready; null until templates can be generated safely.
+      oneOf:
+        - $ref: "#/components/schemas/CloudConnectionDeploymentTemplates"
+        - type: "null"
+
+    CloudConnectionDeploymentTemplates:
+      type: object
+      required:
+        - cloudFormation
+        - terraform
+      properties:
+        cloudFormation:
+          $ref: "#/components/schemas/CloudConnectionDeploymentTemplate"
+        terraform:
+          $ref: "#/components/schemas/CloudConnectionDeploymentTemplate"
+
+    CloudConnectionDeploymentTemplate:
+      type: object
+      required:
+        - fileName
+        - format
+        - body
+      properties:
+        fileName:
+          type: string
+        format:
+          type: string
+          enum: [cloudformation-yaml, terraform-hcl]
+        body:
+          type: string
+          description: Deployable customer-side IaC body. It contains principals, external IDs, account IDs, buckets, and prefixes only; it must not contain access keys, client secrets, or credential blobs.
 
     CloudConnectionRun:
       type: object
