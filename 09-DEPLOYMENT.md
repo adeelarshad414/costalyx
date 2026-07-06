@@ -136,6 +136,24 @@ scope, plus Storage Blob Data Reader on the export container when an export
 URI is registered. No Azure client secret is accepted in the cloud-connection
 payload.
 
+Before marking the first real Azure customer connection validated, run the
+same Cost Management / Blob export path from the repo root with
+operator-provided references only:
+
+```bash
+export COSTALYX_TENANT_ID=tenant-id-from-oidc-or-provisioning
+export COSTALYX_AZURE_BILLING_SCOPE_ID=33333333-3333-4333-8333-333333333333
+export COSTALYX_AZURE_DELEGATED_PRINCIPAL_ID=44444444-4444-4444-8444-444444444444
+export COSTALYX_AZURE_EXPORT_BLOB_URI=https://costalyxexports.blob.core.windows.net/billing/exports/
+npm run probe:azure-live
+```
+
+`COSTALYX_CLOUD_CONNECTION_ID` is optional for existing API records.
+`npm run probe:azure-live` exits `0` only after the Costalyx broker identity
+can query Cost Management at the registered scope and list the unsigned Blob
+export prefix. It must not print Azure client secrets, SAS tokens, or storage
+account keys.
+
 GCP live validation uses Google Application Default Credentials, normally a
 Workload Identity Federation external-account configuration or managed
 runtime identity. The customer grants the federated Costalyx principal
@@ -143,6 +161,25 @@ Billing Viewer on the billing resource and BigQuery Data Viewer / BigQuery
 Job User for the export dataset/project. `COSTALYX_GCP_BIGQUERY_LOCATION`
 may be set when the billing export dataset is regional. No service-account
 JSON key is accepted in the cloud-connection payload.
+
+Before marking the first real GCP customer connection validated, run the
+same Workload Identity / BigQuery export path from the repo root with
+operator-provided references only:
+
+```bash
+export COSTALYX_TENANT_ID=tenant-id-from-oidc-or-provisioning
+export COSTALYX_GCP_BILLING_RESOURCE_ID=billingAccounts/123456-ABCDEF-123456
+export COSTALYX_GCP_WORKLOAD_IDENTITY_PROVIDER=projects/123456789/locations/global/workloadIdentityPools/costalyx/providers/billing
+export COSTALYX_GCP_BIGQUERY_EXPORT_URI=bigquery://billing-project.billing_export.gcp_billing_export_v1
+export COSTALYX_GCP_BIGQUERY_LOCATION=us
+npm run probe:gcp-live
+```
+
+`COSTALYX_GCP_BIGQUERY_LOCATION` is optional unless the export dataset needs
+an explicit location. `COSTALYX_CLOUD_CONNECTION_ID` is optional for
+existing API records. `npm run probe:gcp-live` exits `0` only after the
+Costalyx broker identity can query one row from the billing export table. It
+must not print service-account JSON, private keys, or OAuth tokens.
 
 ## Observability hook (future integration point with Lumen)
 Backend exposes Prometheus-compatible `/metrics` and structured JSON logs
