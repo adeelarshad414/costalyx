@@ -41,6 +41,12 @@ the AWS trust policy and least-privilege CUR S3 read policy template. The
 trust policy is returned only when `COSTALYX_AWS_BROKER_PRINCIPAL_ARN` is
 configured with the Costalyx-controlled broker principal; otherwise the API
 returns an explicit `broker_principal_missing` state.
+For Azure, the onboarding response returns delegated-app/workload-identity role
+assignment guidance for Reader, Cost Management Reader, and export storage
+read access. For GCP, it returns Workload Identity Federation principal-set
+guidance plus Billing Viewer and BigQuery read/job IAM bindings. The endpoint
+does not accept signed export URLs, SAS tokens, service-account JSON, customer
+access keys, client secrets, or base64 credential blobs.
 
 ## Portfolio views
 The frontend and API support:
@@ -53,8 +59,9 @@ The frontend and API support:
 ## Current production path
 1. Operator provisions the Costalyx tenant and OIDC tenant claim.
 2. Admin registers the connection reference in Costalyx.
-3. For AWS, the admin loads the onboarding template and gives the customer
-   the generated trust policy plus least-privilege CUR S3 read policy.
+3. The admin loads the provider onboarding template and gives the customer the
+   generated AWS trust/S3 policies, Azure role assignments, or GCP IAM
+   bindings.
 4. Customer grants read-only cloud trust: AWS IAM role, Azure delegated
    app/workload identity, or GCP Workload Identity Federation principal.
 5. Costalyx validates the reference. With `COSTALYX_LIVE_CLOUD_PROBES`

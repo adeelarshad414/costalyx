@@ -259,6 +259,14 @@ td {
   overflow-wrap: anywhere;
 }
 
+.onboarding-steps {
+  color: var(--text-secondary);
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+}
+
 .policy-json {
   background: var(--surface-2);
   border: 1px solid var(--border-subtle);

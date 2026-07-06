@@ -7,6 +7,7 @@ import type { CreateTenantDto } from './dto/tenant.dto';
 import type { CreateUserDto } from './dto/user.dto';
 import type { CreateViewDto } from './dto/view.dto';
 import { buildCloudConnectionOnboarding } from './cloud-connection-onboarding';
+import { findCloudConnectionSecretMaterial } from './cloud-connection-secret-guard';
 import { GOVERNANCE_REPOSITORY, type GovernanceRepository } from './governance.repository';
 import type {
   AccountGroup,
@@ -48,6 +49,12 @@ export class GovernanceService {
     actor: AuthenticatedUser,
     idempotencyKey: string
   ): Promise<CloudConnection> {
+    const secretFields = findCloudConnectionSecretMaterial(input as unknown as Record<string, unknown>);
+    if (secretFields.length > 0) {
+      throw new BadRequestException(
+        'Cloud connection references must not include access keys, client secrets, service-account keys, signed URLs, or base64 credential blobs.'
+      );
+    }
     return this.repository.createCloudConnection(input, actor, idempotencyKey);
   }
 

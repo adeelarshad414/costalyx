@@ -1439,6 +1439,7 @@ components:
           description: Role ARN, delegated app ID, or workload identity provider reference. Never a secret.
         billingExportUri:
           type: ["string", "null"]
+          description: Billing export location only. Signed URLs, SAS tokens, access tokens, query credentials, and embedded secrets are rejected.
         status:
           type: string
           enum: [pending_validation, ready_for_live_probe, validated, validation_failed]
@@ -1482,9 +1483,10 @@ components:
           enum: [aws_assume_role, azure_delegated_app, gcp_workload_identity]
         readOnlyPrincipal:
           type: string
-          description: Read-only delegated principal reference only.
+          description: Read-only delegated principal reference only. Access keys, client secrets, service-account JSON, and base64 credential blobs are rejected.
         billingExportUri:
           type: string
+          description: Unsigned billing export location. Do not submit presigned URLs, SAS URLs, access tokens, or credential-bearing query strings.
 
     CloudConnectionOnboarding:
       type: object
@@ -1510,6 +1512,7 @@ components:
         status:
           type: string
           enum: [ready, broker_principal_missing, broker_principal_invalid, billing_export_missing, provider_not_implemented]
+          description: Readiness of provider-specific onboarding templates. Azure and GCP templates use `ready` when role/IAM guidance can be generated.
         brokerPrincipalArn:
           type: ["string", "null"]
         billingExportUri:
@@ -1519,6 +1522,7 @@ components:
           additionalProperties: true
         permissionsPolicy:
           type: ["object", "null"]
+          description: "Provider-specific readonly permission template: AWS IAM policy, Azure role assignment guidance, or GCP IAM binding guidance."
           additionalProperties: true
         customerSteps:
           type: array

@@ -41,6 +41,13 @@ prefix before marking the connection `validated`.
 The admin onboarding endpoint returns the trust policy and least-privilege
 S3 read policy when `COSTALYX_AWS_BROKER_PRINCIPAL_ARN` is configured; no
 customer secret or access key is accepted.
+For Azure, the same endpoint returns Reader, Cost Management Reader, and
+Storage Blob Data Reader role-assignment guidance for the registered delegated
+app/workload identity. For GCP, it returns Workload Identity Federation
+principal-set and IAM binding guidance for Billing Viewer, BigQuery Data
+Viewer, and BigQuery Job User. Signed URLs, SAS tokens, service-account JSON,
+access keys, client secrets, and base64 credential blobs are rejected at the
+cloud-connection boundary.
 
 ## Keycloak (OIDC)
 - Costalyx is registered as a confidential OIDC client — it is never its own

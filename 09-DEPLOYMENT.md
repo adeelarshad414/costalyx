@@ -99,6 +99,12 @@ then returns the trust policy and least-privilege CUR S3 read policy. If the
 variable is missing or malformed, the endpoint returns an explicit
 configuration status instead of a placeholder policy.
 
+The same onboarding endpoint returns Azure role-assignment guidance and GCP
+IAM binding guidance from the registered principal references. Operators must
+collect unsigned export locations only. Signed URLs, SAS query strings,
+customer access keys, client secrets, service-account JSON, passwords, and
+base64 credential blobs are rejected before persistence.
+
 ## Observability hook (future integration point with Lumen)
 Backend exposes Prometheus-compatible `/metrics` and structured JSON logs
 from day one, even before a Lumen integration is wired, so the two open
