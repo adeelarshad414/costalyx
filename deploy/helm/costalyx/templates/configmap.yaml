@@ -13,5 +13,6 @@ data:
   COSTALYX_LIVE_CLOUD_PROBES: {{ .Values.config.liveCloudProbes | quote }}
   COSTALYX_AWS_BROKER_PRINCIPAL_ARN: {{ .Values.config.awsBrokerPrincipalArn | quote }}
   COSTALYX_AWS_PROBE_REGION: {{ .Values.config.awsProbeRegion | quote }}
+  COSTALYX_AWS_INGESTION_REGION: {{ .Values.config.awsIngestionRegion | quote }}
   USE_MOCKS: {{ .Values.config.useMocks | quote }}
   SEED_FIXTURE_DATA: {{ .Values.config.seedFixtureData | quote }}
