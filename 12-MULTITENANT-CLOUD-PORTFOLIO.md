@@ -37,10 +37,14 @@ value in the IAM role trust policy. Costalyx does not ask the customer to
 invent or send an external ID, and the external ID is not treated as a
 secret.
 Admins can call `GET /api/v1/cloud-connections/{id}/onboarding` to retrieve
-the AWS trust policy and least-privilege CUR S3 read policy template. The
-trust policy is returned only when `COSTALYX_AWS_BROKER_PRINCIPAL_ARN` is
-configured with the Costalyx-controlled broker principal; otherwise the API
-returns an explicit `broker_principal_missing` state.
+the AWS trust policy, least-privilege CUR S3 read policy, and generated
+CloudFormation/Terraform artifacts for the customer-side role. The trust
+policy and deployment artifacts are returned only when
+`COSTALYX_AWS_BROKER_PRINCIPAL_ARN` is configured with the Costalyx-controlled
+broker principal; otherwise the API returns an explicit
+`broker_principal_missing` state. The deployment artifacts are scoped to the
+registered connection's external ID, role name, CUR bucket, and CUR prefix, so
+customers can grant readonly access without sharing access keys.
 For Azure, the onboarding response returns delegated-app/workload-identity role
 assignment guidance for Reader, Cost Management Reader, and export storage
 read access. For GCP, it returns Workload Identity Federation principal-set
@@ -63,8 +67,8 @@ The frontend and API support:
 1. Operator provisions the Costalyx tenant and OIDC tenant claim.
 2. Admin registers the connection reference in Costalyx.
 3. The admin loads the provider onboarding template and gives the customer the
-   generated AWS trust/S3 policies, Azure role assignments, or GCP IAM
-   bindings.
+   generated AWS CloudFormation/Terraform artifact plus trust/S3 policy,
+   Azure role assignments, or GCP IAM bindings.
 4. Customer grants read-only cloud trust: AWS IAM role, Azure delegated
    app/workload identity, or GCP Workload Identity Federation principal.
 5. Costalyx validates the reference. With `COSTALYX_LIVE_CLOUD_PROBES`

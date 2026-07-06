@@ -75,7 +75,7 @@ references, not secret material.
 
 | Provider | Required production input | Verification |
 |---|---|---|
-| AWS | Role ARN, Costalyx-generated external ID copied into the customer trust policy, payer/member account ID, CUR S3 URI | Assume role, verify account ID, list the CUR S3 prefix, ingest a small CUR export sample |
+| AWS | Role ARN, Costalyx-generated external ID copied into the customer trust policy, payer/member account ID, CUR S3 URI; the admin onboarding endpoint can generate customer-side CloudFormation and Terraform for the role/policy | Assume role, verify account ID, list the CUR S3 prefix, ingest a small CUR export sample |
 | Azure | Tenant ID, subscription or management-group scope, delegated app/workload identity principal, Cost Management export URI when used | Token acquisition, Reader/Cost Management Reader scope check, export read test |
 | GCP | Billing account or project ID, Workload Identity Federation provider/principal, BigQuery billing export dataset/table | Federated token exchange, billing export read query with row limit |
 
@@ -83,6 +83,12 @@ Each connected account must be associated with the authenticated tenant and
 may be grouped into account groups for separate and collective portfolio
 views. Production validation must never require customer-owned long-lived
 access keys.
+For AWS, prefer the generated CloudFormation or Terraform artifact from
+`GET /api/v1/cloud-connections/{id}/onboarding` after
+`COSTALYX_AWS_BROKER_PRINCIPAL_ARN` is configured. The artifact is
+connection-specific: it includes the generated external ID, Costalyx broker
+principal, customer role name, CUR bucket, and CUR prefix, and it creates only
+read-only STS/S3 permissions required by Costalyx.
 Validation and ingestion attempts tied to a cloud connection are recorded in
 `cloud_connection_runs`; production operators should use the portfolio UI or
 `GET /api/v1/cloud-connections/{id}/runs` to inspect last success/failure

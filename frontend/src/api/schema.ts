@@ -699,7 +699,21 @@ export interface components {
             permissionsPolicy: {
                 [key: string]: unknown;
             } | null;
+            deploymentTemplates?: components["schemas"]["CloudConnectionDeploymentTemplatesNullable"];
             customerSteps: string[];
+        };
+        /** @description Provider-specific customer-side IaC artifacts. Present for AWS when the broker principal and billing export URI are ready; null until templates can be generated safely. */
+        CloudConnectionDeploymentTemplatesNullable: components["schemas"]["CloudConnectionDeploymentTemplates"] | null;
+        CloudConnectionDeploymentTemplates: {
+            cloudFormation: components["schemas"]["CloudConnectionDeploymentTemplate"];
+            terraform: components["schemas"]["CloudConnectionDeploymentTemplate"];
+        };
+        CloudConnectionDeploymentTemplate: {
+            fileName: string;
+            /** @enum {string} */
+            format: "cloudformation-yaml" | "terraform-hcl";
+            /** @description Deployable customer-side IaC body. It contains principals, external IDs, account IDs, buckets, and prefixes only; it must not contain access keys, client secrets, or credential blobs. */
+            body: string;
         };
         CloudConnectionRun: {
             /** Format: uuid */
@@ -901,7 +915,7 @@ export interface components {
         };
         IngestionBatchCreate: {
             provider: components["schemas"]["CloudProvider"];
-            /** @description Provider-native source URI or object reference. */
+            /** @description Provider-native source URI or object reference. AWS supports local fixture paths for development and s3://bucket/prefix/ CUR sources when cloudConnectionId references a tenant-owned AWS read-only connection. */
             sourceUri: string;
             /** Format: uuid */
             cloudConnectionId?: string;

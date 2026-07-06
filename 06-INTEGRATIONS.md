@@ -39,8 +39,11 @@ and the Costalyx broker has AWS credentials, validation performs STS
 `AssumeRole`, verifies the assumed AWS account ID, and lists the CUR S3
 prefix before marking the connection `validated`.
 The admin onboarding endpoint returns the trust policy and least-privilege
-S3 read policy when `COSTALYX_AWS_BROKER_PRINCIPAL_ARN` is configured; no
-customer secret or access key is accepted.
+S3 read policy when `COSTALYX_AWS_BROKER_PRINCIPAL_ARN` is configured. When
+both the broker principal and CUR S3 URI are ready, the same response includes
+customer-deployable CloudFormation and Terraform templates with the real
+external ID, broker principal, role name, bucket, and prefix for that specific
+cloud connection. No customer secret or access key is accepted.
 For Azure, the same endpoint returns Reader, Cost Management Reader, and
 Storage Blob Data Reader role-assignment guidance for the registered delegated
 app/workload identity. With live probes enabled, validation uses Azure

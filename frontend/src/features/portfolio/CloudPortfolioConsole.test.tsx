@@ -61,7 +61,19 @@ const onboarding: CloudConnectionOnboarding = {
     Version: '2012-10-17',
     Statement: [{ Sid: 'CostalyxReadBillingExportObjects', Action: ['s3:GetObject'] }]
   },
-  customerSteps: ['Create or update the AWS IAM role trust policy with the generated external ID.']
+  deploymentTemplates: {
+    cloudFormation: {
+      fileName: 'costalyx-aws-readonly-role.yaml',
+      format: 'cloudformation-yaml',
+      body: "AWSTemplateFormatVersion: '2010-09-09'\nResources:\n  CostalyxReadOnlyBillingRole:\n    Type: AWS::IAM::Role"
+    },
+    terraform: {
+      fileName: 'costalyx_aws_readonly_role.tf',
+      format: 'terraform-hcl',
+      body: 'resource "aws_iam_role" "costalyx_readonly_billing" {}'
+    }
+  },
+  customerSteps: ['Deploy the generated CloudFormation or Terraform template in the customer AWS account.']
 };
 
 const connectionRuns: CloudConnectionRuns = {
@@ -247,8 +259,12 @@ describe('CloudPortfolioConsole', () => {
 
     expect(getCloudConnectionOnboarding).toHaveBeenCalledWith({ id: connection.id });
     expect(await screen.findByText('arn:aws:iam::999999999999:role/CostalyxBroker')).toHaveClass('font-mono-data');
-    expect(screen.getByText('Create or update the AWS IAM role trust policy with the generated external ID.')).toBeInTheDocument();
+    expect(screen.getByText('Deploy the generated CloudFormation or Terraform template in the customer AWS account.')).toBeInTheDocument();
     expect(screen.getByText(/sts:ExternalId/)).toBeInTheDocument();
     expect(screen.getByText(/CostalyxReadBillingExportObjects/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'costalyx-aws-readonly-role.yaml' })).toBeInTheDocument();
+    expect(screen.getByText(/CostalyxReadOnlyBillingRole/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'costalyx_aws_readonly_role.tf' })).toBeInTheDocument();
+    expect(screen.getByText(/aws_iam_role/)).toBeInTheDocument();
   });
 });

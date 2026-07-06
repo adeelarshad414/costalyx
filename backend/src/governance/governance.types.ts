@@ -163,7 +163,19 @@ export interface CloudConnectionOnboarding {
   billingExportUri: string | null;
   trustPolicy: Record<string, unknown> | null;
   permissionsPolicy: Record<string, unknown> | null;
+  deploymentTemplates: CloudConnectionDeploymentTemplates | null;
   customerSteps: string[];
+}
+
+export interface CloudConnectionDeploymentTemplates {
+  cloudFormation: CloudConnectionDeploymentTemplate;
+  terraform: CloudConnectionDeploymentTemplate;
+}
+
+export interface CloudConnectionDeploymentTemplate {
+  fileName: string;
+  format: 'cloudformation-yaml' | 'terraform-hcl';
+  body: string;
 }
 
 export interface CloudConnection {
