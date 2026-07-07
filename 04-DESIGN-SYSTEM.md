@@ -41,6 +41,8 @@ enforced by a lint rule (`no-hardcoded-color`) checked in CI.
 - Numeric/telemetry (all cost figures, timestamps, resource IDs): JetBrains
   Mono — applied via a `.font-mono-data` utility class, required on every
   component that renders a monetary or numeric-ID value
+- Table monetary columns also use `.numeric-cell`: right-aligned,
+  tabular-nums, and non-wrapping so dense cost columns scan cleanly.
 
 ## Component inventory (shadcn/ui base + Costalyx extensions)
 | Component | Notes |

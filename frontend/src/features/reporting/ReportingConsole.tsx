@@ -168,7 +168,7 @@ export function ReportingConsole({ client }: ReportingConsoleProps) {
               <tr>
                 <th>Provider</th>
                 <th>Resource</th>
-                <th>Cost</th>
+                <th className="numeric-cell">Cost</th>
               </tr>
             </thead>
             <tbody>
@@ -176,7 +176,7 @@ export function ReportingConsole({ client }: ReportingConsoleProps) {
                 <tr key={`${row.resourceId ?? row.accountId ?? row.provider}-${index}`}>
                   <td>{String(row.provider ?? '')}</td>
                   <td className="font-mono-data">{String(row.resourceId ?? row.accountId ?? 'summary')}</td>
-                  <td className="font-mono-data">{String(row.costTotalUsd ?? row.invoiceTotalUsd ?? row.totalCostUsd ?? '')}</td>
+                  <td className="font-mono-data numeric-cell">{String(row.costTotalUsd ?? row.invoiceTotalUsd ?? row.totalCostUsd ?? '')}</td>
                 </tr>
               ))}
             </tbody>

@@ -18,9 +18,10 @@ test.describe('CFO stakeholder statement persona journey', () => {
     const billing = page.getByRole('region', { name: 'Billing anomalies' });
     await expect(billing).toContainText('Stakeholder Statements');
 
-    const statement = billing.getByRole('listitem').filter({ hasText: 'Platform Engineering' });
+    const statement = billing.getByRole('listitem').filter({
+      hasText: 'Platform engineering consumed compute across AWS, Azure, and GCP.'
+    });
     await expect(statement).toHaveCount(1);
-    await expect(statement).toContainText('Platform engineering consumed compute across AWS, Azure, and GCP.');
     await expect(statement).toContainText(/Total\s+\$\d+\.\d{2}/);
     await expect(statement).toContainText(/Warnings\s+\d+/);
 

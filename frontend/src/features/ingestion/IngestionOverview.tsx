@@ -98,7 +98,7 @@ export function IngestionOverview({ client = costalyxClient }: IngestionOverview
             <th>Resource</th>
             <th>Service</th>
             <th>Lease</th>
-            <th>Cost</th>
+            <th className="numeric-cell">Cost</th>
             <th>Estimate</th>
           </tr>
         </thead>
@@ -108,7 +108,7 @@ export function IngestionOverview({ client = costalyxClient }: IngestionOverview
               <td className="font-mono-data">{record.resourceId}</td>
               <td>{record.serviceName}</td>
               <td>{record.leaseType}</td>
-              <td className="font-mono-data">{record.costTotalUsd}</td>
+              <td className="font-mono-data numeric-cell">{record.costTotalUsd}</td>
               <td>{record.isEstimate ? 'Yes' : 'No'}</td>
             </tr>
           ))}
