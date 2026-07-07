@@ -4,6 +4,7 @@ import type { CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { toUserFacingError } from '../../utils/userFacingError';
 
 interface ReportingConsoleProps {
   client: CostalyxClient;
@@ -42,7 +43,7 @@ export function ReportingConsole({ client }: ReportingConsoleProps) {
       setActiveViewId(viewResponse.data?.[0]?.id);
       setState('loaded');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unknown reporting request failure');
+      setError(toUserFacingError(loadError, 'Load reports'));
       setState('error');
     }
   }, [client]);
@@ -62,7 +63,7 @@ export function ReportingConsole({ client }: ReportingConsoleProps) {
       setViews((current) => [view, ...current.filter((candidate) => candidate.id !== view.id)]);
       setActiveViewId(view.id);
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : 'Unknown view create failure');
+      setError(toUserFacingError(createError, 'Create saved view'));
       setState('error');
     }
   }, [client]);
@@ -72,7 +73,7 @@ export function ReportingConsole({ client }: ReportingConsoleProps) {
       try {
         setReportRun(await client.runReport({ id: report.id, activeViewId }));
       } catch (runError) {
-        setError(runError instanceof Error ? runError.message : 'Unknown report run failure');
+        setError(toUserFacingError(runError, 'Run report'));
         setState('error');
       }
     },

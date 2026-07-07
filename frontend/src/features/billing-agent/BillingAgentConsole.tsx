@@ -6,6 +6,7 @@ import { PermissionGate } from '../../auth/PermissionGate';
 import { hasRequiredRole } from '../../auth/roles';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { toUserFacingError } from '../../utils/userFacingError';
 
 interface BillingAgentConsoleProps {
   client: CostalyxClient;
@@ -51,7 +52,7 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
       setAgentRuns(agentRunResponse.data);
       setState('loaded');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unknown billing-agent request failure');
+      setError(toUserFacingError(loadError, 'Load billing anomalies'));
       setState('error');
     }
   }, [auth.role, auth.status, client]);
@@ -66,7 +67,7 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
       await requireScanBillingAnomalies(client)();
       await loadConsole();
     } catch (scanError) {
-      setError(scanError instanceof Error ? scanError.message : 'Unknown anomaly scan failure');
+      setError(toUserFacingError(scanError, 'Run anomaly scan'));
       setState('error');
     } finally {
       setIsMutating(false);
@@ -85,7 +86,7 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
         });
         await loadConsole();
       } catch (updateError) {
-        setError(updateError instanceof Error ? updateError.message : 'Unknown anomaly update failure');
+        setError(toUserFacingError(updateError, 'Mark anomaly false positive'));
         setState('error');
       } finally {
         setIsMutating(false);
@@ -104,7 +105,7 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
       });
       await loadConsole();
     } catch (generateError) {
-      setError(generateError instanceof Error ? generateError.message : 'Unknown statement generation failure');
+      setError(toUserFacingError(generateError, 'Generate statements'));
       setState('error');
     } finally {
       setIsMutating(false);
@@ -121,7 +122,7 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
         });
         await loadConsole();
       } catch (approveError) {
-        setError(approveError instanceof Error ? approveError.message : 'Unknown statement approval failure');
+        setError(toUserFacingError(approveError, 'Approve statement'));
         setState('error');
       } finally {
         setIsMutating(false);
@@ -140,7 +141,7 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
         });
         await loadConsole();
       } catch (sendError) {
-        setError(sendError instanceof Error ? sendError.message : 'Unknown statement send failure');
+        setError(toUserFacingError(sendError, 'Send statement'));
         setState('error');
       } finally {
         setIsMutating(false);
@@ -160,7 +161,7 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
         });
         await loadConsole();
       } catch (disputeError) {
-        setError(disputeError instanceof Error ? disputeError.message : 'Unknown statement dispute failure');
+        setError(toUserFacingError(disputeError, 'Dispute statement'));
         setState('error');
       } finally {
         setIsMutating(false);
@@ -179,7 +180,7 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
           await requireExportBillingStatementPdf(client)({ id: statement.id });
         }
       } catch (exportError) {
-        setError(exportError instanceof Error ? exportError.message : 'Unknown statement export failure');
+        setError(toUserFacingError(exportError, `Export statement ${format.toUpperCase()}`));
         setState('error');
       } finally {
         setIsMutating(false);

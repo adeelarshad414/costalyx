@@ -148,14 +148,15 @@ describe('InsightsConsole', () => {
   it('renders an error state with retry when an insights request fails', async () => {
     const client = createInsightsClient({
       getCostExplorerFlow: async () => {
-        throw new Error('Explorer unavailable');
+        throw new Error('HTTP 500 {"detail":"Explorer unavailable","access_token":"secret","stack":"at getCostExplorerFlow"}');
       }
     });
 
     renderAsViewer(<InsightsConsole client={client} />);
 
     expect(await screen.findByRole('heading', { name: 'Could not load insights' })).toBeInTheDocument();
-    expect(screen.getByText('Explorer unavailable')).toBeInTheDocument();
+    expect(screen.getByText('Load insights failed. Try again or contact an administrator if this keeps happening.')).toBeInTheDocument();
+    expect(screen.queryByText(/access_token|stack|HTTP 500/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
   });
 });

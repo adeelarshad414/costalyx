@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { toUserFacingError } from '../../utils/userFacingError';
 
 interface ExecutiveConsoleProps {
   client: CostalyxClient;
@@ -39,7 +40,7 @@ export function ExecutiveConsole({ client }: ExecutiveConsoleProps) {
       setSummary(nextSummary);
       setState('loaded');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unknown executive summary failure');
+      setError(toUserFacingError(loadError, 'Load executive summary'));
       setState('error');
     }
   }, [client]);
@@ -53,7 +54,7 @@ export function ExecutiveConsole({ client }: ExecutiveConsoleProps) {
       await client.exportExecutiveSummaryPdf();
       setExportStatus('PDF ready');
     } catch (exportError) {
-      setError(exportError instanceof Error ? exportError.message : 'Unknown executive export failure');
+      setError(toUserFacingError(exportError, 'Export executive PDF'));
       setState('error');
     }
   }, [client]);
@@ -67,7 +68,7 @@ export function ExecutiveConsole({ client }: ExecutiveConsoleProps) {
         })
       );
     } catch (estimateError) {
-      setError(estimateError instanceof Error ? estimateError.message : 'Unknown TCO estimate failure');
+      setError(toUserFacingError(estimateError, 'Estimate TCO'));
       setState('error');
     }
   }, [client]);

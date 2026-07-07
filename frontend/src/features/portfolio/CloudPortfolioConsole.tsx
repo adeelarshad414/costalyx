@@ -4,6 +4,7 @@ import type { CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { toUserFacingError } from '../../utils/userFacingError';
 
 interface CloudPortfolioConsoleProps {
   client: CostalyxClient;
@@ -98,7 +99,7 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
       setGroupCount(groupResponse.meta.total);
       setState('loaded');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unknown portfolio request failure');
+      setError(toUserFacingError(loadError, 'Load cloud portfolio'));
       setState('error');
     }
   }, [client]);
@@ -111,7 +112,7 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
       });
       setTotalCostUsd(summary.totalCostUsd);
     } catch (summaryError) {
-      setError(summaryError instanceof Error ? summaryError.message : 'Unknown portfolio summary failure');
+      setError(toUserFacingError(summaryError, 'Load portfolio summary'));
       setState('error');
     }
   }, [client, connectionId, provider]);
@@ -148,7 +149,7 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
       await loadPortfolio();
       setConnectionId(created.id);
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : 'Unknown connection create failure');
+      setError(toUserFacingError(createError, 'Create cloud connection'));
       setState('error');
     }
   }, [client, form, loadPortfolio]);
@@ -165,9 +166,7 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
       setOnboarding(await getCloudConnectionOnboarding({ id: selectedConnection.id }));
       setOnboardingError('');
     } catch (onboardingLoadError) {
-      setOnboardingError(
-        onboardingLoadError instanceof Error ? onboardingLoadError.message : 'Unknown onboarding request failure'
-      );
+      setOnboardingError(toUserFacingError(onboardingLoadError, 'Load onboarding guidance'));
     }
   }, [client, selectedConnection]);
 
@@ -186,7 +185,7 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
       setRunError('');
     } catch (runsLoadError) {
       setConnectionRuns([]);
-      setRunError(runsLoadError instanceof Error ? runsLoadError.message : 'Unknown run evidence request failure');
+      setRunError(toUserFacingError(runsLoadError, 'Load run evidence'));
     }
   }, [client, selectedConnection]);
 

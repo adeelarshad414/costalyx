@@ -4,6 +4,7 @@ import type { CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { toUserFacingError } from '../../utils/userFacingError';
 
 interface OptimizationConsoleProps {
   client: CostalyxClient;
@@ -31,7 +32,7 @@ export function OptimizationConsole({ client }: OptimizationConsoleProps) {
       setSavings(savingsResponse.data);
       setState('loaded');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unknown optimization request failure');
+      setError(toUserFacingError(loadError, 'Load optimization'));
       setState('error');
     }
   }, [client]);
@@ -51,7 +52,7 @@ export function OptimizationConsole({ client }: OptimizationConsoleProps) {
         });
         await loadOptimization();
       } catch (applyError) {
-        setError(applyError instanceof Error ? applyError.message : 'Unknown recommendation update failure');
+        setError(toUserFacingError(applyError, 'Apply recommendation'));
         setState('error');
       } finally {
         setIsApplying(false);

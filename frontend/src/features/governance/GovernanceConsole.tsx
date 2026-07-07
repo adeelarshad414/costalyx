@@ -4,6 +4,7 @@ import type { CostalyxClient } from '../../api/client';
 import { useAuth } from '../../auth/AuthProvider';
 import { PermissionGate } from '../../auth/PermissionGate';
 import { ErrorState } from '../../components/ErrorState';
+import { toUserFacingError } from '../../utils/userFacingError';
 
 interface GovernanceConsoleProps {
   client: CostalyxClient;
@@ -29,7 +30,7 @@ export function GovernanceConsole({ client }: GovernanceConsoleProps) {
       setRoles(response.data);
       setState('loaded');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unknown roles request failure');
+      setError(toUserFacingError(loadError, 'Load roles'));
       setState('error');
     }
   }, [auth.role, client]);
