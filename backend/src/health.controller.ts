@@ -1,4 +1,4 @@
-import { Controller, Get, Header } from '@nestjs/common';
+import { Controller, Get, Header, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GovernanceService } from './governance/governance.service';
 import type { CloudConnection, CloudConnectionStatus } from './governance/governance.types';
@@ -15,6 +15,29 @@ export class HealthController {
   @Get('healthz')
   getHealthz() {
     return { status: 'ok' };
+  }
+
+  @Public()
+  @Get('health/live')
+  getLive() {
+    return { status: 'ok' };
+  }
+
+  @Public()
+  @Get('health/ready')
+  async getReady() {
+    try {
+      await this.governance.listCloudConnectionsForScheduler();
+      return {
+        status: 'ready',
+        checks: [{ name: 'governance-repository', status: 'ok' }]
+      };
+    } catch {
+      throw new ServiceUnavailableException({
+        status: 'not_ready',
+        checks: [{ name: 'governance-repository', status: 'failed' }]
+      });
+    }
   }
 
   @RequiredRole('admin')

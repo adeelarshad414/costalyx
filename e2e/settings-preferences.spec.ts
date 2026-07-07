@@ -15,7 +15,8 @@ test.describe('Settings preferences', () => {
     const settings = page.getByRole('region', { name: 'Settings', exact: true });
     await expect(settings).toBeInViewport();
     await expect(settings.getByRole('heading', { name: 'Settings' })).toBeVisible();
-    await expect(settings.getByRole('group', { name: 'Theme' })).toBeVisible();
+    await expect(settings.getByRole('group', { name: 'Mode' })).toBeVisible();
+    await expect(settings.getByRole('group', { name: 'Accent' })).toBeVisible();
     await expect(settings.getByRole('group', { name: 'Density' })).toBeVisible();
 
     await settings.getByRole('button', { name: 'Compact' }).click();
@@ -25,6 +26,14 @@ test.describe('Settings preferences', () => {
     await settings.getByRole('button', { name: 'Light' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     expect(await page.evaluate(() => window.localStorage.getItem('costalyx-theme'))).toBe('light');
+
+    await settings.getByRole('button', { name: 'Terracotta' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-accent', 'terracotta');
+    expect(await page.evaluate(() => window.localStorage.getItem('costalyx-accent'))).toBe('terracotta');
+
+    await settings.getByRole('button', { name: 'System' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme-preference', 'system');
+    expect(await page.evaluate(() => window.localStorage.getItem('costalyx-theme'))).toBe('system');
 
     await expect(settings).not.toContainText(/token|refresh|403|Unauthorized|Forbidden|stack|authorization/i);
     await capturePersonaEvidence(page, testInfo, 'settings-preferences');

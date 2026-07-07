@@ -4,7 +4,7 @@ import {
   expectNoUserVisibleFailures,
   hasKeycloakCredentials,
   personaSkipReason,
-  signInAsAdmin
+  signInAsSeededUser
 } from './support/persona-helpers';
 
 test.describe('CEO executive summary persona journey', () => {
@@ -13,10 +13,11 @@ test.describe('CEO executive summary persona journey', () => {
 
   test('answers what are we spending and why within the seeded dashboard', async ({ page }, testInfo) => {
     const startedAt = Date.now();
-    await signInAsAdmin(page);
-    await expectNoUserVisibleFailures(page);
+    await signInAsSeededUser(page);
 
     const executive = page.getByRole('region', { name: 'Executive summary' });
+    await expect(executive).toBeVisible({ timeout: 30000 });
+    await expectNoUserVisibleFailures(page);
     await expect(executive).toContainText('Total spend');
     await expect(executive).toContainText('Budget used');
     await expect(executive).toContainText('Trend delta');

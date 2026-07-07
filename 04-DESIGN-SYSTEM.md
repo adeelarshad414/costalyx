@@ -1,40 +1,19 @@
 # 04-DESIGN-SYSTEM.md — Costalyx Design System
 
 ## Design tokens
-All values below are implemented as CSS custom properties / Tailwind theme
-extensions — **never hardcoded hex strings inside component files**. This is
-enforced by a lint rule (`no-hardcoded-color`) checked in CI.
+Runtime values are implemented as CSS custom properties in
+`frontend/src/tokens.css`. Component files and non-token stylesheets must refer
+to token names only; raw runtime color values are enforced by
+`npm run lint:theme-colors` in local and CI verification.
 
-```css
-:root[data-theme="dark"] {
-  --brand-primary: #5B5FEF;
-  --brand-primary-dim: #3D3FA6;
-  --brand-accent: #22D3B8;
-  --brand-ink: #0B0E14;
-  --text-on-primary: #FFFFFF;
-  --surface-1: #12151C;
-  --surface-2: #1B1F29;
-  --border-subtle: #262B36;
-  --text-primary: #E6E9F0;
-  --text-secondary: #8A90A2;
-  --status-success: #2FBF71;
-  --status-warning: #F2B84B;
-  --status-danger: #EF5C5C;
-  --status-info: #4EA8DE;
-}
-:root[data-theme="light"] {
-  --brand-primary: #5B5FEF;
-  --brand-accent: #0F766E;
-  --brand-ink: #FFFFFF;
-  --text-on-primary: #FFFFFF;
-  --surface-1: #F4F5F8;
-  --surface-2: #E9EBF0;
-  --border-subtle: #D8DBE3;
-  --text-primary: #12151C;
-  --text-secondary: #5B6070;
-  /* status tokens are contrast-adjusted per theme for WCAG AA */
-}
-```
+Required token groups:
+- `data-theme="dark"` and `data-theme="light"` define the dark-first and light
+  palettes.
+- `data-theme-preference="system|dark|light"` records the user's selected mode
+  while `data-theme` stores the resolved theme.
+- `data-accent="default|terracotta"` switches `--brand-accent` between the
+  default Costalyx accent and the v2 terracotta accent axis.
+- Status tokens remain semantic-only and are not reused for branding or charts.
 
 ## Typography
 - UI: Inter, weights 400/500/600/700
@@ -74,8 +53,10 @@ the two unhandled-state bugs observed in the Cloudability UI audit
 - All interactive elements keyboard-navigable; charts have a data-table
   fallback view for screen readers (`<SankeyFlow>` and `<TrendChart>` both
   expose a "View as table" toggle)
-- A reachable theme toggle is required in the app shell. Dark is the
-  default; light mode must be verified with the same accessibility checks.
+- A reachable theme toggle is required in the app shell. Settings must expose
+  Mode (`system`, `dark`, `light`) and Accent (`default`, `terracotta`), and
+  both default and terracotta accents must be verified with the same
+  accessibility checks.
 - `prefers-reduced-motion: reduce` disables non-essential transitions and
   animations across the shell.
 

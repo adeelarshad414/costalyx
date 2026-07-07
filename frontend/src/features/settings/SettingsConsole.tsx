@@ -1,10 +1,21 @@
-import { Gauge, MonitorCog, Moon, ShieldCheck, Sun } from 'lucide-react';
+import { Gauge, Monitor, MonitorCog, Moon, ShieldCheck, Sun } from 'lucide-react';
 import { useAuth } from '../../auth/AuthProvider';
-import { useUserPreferences, type DensityPreference, type ThemePreference } from '../../preferences/UserPreferences';
+import {
+  useUserPreferences,
+  type AccentPreference,
+  type DensityPreference,
+  type ThemeModePreference
+} from '../../preferences/UserPreferences';
 
-const themes: Array<{ value: ThemePreference; label: string; icon: typeof Moon }> = [
+const themes: Array<{ value: ThemeModePreference; label: string; icon: typeof Moon }> = [
+  { value: 'system', label: 'System', icon: Monitor },
   { value: 'dark', label: 'Dark', icon: Moon },
   { value: 'light', label: 'Light', icon: Sun }
+];
+
+const accents: Array<{ value: AccentPreference; label: string }> = [
+  { value: 'default', label: 'Default' },
+  { value: 'terracotta', label: 'Terracotta' }
 ];
 
 const densities: Array<{ value: DensityPreference; label: string }> = [
@@ -34,8 +45,8 @@ export function SettingsConsole() {
           </div>
 
           <div className="settings-row">
-            <span className="settings-label">Theme</span>
-            <div className="view-toggle" role="group" aria-label="Theme">
+            <span className="settings-label">Mode</span>
+            <div className="view-toggle" role="group" aria-label="Mode">
               {themes.map((theme) => {
                 const Icon = theme.icon;
                 return (
@@ -51,6 +62,24 @@ export function SettingsConsole() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          <div className="settings-row">
+            <span className="settings-label">Accent</span>
+            <div className="view-toggle" role="group" aria-label="Accent">
+              {accents.map((accent) => (
+                <button
+                  key={accent.value}
+                  type="button"
+                  className={preferences.accent === accent.value ? 'is-active' : ''}
+                  aria-pressed={preferences.accent === accent.value}
+                  onClick={() => preferences.setAccent(accent.value)}
+                >
+                  <span className={`accent-swatch accent-swatch-${accent.value}`} aria-hidden="true" />
+                  {accent.label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -71,6 +100,13 @@ export function SettingsConsole() {
               ))}
             </div>
           </div>
+
+          <dl className="settings-facts">
+            <div>
+              <dt>Resolved</dt>
+              <dd className="font-mono-data">{preferences.resolvedTheme}</dd>
+            </div>
+          </dl>
         </section>
 
         <section className="settings-card" aria-label="Session settings">

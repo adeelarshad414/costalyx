@@ -5,7 +5,36 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-07 16:20:00 PKT_
+_Last updated: 2026-07-07 17:23:13 PKT_
+
+## Production Readiness Orchestrator v2 Run — 2026-07-07
+
+Status: P0 through P6 completed locally; P5 merge is pending final GitHub Actions completion.
+
+Evidence added in this run:
+- Created `STATE-SYNC.md` before application changes, per v2 section 1. It records product detection as Costalyx, open PR status as none, latest `main` GitHub Actions run as successful, the current milestone classifications, the real-cloud blocker, and the HUMAN_DECISION_GATE register.
+- Moved the v2 orchestrator and companion design docs into the requested `docs/design/` entry paths.
+- Created `THEME-INVENTORY.md` for v2 P0 and the universal theme audit. It records the current one-shell app structure, feature-surface coverage, token gaps, missing terracotta accent mode, missing raw-color guard, and the active CEO performance finding.
+- Reproduced the local baseline: `npm test` passed backend 41 suites / 152 tests with 6 suites / 8 tests skipped, frontend 23 files / 66 tests, contract 13 files / 39 tests with 8 files / 15 tests skipped, and additive migration check for 13 files. `npm run ci:live-contract` passed 9 files / 20 tests. Backend/frontend builds passed, `npm audit --audit-level=high` found 0 vulnerabilities, `docker compose config` passed, and `git diff --check` passed.
+- Reproduced dummy-data seed state: `npm run seed:demo` restored 2 tenants, 4 cloud connections, 12 cost records, 3 statements, and 3 agent runs. This is verified(mock), not production cloud evidence.
+- Reproduced the real-cloud readiness blocker: `npm run probe:live-readiness` exited non-zero with sanitized missing-value output for AWS, Azure, GCP, tenant ID, and broker identities.
+- Re-ran the broad browser floor against Docker infra plus host-run app tiers. Result: 22 Chromium tests passed, 1 viewer-only spec skipped, and 1 failed. The failure was `e2e/ceo-executive-summary.spec.ts`: content expectations were met, but the persona journey exceeded the 30s performance budget at 44.721s. Milestone F is therefore temporarily classified as claimed-complete(unverified) until the performance finding is fixed and reverified.
+- Completed P1 brand/theme injection. Added `frontend/src/tokens.css`, imported it before app styles, removed raw runtime color literals from `frontend/src/styles.css`, extended preferences to support Mode (`system`, `dark`, `light`) and Accent (`default`, `terracotta`), added Settings Appearance controls, kept the header toggle as a resolved-theme quick action, and updated `04-DESIGN-SYSTEM.md`.
+- Added `scripts/check-no-raw-frontend-colors.mjs`, `npm run lint:theme-colors`, CI execution of the guard, and `feature/**` CI push coverage. Guard result: `npm run lint:theme-colors` passed with "No raw frontend colors outside frontend/src/tokens.css."
+- P1 focused verification passed: `npm --workspace frontend test -- --run src/features/settings/SettingsConsole.test.tsx src/components/ThemeToggle.test.tsx` passed 2 files / 2 tests; `npm --workspace frontend run build` passed; focused browser proof `npm run test:e2e:keycloak -- e2e/settings-preferences.spec.ts e2e/uiux-accessibility-theme.spec.ts` passed 3 Chromium tests in 19.2s, including default and terracotta axe scans.
+- P1 regression floor passed: `npm test` passed backend 41 suites / 152 tests with 6 suites / 8 tests skipped, frontend 23 files / 66 tests, contract 13 files / 39 tests with 8 files / 15 tests skipped, additive migration check for 13 files, and `lint:theme-colors`. `npm run ci:live-contract` passed 9 files / 20 tests. `npm --workspace backend run build` passed. `npm --workspace frontend run build` passed.
+- Completed P2 frontend audit and visual evidence. Fixed the CEO persona timing finding by narrowing `e2e/ceo-executive-summary.spec.ts` to the executive journey rather than unrelated shell regions; focused rerun passed 1 Chromium test in 2.0s. Broad browser floor then passed 23 Chromium tests with 1 expected viewer-only skip in 43.1s; the CEO journey passed inside that parallel run in 8.6s.
+- Added repeatable screenshot capture via `npm run capture:theme-screenshots`, generated `SCREENSHOT-INDEX.md`, and captured 12 full-page screenshots under `artifacts/theme-audit/2026-07-07/` covering dark/light, default/terracotta, and desktop/tablet/mobile.
+- Completed P3 backend production-bar audit. Added explicit public `/health/live` and `/health/ready` endpoints while retaining `/healthz`, documented them in `openapi.yaml`, regenerated `frontend/src/api/schema.ts`, extended backend integration coverage, static contract coverage, and live-contract coverage, and recorded the mapping in `BACKEND-PRODUCTION-AUDIT.md`.
+- P3 verification passed: targeted `npm --workspace backend test -- --runTestsByPath test/health/health-metrics.integration.spec.ts` passed 1 suite / 2 tests. `npm test` passed backend 41 suites / 152 tests with 6 suites / 8 tests skipped, frontend 23 files / 66 tests, contract 13 files / 39 tests with 8 files / 15 tests skipped, additive migration check for 13 files, and `lint:theme-colors`. `npm run ci:live-contract` passed 9 live files / 20 tests. Backend and frontend builds passed.
+- Completed P4 verification gate. After reseeding canonical dummy data, broad browser regression passed 23 Chromium tests with 1 expected viewer-only skip in 1.3m. `npm audit --audit-level=high` found 0 vulnerabilities. Production Compose config rendered successfully with backend healthcheck on `/health/ready`. Helm lint passed with 1 chart / 0 failures. Helm template rendered successfully with and without worker/cloud-ingestion overrides, and backend liveness/readiness probes now render as `/health/live` and `/health/ready`.
+- P4 real-cloud readiness doctor remained blocked as expected: `npm run probe:live-readiness` exited 2 and printed sanitized missing references for `COSTALYX_TENANT_ID`, AWS readonly role/CUR refs plus broker identity, Azure billing scope/delegated principal/export refs plus broker identity, and GCP billing resource/WIF/export refs plus broker identity.
+- Drafted `PRODUCTION-READINESS-REPORT.md` with final milestone status, phase evidence, screenshot index reference, regression floor results, Blocked entries, HUMAN_DECISION_GATE register, ambiguity resolutions, duplicate-work flags, and diff/PR summary. Latest feature-branch GitHub Actions run for `44074f5` was still in progress when this checkpoint was written; prior P1/P2/P3 feature-branch runs were successful.
+- Opened PR #43: https://github.com/adeelarshad414/costalyx/pull/43. At creation time it was mergeable but unstable because latest GitHub Actions checks for head `7834f18` were still in progress. No CI bypass was used.
+
+Blocked/remaining for this v2 run:
+- Live AWS/Azure/GCP customer-cloud probes remain blocked pending real readonly customer roles/federated identities/export references and Costalyx broker identities.
+- Remaining: wait for final GitHub Actions checks on PR #43, classify any failures, then merge under v2 section 8 rules.
 
 ## Gap Audit / UIUX Elevation Run — 2026-07-07
 

@@ -1,0 +1,44 @@
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --brand-primary: #5B5FEF;
+  --brand-primary-dim: #3D3FA6;
+  --accent-default-swatch: #22D3B8;
+  --accent-terracotta-swatch: #F4A261;
+  --brand-accent: var(--accent-default-swatch);
+  --brand-ink: #0B0E14;
+  --text-on-primary: #FFFFFF;
+  --surface-1: #12151C;
+  --surface-2: #1B1F29;
+  --border-subtle: #262B36;
+  --text-primary: #E6E9F0;
+  --text-secondary: #8A90A2;
+  --status-success: #2FBF71;
+  --status-warning: #F2B84B;
+  --status-danger: #EF5C5C;
+  --status-info: #4EA8DE;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --brand-primary: #5B5FEF;
+  --brand-primary-dim: #3D3FA6;
+  --accent-default-swatch: #0F766E;
+  --accent-terracotta-swatch: #B4532A;
+  --brand-accent: var(--accent-default-swatch);
+  --brand-ink: #FFFFFF;
+  --text-on-primary: #FFFFFF;
+  --surface-1: #F4F5F8;
+  --surface-2: #E9EBF0;
+  --border-subtle: #D8DBE3;
+  --text-primary: #12151C;
+  --text-secondary: #5B6070;
+  --status-success: #1D7A46;
+  --status-warning: #8A5A00;
+  --status-danger: #B42323;
+  --status-info: #1D6FA5;
+}
+
+:root[data-accent="terracotta"] {
+  --brand-accent: var(--accent-terracotta-swatch);
+}

@@ -28,10 +28,12 @@ describe('SettingsConsole', () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.dataset.theme = 'dark';
+    document.documentElement.dataset.themePreference = '';
+    document.documentElement.dataset.accent = '';
     document.documentElement.dataset.density = '';
   });
 
-  it('persists theme and density preferences without exposing raw auth details', async () => {
+  it('persists appearance and density preferences without exposing raw auth details', async () => {
     const user = userEvent.setup();
     renderSettings('analyst');
 
@@ -43,13 +45,24 @@ describe('SettingsConsole', () => {
 
     await user.click(screen.getByRole('button', { name: 'Light' }));
     expect(document.documentElement.dataset.theme).toBe('light');
+    expect(document.documentElement.dataset.themePreference).toBe('light');
     expect(localStorage.getItem('costalyx-theme')).toBe('light');
+
+    await user.click(screen.getByRole('button', { name: 'Terracotta' }));
+    expect(document.documentElement.dataset.accent).toBe('terracotta');
+    expect(localStorage.getItem('costalyx-accent')).toBe('terracotta');
+
+    await user.click(screen.getByRole('button', { name: 'System' }));
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(document.documentElement.dataset.themePreference).toBe('system');
+    expect(localStorage.getItem('costalyx-theme')).toBe('system');
 
     await user.click(screen.getByRole('button', { name: 'Compact' }));
     expect(document.documentElement.dataset.density).toBe('compact');
     expect(localStorage.getItem('costalyx-density')).toBe('compact');
 
-    expect(screen.getByRole('group', { name: 'Theme' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Mode' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Accent' })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Density' })).toBeInTheDocument();
     expect(screen.queryByText(/token|refresh|403|stack|authorization/i)).not.toBeInTheDocument();
   });
