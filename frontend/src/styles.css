@@ -396,18 +396,24 @@ tbody tr:hover {
 }
 
 .provider-tabs,
+.view-toggle,
 .dimension-chip-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.provider-tabs button {
+.provider-tabs button,
+.view-toggle button {
+  align-items: center;
   background: var(--surface-2);
   color: var(--text-primary);
+  display: inline-flex;
+  gap: 8px;
 }
 
-.provider-tabs button.is-active {
+.provider-tabs button.is-active,
+.view-toggle button.is-active {
   background: var(--brand-primary);
   color: var(--text-on-primary);
 }

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import type { CostalyxClient } from '../../api/client';
@@ -112,6 +112,15 @@ describe('InsightsConsole', () => {
     expect(screen.getByText('Inactive')).toBeInTheDocument();
     expect(screen.getByText('i-aws-prod-001')).toBeInTheDocument();
     expect(screen.getByText('Amazon EC2 -> on_demand')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'View as table' }));
+    const flowTable = screen.getByRole('table', { name: 'Cost Explorer flow table' });
+    expect(flowTable).toBeInTheDocument();
+    expect(within(flowTable).getByRole('columnheader', { name: 'Source' })).toBeInTheDocument();
+    expect(within(flowTable).getByRole('columnheader', { name: 'Target' })).toBeInTheDocument();
+    expect(within(flowTable).getByRole('cell', { name: 'USD 0.41600000' })).toHaveClass('font-mono-data', 'numeric-cell');
+    await user.click(screen.getByRole('button', { name: 'View as flow' }));
+    expect(screen.queryByRole('table', { name: 'Cost Explorer flow table' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Export inventory CSV' }));
     expect(exportCostRecords).toHaveBeenCalled();

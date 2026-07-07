@@ -5,7 +5,7 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-07 13:49:00 PKT_
+_Last updated: 2026-07-07 14:01:00 PKT_
 
 ## Gap Audit / UIUX Elevation Run — 2026-07-07
 
@@ -32,6 +32,9 @@ Evidence added in this run:
 - Added data-table density polish. New `e2e/table-density-polish.spec.ts` failed first because table headers were not sticky, then passed after adding sticky headers, subtle row hover, tabular numeric font variants, and `.numeric-cell` right-alignment for cost columns in ingestion, inventory, and reporting tables. Focused table E2E passed 1 Chromium test in 3.0s.
 - Fixed a broad-suite persona independence gap: the CFO statement journey assumed exactly one `Platform Engineering` card and failed when the external-stakeholder journey generated another statement in parallel. The selector now targets the explainable narrative text. Focused CFO rerun passed 1 Chromium test in 2.0s.
 - Latest explicit live E2E verification passed: after reseeding, `npm run test:e2e:keycloak -- e2e/milestone-a-keycloak-login.spec.ts e2e/costalyx-full-stack-walkthrough.spec.ts e2e/ceo-executive-summary.spec.ts e2e/cfo-statement-narrative.spec.ts e2e/finops-anomaly-allocation.spec.ts e2e/devops-sre-waste-signals.spec.ts e2e/it-manager-showback-scopes.spec.ts e2e/solution-architect-tco.spec.ts e2e/external-stakeholder-statement-delivery.spec.ts e2e/uiux-accessibility-theme.spec.ts e2e/table-density-polish.spec.ts` passed 14 Chromium tests in 20.9s.
+- Latest full regression passed: `npm test` passed backend 40 suites / 150 tests, frontend 16 files / 53 tests, contract 12 files / 38 tests, and additive migration check for 13 files. `npm run ci:live-contract` passed 9 live files / 20 tests. Backend and frontend builds passed; `npm audit --audit-level=high` found 0 vulnerabilities; `git diff --check` passed. Final `npm run seed:demo` restored canonical dummy-data counts.
+- Added Cost Explorer table fallback proof. New `e2e/cost-explorer-table-fallback.spec.ts` failed first because the Explorer had no `View as table` control. Fixed by adding a keyboard-reachable flow/table segmented control, semantic `Cost Explorer flow table`, source/target/cost columns, and numeric cost alignment. Focused component test passed 1 file / 3 tests; focused live fallback E2E passed 1 Chromium test in 2.6s.
+- Latest explicit live E2E verification passed: after reseeding, `npm run test:e2e:keycloak -- e2e/milestone-a-keycloak-login.spec.ts e2e/costalyx-full-stack-walkthrough.spec.ts e2e/ceo-executive-summary.spec.ts e2e/cfo-statement-narrative.spec.ts e2e/finops-anomaly-allocation.spec.ts e2e/devops-sre-waste-signals.spec.ts e2e/it-manager-showback-scopes.spec.ts e2e/solution-architect-tco.spec.ts e2e/external-stakeholder-statement-delivery.spec.ts e2e/uiux-accessibility-theme.spec.ts e2e/table-density-polish.spec.ts e2e/cost-explorer-table-fallback.spec.ts` passed 15 Chromium tests in 26.9s.
 - Latest full regression passed: `npm test` passed backend 40 suites / 150 tests, frontend 16 files / 53 tests, contract 12 files / 38 tests, and additive migration check for 13 files. `npm run ci:live-contract` passed 9 live files / 20 tests. Backend and frontend builds passed; `npm audit --audit-level=high` found 0 vulnerabilities; `git diff --check` passed. Final `npm run seed:demo` restored canonical dummy-data counts.
 
 Blocked/remaining:
@@ -73,6 +76,9 @@ Definition of Done is satisfied.
 
 ## Latest cross-milestone verification
 
+- Current checkpoint (2026-07-07 14:01 PKT): Cost Explorer table fallback landed with failed-first evidence. `npm run test:e2e:keycloak -- e2e/cost-explorer-table-fallback.spec.ts` initially timed out waiting for missing `View as table`; after the UI fix it passed 1 Chromium test in 2.6s. `npm --workspace frontend test -- --run src/features/insights/InsightsConsole.test.tsx` passed 1 file / 3 tests.
+- Current checkpoint (2026-07-07 14:00 PKT): full live suite passed 15 Chromium tests in 26.9s with login, full-stack desktop/tablet/mobile, seven persona journeys, dark/light axe, dense table polish, and Cost Explorer table fallback all included.
+- Current checkpoint (2026-07-07 14:01 PKT): `npm test` passed backend 40 suites / 150 tests, frontend 16 files / 53 tests, contract 12 files / 38 tests, and additive migration check for 13 files. `npm run ci:live-contract` passed 9 files / 20 tests. Backend/frontend builds, high-severity audit, whitespace check, and final canonical seed reset passed.
 - Current checkpoint (2026-07-07 13:49 PKT): table-density polish landed with failed-first evidence. `npm run test:e2e:keycloak -- e2e/table-density-polish.spec.ts` initially failed because table headers were not `position: sticky`; after the CSS/component fix it passed 1 Chromium test in 3.0s. `npm --workspace frontend test -- --run src/features/ingestion/IngestionOverview.test.tsx` passed 1 file / 4 tests.
 - Current checkpoint (2026-07-07 13:47 PKT): broad live E2E initially found a CFO persona independence failure (`Platform Engineering` matched 2 statement cards after another persona generated one). After selector repair and reseed, focused CFO passed 1 Chromium test in 2.0s, and the full live suite passed 14 Chromium tests in 20.9s.
 - Current checkpoint (2026-07-07 13:49 PKT): `npm test` passed backend 40 suites / 150 tests, frontend 16 files / 53 tests, contract 12 files / 38 tests, and additive migration check for 13 files. `npm run ci:live-contract` passed 9 files / 20 tests. Backend/frontend builds, high-severity audit, whitespace check, and final canonical seed reset passed.

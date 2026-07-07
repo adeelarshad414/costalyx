@@ -1,4 +1,4 @@
-import { Download, GitBranch, SlidersHorizontal } from 'lucide-react';
+import { Download, GitBranch, SlidersHorizontal, Table2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
 import { EmptyState } from '../../components/EmptyState';
@@ -13,6 +13,7 @@ type CloudProvider = 'aws' | 'azure' | 'gcp';
 type CostRecord = Awaited<ReturnType<CostalyxClient['listCostRecords']>>['data'][number];
 type CostSummary = Awaited<ReturnType<CostalyxClient['getCostSummary']>>;
 type CostExplorerFlow = Awaited<ReturnType<CostalyxClient['getCostExplorerFlow']>>;
+type FlowView = 'flow' | 'table';
 
 const providers: CloudProvider[] = ['aws', 'azure', 'gcp'];
 const defaultDimensions = ['service', 'leaseType'];
@@ -30,6 +31,7 @@ export function InsightsConsole({ client }: InsightsConsoleProps) {
   const [summary, setSummary] = useState<CostSummary | null>(null);
   const [records, setRecords] = useState<CostRecord[]>([]);
   const [flow, setFlow] = useState<CostExplorerFlow | null>(null);
+  const [flowView, setFlowView] = useState<FlowView>('flow');
   const [error, setError] = useState('');
   const [exportStatus, setExportStatus] = useState('');
 
@@ -185,15 +187,48 @@ export function InsightsConsole({ client }: InsightsConsoleProps) {
               <span className="font-mono-data">{costFloorUsd}</span>
             </label>
             {flow && flow.links.length > 0 ? (
-              <ul className="flow-list">
-                {flow.links.map((link) => (
-                  <li key={`${link.source}-${link.target}`}>
+              <>
+                <div className="view-toggle" role="group" aria-label="Cost Explorer view">
+                  <button type="button" className={flowView === 'table' ? 'is-active' : undefined} onClick={() => setFlowView('table')}>
+                    <Table2 aria-hidden="true" size={16} />
+                    View as table
+                  </button>
+                  <button type="button" className={flowView === 'flow' ? 'is-active' : undefined} onClick={() => setFlowView('flow')}>
                     <GitBranch aria-hidden="true" size={16} />
-                    <span>{flowLabel(flow, link.source)} -&gt; {flowLabel(flow, link.target)}</span>
-                    <span className="font-mono-data">USD {link.costTotalUsd}</span>
-                  </li>
-                ))}
-              </ul>
+                    View as flow
+                  </button>
+                </div>
+                {flowView === 'flow' ? (
+                  <ul className="flow-list">
+                    {flow.links.map((link) => (
+                      <li key={`${link.source}-${link.target}`}>
+                        <GitBranch aria-hidden="true" size={16} />
+                        <span>{flowLabel(flow, link.source)} -&gt; {flowLabel(flow, link.target)}</span>
+                        <span className="font-mono-data">USD {link.costTotalUsd}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <table aria-label="Cost Explorer flow table">
+                    <thead>
+                      <tr>
+                        <th>Source</th>
+                        <th>Target</th>
+                        <th className="numeric-cell">Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {flow.links.map((link) => (
+                        <tr key={`${link.source}-${link.target}`}>
+                          <td>{flowLabel(flow, link.source)}</td>
+                          <td>{flowLabel(flow, link.target)}</td>
+                          <td className="font-mono-data numeric-cell">USD {link.costTotalUsd}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </>
             ) : (
               <EmptyState title="No explorer flow for this threshold" detail="Lower the cost floor or run ingestion." />
             )}
