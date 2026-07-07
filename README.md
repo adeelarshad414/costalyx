@@ -75,10 +75,13 @@ git clone https://github.com/<org>/costalyx.git
 cd costalyx
 cp .env.example .env
 make dev-up          # brings up Postgres, Keycloak, Vault, Redpanda, backend, frontend
+npm run seed:demo    # applies migrations and populates local demo data
 ```
 This seeds a dev Keycloak realm with the three fixed roles (`viewer`,
-`analyst`, `admin`) and loads fixture cost data so the UI is populated on
-first run. Frontend: http://localhost:5173 · Backend API:
+`analyst`, `admin`). `npm run seed:demo` loads tenant-scoped AWS, Azure, and
+GCP demo data, portfolio connections, tags, recommendations, anomalies,
+statements, and agent-run evidence so the UI is populated on first run.
+Frontend: http://localhost:5173 · Backend API:
 http://localhost:3000/api/v1 · API docs: http://localhost:3000/api/docs
 
 Full environment matrix and production deployment: see
