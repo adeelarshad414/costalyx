@@ -13,6 +13,18 @@ import { OptimizationConsole } from './features/optimization/OptimizationConsole
 import { CloudPortfolioConsole } from './features/portfolio/CloudPortfolioConsole';
 import { ReportingConsole } from './features/reporting/ReportingConsole';
 
+const productSections = [
+  { id: 'cloud-portfolio', label: 'Cloud portfolio' },
+  { id: 'costs', label: 'Costs' },
+  { id: 'executive', label: 'Executive' },
+  { id: 'insights', label: 'Insights' },
+  { id: 'optimization', label: 'Optimization' },
+  { id: 'billing-agent', label: 'Billing Agent' },
+  { id: 'reporting', label: 'Reporting' },
+  { id: 'allocation', label: 'Allocation' },
+  { id: 'governance', label: 'Governance' }
+] as const;
+
 export function App() {
   const auth = useAuth();
   const client = useMemo(() => createCostalyxClient({ getAccessToken: auth.getAccessToken }), [auth.getAccessToken]);
@@ -37,15 +49,40 @@ export function App() {
         </div>
       </header>
       <AuthBoundary>
-        <CloudPortfolioConsole client={client} />
-        <IngestionOverview client={client} />
-        <ExecutiveConsole client={client} />
-        <InsightsConsole client={client} />
-        <OptimizationConsole client={client} />
-        <BillingAgentConsole client={client} />
-        <ReportingConsole client={client} />
-        <AllocationConsole client={client} />
-        <GovernanceConsole client={client} />
+        <nav className="section-nav" aria-label="Product sections">
+          {productSections.map((section) => (
+            <a key={section.id} href={`#${section.id}`}>
+              {section.label}
+            </a>
+          ))}
+        </nav>
+        <div id="cloud-portfolio" className="section-anchor">
+          <CloudPortfolioConsole client={client} />
+        </div>
+        <div id="costs" className="section-anchor">
+          <IngestionOverview client={client} />
+        </div>
+        <div id="executive" className="section-anchor">
+          <ExecutiveConsole client={client} />
+        </div>
+        <div id="insights" className="section-anchor">
+          <InsightsConsole client={client} />
+        </div>
+        <div id="optimization" className="section-anchor">
+          <OptimizationConsole client={client} />
+        </div>
+        <div id="billing-agent" className="section-anchor">
+          <BillingAgentConsole client={client} />
+        </div>
+        <div id="reporting" className="section-anchor">
+          <ReportingConsole client={client} />
+        </div>
+        <div id="allocation" className="section-anchor">
+          <AllocationConsole client={client} />
+        </div>
+        <div id="governance" className="section-anchor">
+          <GovernanceConsole client={client} />
+        </div>
       </AuthBoundary>
     </main>
   );

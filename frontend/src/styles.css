@@ -176,6 +176,40 @@ tbody tr:hover {
   font-weight: 700;
 }
 
+.section-nav {
+  align-items: center;
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.section-nav a {
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  padding: 0.48rem 0.7rem;
+  text-decoration: none;
+}
+
+.section-nav a:hover,
+.section-nav a:focus-visible {
+  border-color: var(--brand-accent);
+  color: var(--brand-accent);
+}
+
+.section-anchor {
+  scroll-margin-top: 84px;
+}
+
 .icon-button {
   align-items: center;
   aspect-ratio: 1;
