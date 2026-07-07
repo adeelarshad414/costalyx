@@ -157,6 +157,14 @@ tbody tr:hover {
   margin-bottom: 12px;
 }
 
+.section-kicker {
+  color: var(--brand-accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+}
+
 .session-pill {
   align-items: center;
   display: flex;
@@ -984,6 +992,105 @@ tbody tr:hover {
   justify-content: space-between;
 }
 
+.operator-toolbar {
+  justify-content: space-between;
+}
+
+.operator-toolbar h2 {
+  margin: 0;
+}
+
+.operator-toolbar button,
+.operator-status {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.operator-layout {
+  display: grid;
+  gap: 18px;
+}
+
+.operator-summary {
+  align-items: start;
+  border-bottom: 1px solid var(--border-subtle);
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(180px, 0.5fr) minmax(0, 1fr);
+  padding-bottom: 16px;
+}
+
+.operator-status p {
+  color: var(--text-secondary);
+  margin: 6px 0 0;
+}
+
+.operator-environment {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.operator-check-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.operator-check-group h3,
+.operator-action-band h3 {
+  margin: 0 0 10px;
+}
+
+.operator-check-list,
+.operator-action-band ul,
+.operator-next-actions {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.operator-check-list li,
+.operator-next-actions li {
+  border-bottom: 1px solid var(--border-subtle);
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 0;
+}
+
+.operator-check-list li div {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.operator-check-list p,
+.operator-action-band p,
+.operator-next-actions span {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.operator-remediation {
+  color: var(--status-warning);
+}
+
+.operator-action-band {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 16px;
+}
+
+.operator-action-band li {
+  color: var(--text-secondary);
+}
+
+.operator-next-actions code {
+  display: inline-block;
+}
+
 .metric-list {
   display: grid;
   gap: 10px;
@@ -1010,6 +1117,7 @@ tbody tr:hover {
   .executive-grid,
   .insights-grid,
   .optimization-grid,
+  .operator-summary,
   .portfolio-grid,
   .reporting-grid {
     grid-template-columns: 1fr;

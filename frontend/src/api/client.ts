@@ -19,6 +19,8 @@ type CloudConnectionOnboardingResponse =
   paths['/cloud-connections/{id}/onboarding']['get']['responses']['200']['content']['application/json'];
 type CloudConnectionRunsResponse =
   paths['/cloud-connections/{id}/runs']['get']['responses']['200']['content']['application/json'];
+type OperatorReadinessResponse =
+  paths['/operator-readiness']['get']['responses']['200']['content']['application/json'];
 type AccountsResponse = paths['/accounts']['get']['responses']['200']['content']['application/json'];
 type AccountGroupsResponse = paths['/account-groups']['get']['responses']['200']['content']['application/json'];
 type RolesResponse = paths['/roles']['get']['responses']['200']['content']['application/json'];
@@ -179,6 +181,7 @@ export interface CostalyxClient {
   validateCloudConnection?(input: { id: string; idempotencyKey: string }): Promise<CloudConnectionResponse>;
   getCloudConnectionOnboarding?(input: { id: string }): Promise<CloudConnectionOnboardingResponse>;
   listCloudConnectionRuns?(input: { id: string; page?: number; pageSize?: number }): Promise<CloudConnectionRunsResponse>;
+  getOperatorReadiness?(): Promise<OperatorReadinessResponse>;
   listAccounts?(query?: { page?: number; pageSize?: number }): Promise<AccountsResponse>;
   listAccountGroups?(query?: { page?: number; pageSize?: number }): Promise<AccountGroupsResponse>;
   listRoles(): Promise<RolesResponse>;
@@ -413,6 +416,19 @@ export function createCostalyxClient({ baseUrl = apiBaseUrl, getAccessToken }: C
         throw new Error(`Cloud connection runs request failed with ${response.status}`);
       }
       return response.json() as Promise<CloudConnectionRunsResponse>;
+    },
+
+    async getOperatorReadiness() {
+      const response = await fetch(`${baseUrl}/operator-readiness`, {
+        headers: {
+          Accept: 'application/json',
+          ...(await authHeaders())
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Operator readiness request failed with ${response.status}`);
+      }
+      return response.json() as Promise<OperatorReadinessResponse>;
     },
 
     async listAccounts(query) {
