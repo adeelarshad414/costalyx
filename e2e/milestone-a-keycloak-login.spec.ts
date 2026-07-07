@@ -7,7 +7,7 @@ test.describe('Milestone A Keycloak login', () => {
   test.skip(!hasKeycloakCredentials, 'E2E_KEYCLOAK_USERNAME and E2E_KEYCLOAK_PASSWORD are required.');
 
   test('authenticates through the live Keycloak login redirect', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/login?next=/costs');
     await page.getByRole('button', { name: 'Sign in' }).click();
     await page.waitForURL(/protocol\/openid-connect\/auth|\/realms\/costalyx-dev/, { timeout: 90000 });
 

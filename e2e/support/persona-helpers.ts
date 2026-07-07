@@ -2,14 +2,28 @@ import { expect, type APIRequestContext, type Page, type TestInfo } from '@playw
 
 export const hasKeycloakCredentials = Boolean(process.env.E2E_KEYCLOAK_USERNAME && process.env.E2E_KEYCLOAK_PASSWORD);
 
-export async function signInAsAdmin(page: Page) {
-  await signInAsSeededUser(page);
+export const productRoutePaths = {
+  'Cloud portfolio': '/portfolio',
+  Costs: '/costs',
+  Executive: '/executive',
+  Insights: '/insights',
+  Optimization: '/optimization',
+  'Billing Agent': '/billing-agent',
+  Reporting: '/reporting',
+  Allocation: '/allocation',
+  Governance: '/governance',
+  Settings: '/settings',
+  Operator: '/operator'
+} as const;
+
+export async function signInAsAdmin(page: Page, landingPath = '/portfolio') {
+  await signInAsSeededUser(page, landingPath);
 
   await expect(page.getByRole('navigation', { name: 'Product sections' })).toBeVisible({ timeout: 45000 });
 }
 
-export async function signInAsSeededUser(page: Page) {
-  await page.goto('/');
+export async function signInAsSeededUser(page: Page, landingPath = '/portfolio') {
+  await page.goto(`/login?next=${encodeURIComponent(landingPath)}`);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL(/protocol\/openid-connect\/auth|\/realms\/costalyx-dev/, { timeout: 90000 });
   await page.getByLabel(/username|email/i).fill(process.env.E2E_KEYCLOAK_USERNAME ?? '');
@@ -17,6 +31,13 @@ export async function signInAsSeededUser(page: Page) {
   await page.getByRole('button', { name: /sign in/i }).click();
 
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible({ timeout: 45000 });
+  await expect(page).toHaveURL(new RegExp(`${escapeForRegExp(landingPath)}(?:[?#].*)?$`));
+}
+
+export async function openProductPage(page: Page, label: keyof typeof productRoutePaths) {
+  const path = productRoutePaths[label];
+  await page.getByRole('navigation', { name: 'Product sections' }).getByRole('link', { name: label }).click();
+  await expect(page).toHaveURL(new RegExp(`${escapeForRegExp(path)}(?:[?#].*)?$`));
 }
 
 export async function capturePersonaEvidence(page: Page, testInfo: TestInfo, name: string) {
@@ -47,4 +68,8 @@ export async function mailpitRecipients(request: APIRequestContext): Promise<str
     const structured = (message.To ?? []).map((recipient) => recipient.Address).filter(Boolean) as string[];
     return structured.length > 0 ? structured : message.ToHTML ? [message.ToHTML] : [];
   });
+}
+
+function escapeForRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

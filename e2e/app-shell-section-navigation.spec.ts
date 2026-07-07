@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { capturePersonaEvidence, hasKeycloakCredentials, personaSkipReason, signInAsAdmin } from './support/persona-helpers';
+import {
+  capturePersonaEvidence,
+  hasKeycloakCredentials,
+  openProductPage,
+  personaSkipReason,
+  signInAsAdmin
+} from './support/persona-helpers';
 
 const sections = [
   'Cloud portfolio',
@@ -29,13 +35,15 @@ test.describe('App shell section navigation', () => {
     }
 
     const costsLink = navigation.getByRole('link', { name: 'Costs' });
+    await expect(costsLink).toHaveAttribute('href', '/costs');
     await focusByKeyboard(page, costsLink);
     await expect(costsLink).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('region', { name: 'Normalized cost records' })).toBeInViewport();
+    await expect(page).toHaveURL(/\/costs$/);
+    await expect(page.getByRole('region', { name: 'Normalized cost records' })).toBeVisible();
 
-    await navigation.getByRole('link', { name: 'Billing Agent' }).click();
-    await expect(page.getByRole('region', { name: 'Billing anomalies' })).toBeInViewport();
+    await openProductPage(page, 'Billing Agent');
+    await expect(page.getByRole('region', { name: 'Billing anomalies' })).toBeVisible();
 
     await expectNoNavOverflow(page);
     await capturePersonaEvidence(page, testInfo, 'app-shell-section-navigation');

@@ -12,7 +12,7 @@ test.describe('Stakeholder statement detail document', () => {
   test.skip(!hasKeycloakCredentials, personaSkipReason());
 
   test('opens a CFO-forwardable statement with line items, reconciliation, and review context', async ({ page }, testInfo) => {
-    await signInAsAdmin(page);
+    await signInAsAdmin(page, '/billing-agent');
     await expectNoUserVisibleFailures(page);
 
     const billing = page.getByRole('region', { name: 'Billing anomalies' });

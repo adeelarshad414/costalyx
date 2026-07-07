@@ -24,7 +24,7 @@ test.describe('Loading skeleton micro-states', () => {
       await route.continue();
     });
 
-    await signInAsAdmin(page);
+    await signInAsAdmin(page, '/costs');
     await expectNoUserVisibleFailures(page);
 
     const loadingStatus = page.getByRole('status', { name: 'Loading cost records' });

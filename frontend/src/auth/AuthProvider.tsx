@@ -29,13 +29,19 @@ interface AuthContextValue {
   role: Role | null;
   token: string | null;
   error: string;
-  login: () => Promise<void>;
+  login: (options?: AuthRedirectOptions) => Promise<void>;
+  signup: (options?: AuthRedirectOptions) => Promise<void>;
   logout: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const tokenRefreshSkewSeconds = 30;
+
+export interface AuthRedirectOptions {
+  redirectPath?: string;
+  loginHint?: string;
+}
 
 interface AuthProviderProps {
   adapter?: KeycloakAdapter;
@@ -97,8 +103,14 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
     };
   }, [keycloakAdapter, captureAuthenticatedSession]);
 
-  const login = useCallback(async () => {
-    await keycloakAdapter.login({ redirectUri: window.location.origin });
+  const login = useCallback(async (options: AuthRedirectOptions = {}) => {
+    const loginOptions = buildLoginOptions(options);
+    await keycloakAdapter.login(loginOptions);
+  }, [keycloakAdapter]);
+
+  const signup = useCallback(async (options: AuthRedirectOptions = {}) => {
+    const signupOptions = { ...buildLoginOptions(options), action: 'register' };
+    await keycloakAdapter.login(signupOptions);
   }, [keycloakAdapter]);
 
   const logout = useCallback(async () => {
@@ -106,7 +118,7 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
     setToken(null);
     setError('');
     setStatus('unauthenticated');
-    await keycloakAdapter.logout({ redirectUri: window.location.origin });
+    await keycloakAdapter.logout({ redirectUri: redirectUriForPath('/login') });
   }, [keycloakAdapter]);
 
   const getAccessToken = useCallback(async () => {
@@ -134,8 +146,8 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
   }, [keycloakAdapter, status, token]);
 
   const value = useMemo(
-    () => ({ status, role, token, error, login, logout, getAccessToken }),
-    [error, getAccessToken, login, logout, role, status, token]
+    () => ({ status, role, token, error, login, signup, logout, getAccessToken }),
+    [error, getAccessToken, login, logout, role, signup, status, token]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -173,4 +185,28 @@ function createKeycloakAdapter(): KeycloakAdapter {
 
 function keycloakClientId(): string {
   return import.meta.env.VITE_KEYCLOAK_CLIENT_ID ?? 'costalyx-web';
+}
+
+function buildLoginOptions(options: AuthRedirectOptions): Record<string, unknown> {
+  const loginHint = options.loginHint?.trim();
+  return {
+    redirectUri: redirectUriForPath(options.redirectPath ?? currentPath()),
+    ...(loginHint ? { loginHint } : {})
+  };
+}
+
+function currentPath(): string {
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+}
+
+function redirectUriForPath(path: string): string {
+  const redirectPath = safeRedirectPath(path);
+  return new URL(redirectPath, window.location.origin).toString();
+}
+
+function safeRedirectPath(path: string): string {
+  if (!path.startsWith('/') || path.startsWith('//')) {
+    return '/portfolio';
+  }
+  return path;
 }

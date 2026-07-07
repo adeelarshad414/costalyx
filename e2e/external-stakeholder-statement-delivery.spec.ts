@@ -13,7 +13,7 @@ test.describe('External stakeholder statement delivery persona journey', () => {
   test.skip(!hasKeycloakCredentials, personaSkipReason());
 
   test('receives a human-approved statement through local Mailpit', async ({ page, request }, testInfo) => {
-    await signInAsAdmin(page);
+    await signInAsAdmin(page, '/billing-agent');
     await expectNoUserVisibleFailures(page);
 
     const billing = page.getByRole('region', { name: 'Billing anomalies' });

@@ -16,22 +16,26 @@ and `docs/design/universal-theme-audit-orchestrator.md`.
 
 ## Shell And Routes
 
-Costalyx is currently a single authenticated shell in `frontend/src/App.tsx`.
-The shell mounts all major feature sections at once and navigates by hash links:
+Costalyx now uses path-routed product pages in `frontend/src/App.tsx` rather
+than a single hash-navigated dashboard. Public auth routes are `/login` and
+`/signup`; authenticated product routes render one major feature page at a
+time:
 
-| Section | Component | Current Coverage |
+| Route | Component | Current Coverage |
 | --- | --- | --- |
-| Cloud portfolio | `CloudPortfolioConsole` | Component tests, live onboarding/copy E2E, full-stack walkthrough |
-| Costs | `IngestionOverview` | Component tests, loading skeleton E2E, cost explorer fallback E2E |
-| Executive | `ExecutiveConsole` | Component tests, CEO E2E currently fails performance budget |
-| Insights | `InsightsConsole` | Component tests, full-stack/persona E2E |
-| Optimization | `OptimizationConsole` | Component tests, solution architect E2E |
-| Billing Agent | `BillingAgentConsole` | Component tests, anomaly detail, statement detail, CFO, stakeholder E2E |
-| Reporting | `ReportingConsole` | Component tests, reporting/persona E2E |
-| Allocation | `AllocationConsole` | Component tests, FinOps/IT manager E2E |
-| Governance | `GovernanceConsole` | Component tests, live cloud onboarding and readonly copy evidence |
-| Settings | `SettingsConsole` | Component tests, settings preferences E2E |
-| Operator | `OperatorReadinessConsole` | Component tests, operator readiness E2E; admin-only |
+| `/login` | first-party auth page | `App.test.tsx` proves Keycloak login redirect with route return. |
+| `/signup` | first-party auth page | `App.test.tsx` proves Keycloak registration action with email hint. |
+| `/portfolio` | `CloudPortfolioConsole` | Component tests, live onboarding/copy E2E, full-stack walkthrough |
+| `/costs` | `IngestionOverview` | Component tests, loading skeleton E2E, cost explorer fallback E2E |
+| `/executive` | `ExecutiveConsole` | Component tests, CEO E2E route journey |
+| `/insights` | `InsightsConsole` | Component tests, full-stack/persona E2E |
+| `/optimization` | `OptimizationConsole` | Component tests, solution architect E2E |
+| `/billing-agent` | `BillingAgentConsole` | Component tests, anomaly detail, statement detail, CFO, stakeholder E2E |
+| `/reporting` | `ReportingConsole` | Component tests, reporting/persona E2E |
+| `/allocation` | `AllocationConsole` | Component tests, FinOps/IT manager E2E |
+| `/governance` | `GovernanceConsole` | Component tests, live cloud onboarding and readonly copy evidence |
+| `/settings` | `SettingsConsole` | Component tests, settings preferences E2E |
+| `/operator` | `OperatorReadinessConsole` | Component tests, operator readiness E2E; admin-only |
 
 ## Theme Assets
 
@@ -56,7 +60,7 @@ The shell mounts all major feature sections at once and navigates by hash links:
 
 | v1 Area | Current State |
 | --- | --- |
-| Layout shell | Single dense authenticated shell; functional but not CPN-style sidebar/chrome. |
+| Layout shell | Path-routed authenticated pages with public login/signup routes and persistent product navigation. |
 | Empty states | Shared `EmptyState` component and feature wiring exist. |
 | Error states | Shared `ErrorState` and user-facing error sanitizer exist. |
 | Loading states | Shared skeleton loading states exist with browser proof. |
@@ -97,3 +101,7 @@ The shell mounts all major feature sections at once and navigates by hash links:
 - `npm audit --audit-level=high`: 0 vulnerabilities.
 - Full browser floor: 22 passed, 1 skipped, 1 failed due to CEO performance
   budget. Treat this as an active finding.
+- Route/auth update proof on 2026-07-07: focused auth/routing tests passed
+  3 files / 13 tests; full frontend suite passed 24 files / 71 tests;
+  frontend production build passed; `npm run lint:theme-colors` and
+  `git diff --check` passed.

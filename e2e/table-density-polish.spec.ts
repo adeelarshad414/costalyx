@@ -12,7 +12,7 @@ test.describe('Table density polish', () => {
   test.skip(!hasKeycloakCredentials, personaSkipReason());
 
   test('keeps cost tables scannable with sticky headers, hover feedback, and aligned numerics', async ({ page }, testInfo) => {
-    await signInAsAdmin(page);
+    await signInAsAdmin(page, '/costs');
     await expectNoUserVisibleFailures(page);
 
     const recordsTable = page.getByRole('region', { name: 'Normalized cost records' }).getByRole('table');

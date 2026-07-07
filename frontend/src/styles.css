@@ -103,6 +103,74 @@ tbody tr:hover {
   padding: 32px 20px;
 }
 
+.auth-page {
+  display: grid;
+  gap: 24px;
+  margin: 0 auto;
+  max-width: 760px;
+  min-height: 100vh;
+  padding: 40px 20px;
+}
+
+.auth-header {
+  align-items: start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.auth-header p {
+  color: var(--brand-accent);
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.auth-header h1 {
+  font-size: 2rem;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.auth-panel {
+  align-self: start;
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+}
+
+.auth-panel h2,
+.auth-panel p {
+  margin: 0;
+}
+
+.auth-panel p {
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.auth-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.auth-actions a,
+.button-link {
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-primary);
+  display: inline-flex;
+  font-weight: 700;
+  padding: 0.65rem 0.9rem;
+  text-decoration: none;
+}
+
 .app-header {
   align-items: start;
   display: flex;
@@ -221,7 +289,12 @@ tbody tr:hover {
 }
 
 .section-nav a:hover,
-.section-nav a:focus-visible {
+.section-nav a:focus-visible,
+.section-nav a[aria-current="page"],
+.auth-actions a:hover,
+.auth-actions a:focus-visible,
+.button-link:hover,
+.button-link:focus-visible {
   border-color: var(--brand-accent);
   color: var(--brand-accent);
 }

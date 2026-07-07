@@ -12,7 +12,7 @@ test.describe('Anomaly detail evidence story', () => {
   test.skip(!hasKeycloakCredentials, personaSkipReason());
 
   test('opens a readable what-changed, impact, and action panel from the anomaly queue', async ({ page }, testInfo) => {
-    await signInAsAdmin(page);
+    await signInAsAdmin(page, '/billing-agent');
     await expectNoUserVisibleFailures(page);
 
     const billing = page.getByRole('region', { name: 'Billing anomalies' });

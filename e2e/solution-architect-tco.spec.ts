@@ -12,7 +12,7 @@ test.describe('Solution architect TCO persona journey', () => {
   test.skip(!hasKeycloakCredentials, personaSkipReason());
 
   test('compares AWS Azure and GCP using the live pricing model', async ({ page }, testInfo) => {
-    await signInAsAdmin(page);
+    await signInAsAdmin(page, '/executive');
     await expectNoUserVisibleFailures(page);
 
     const executive = page.getByRole('region', { name: 'Executive summary' });

@@ -12,7 +12,7 @@ test.describe('CFO stakeholder statement persona journey', () => {
   test.skip(!hasKeycloakCredentials, personaSkipReason());
 
   test('shows an explainable statement narrative with totals and variance warnings', async ({ page }, testInfo) => {
-    await signInAsAdmin(page);
+    await signInAsAdmin(page, '/billing-agent');
     await expectNoUserVisibleFailures(page);
 
     const billing = page.getByRole('region', { name: 'Billing anomalies' });

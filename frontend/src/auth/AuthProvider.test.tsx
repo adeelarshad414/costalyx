@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider, useAuth, type KeycloakAdapter } from './AuthProvider';
 
 function Probe() {
@@ -10,8 +10,11 @@ function Probe() {
     <div>
       <p>{auth.status}</p>
       <p>{auth.role ?? 'none'}</p>
-      <button type="button" onClick={auth.login}>
+      <button type="button" onClick={() => auth.login()}>
         Sign in
+      </button>
+      <button type="button" onClick={() => auth.signup({ redirectPath: '/portfolio', loginHint: 'finops@example.com' })}>
+        Sign up
       </button>
     </div>
   );
@@ -36,6 +39,10 @@ function MultiTokenProbe({ onTokens }: { onTokens: (tokens: Array<string | null>
 }
 
 describe('AuthProvider', () => {
+  beforeEach(() => {
+    window.history.replaceState({}, '', '/');
+  });
+
   it('extracts the highest fixed role from a Keycloak-authenticated session', async () => {
     const adapter: KeycloakAdapter = {
       token: 'token-1',
@@ -61,6 +68,7 @@ describe('AuthProvider', () => {
 
   it('starts an actual Keycloak login redirect when unauthenticated users sign in', async () => {
     const user = userEvent.setup();
+    window.history.replaceState({}, '', '/executive');
     const adapter: KeycloakAdapter = {
       init: vi.fn().mockResolvedValue(false),
       login: vi.fn().mockResolvedValue(undefined),
@@ -77,7 +85,34 @@ describe('AuthProvider', () => {
     await waitFor(() => expect(screen.getByText('unauthenticated')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-    expect(adapter.login).toHaveBeenCalledWith(expect.objectContaining({ redirectUri: window.location.origin }));
+    expect(adapter.login).toHaveBeenCalledWith(expect.objectContaining({ redirectUri: `${window.location.origin}/executive` }));
+  });
+
+  it('starts Keycloak registration from the signup action with a safe redirect path and email hint', async () => {
+    const user = userEvent.setup();
+    const adapter: KeycloakAdapter = {
+      init: vi.fn().mockResolvedValue(false),
+      login: vi.fn().mockResolvedValue(undefined),
+      logout: vi.fn(),
+      updateToken: vi.fn()
+    };
+
+    render(
+      <AuthProvider adapter={adapter}>
+        <Probe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => expect(screen.getByText('unauthenticated')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: 'Sign up' }));
+
+    expect(adapter.login).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'register',
+        loginHint: 'finops@example.com',
+        redirectUri: `${window.location.origin}/portfolio`
+      })
+    );
   });
 
   it('does not initialize the same Keycloak adapter twice under React StrictMode', async () => {
