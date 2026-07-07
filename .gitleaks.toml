@@ -1,0 +1,36 @@
+title = "Costalyx gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+targetRules = ["generic-api-key"]
+description = "Spec-chain cross-reference that gitleaks classifies as a generic key."
+condition = "AND"
+regexTarget = "line"
+paths = ['''^01-SPEC\.md$''']
+regexes = ['''API surface: `03-API-CONTRACTS\.md`''']
+
+[[allowlists]]
+targetRules = ["generic-api-key"]
+description = "API client idempotency-key fixtures used to assert headers."
+condition = "AND"
+regexTarget = "line"
+paths = ['''^frontend/src/api/client\.test\.ts$''']
+regexes = ['''(tenant|connection|validation|recommendation)-key-1''']
+
+[[allowlists]]
+targetRules = ["generic-api-key"]
+description = "Vault path fixtures; they are storage references, not credential values."
+condition = "AND"
+regexTarget = "line"
+paths = ['''^backend/test/governance/(governance\.service|governance\.postgres\.integration)\.spec\.ts$''']
+regexes = ['''vaultCredentialPath: 'kv/costalyx/aws/prod'''']
+
+[[allowlists]]
+targetRules = ["aws-access-token"]
+description = "Historical secret-guard test fixture intentionally shaped like an AWS access key."
+condition = "AND"
+regexTarget = "line"
+paths = ['''^backend/test/governance/cloud-connection-secret-guard\.spec\.ts$''']
+regexes = ['''readOnlyPrincipal: 'AKIA[A-Z]{16}'''']

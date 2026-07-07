@@ -621,13 +621,14 @@ export class PostgresBillingAgentRepository implements BillingAgentRepository, O
       action,
       targetType,
       targetId,
+      outcome: 'succeeded' as const,
       prevHash: (previous.rows[0] as PgRow | undefined)?.hash ? String((previous.rows[0] as PgRow).hash) : null,
       createdAt: new Date().toISOString()
     };
     const hash = createHash('sha256').update(canonicalJson(entryWithoutHash)).digest('hex');
     await client.query(
-      `INSERT INTO audit_log (id, tenant_id, actor_id, action, target_type, target_id, prev_hash, hash, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      `INSERT INTO audit_log (id, tenant_id, actor_id, action, target_type, target_id, outcome, prev_hash, hash, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
         entryWithoutHash.id,
         actor.tenantId,
@@ -635,6 +636,7 @@ export class PostgresBillingAgentRepository implements BillingAgentRepository, O
         action,
         targetType,
         targetId,
+        entryWithoutHash.outcome,
         entryWithoutHash.prevHash,
         hash,
         entryWithoutHash.createdAt

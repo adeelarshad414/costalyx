@@ -33,6 +33,20 @@ describe('Milestone B OpenAPI contract', () => {
     expect(spec.paths['/roles'].post.responses).not.toHaveProperty('201');
   });
 
+  it('documents immutable audit-log outcome evidence for generated clients', () => {
+    const auditLogEntry = spec.components.schemas.AuditLogEntry as {
+      required?: string[];
+      properties?: Record<string, unknown>;
+    };
+
+    expect(auditLogEntry.required).toContain('outcome');
+    expect(auditLogEntry.properties).toHaveProperty('outcome');
+    expect(auditLogEntry.properties?.outcome).toMatchObject({
+      type: 'string',
+      enum: ['succeeded', 'failed'],
+    });
+  });
+
   it('documents export as authenticated but available to every fixed role', () => {
     expect(spec.paths['/cost-records/export'].get['x-required-role']).toBe('viewer');
     expect(spec.paths['/cost-records/export'].get.responses).toHaveProperty('200');

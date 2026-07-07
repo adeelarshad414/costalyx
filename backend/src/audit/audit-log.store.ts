@@ -22,6 +22,7 @@ export class InMemoryAuditLogStore implements AuditLogStore {
       action,
       targetType,
       targetId,
+      outcome: 'succeeded' as const,
       prevHash,
       createdAt: new Date().toISOString()
     };

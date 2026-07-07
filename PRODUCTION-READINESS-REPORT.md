@@ -1,20 +1,41 @@
 # Costalyx Production Readiness Report
 
-Generated: 2026-07-07 17:25 PKT  
-Branch: `feature/costalyx-prod-ready-2026-07-07`  
-Entry point: `docs/design/master-production-readiness-orchestrator-v2.md`
+Generated: 2026-07-07 19:11 PKT
+Branch: `feature/costalyx-ultimate-master-run-2026-07-07`
+Entry point: `16-ULTIMATE-MASTER-RUN.md`
 
 ## Executive Status
 
-Costalyx has completed the v2 local production-readiness pass through P4 with
-evidence. The app is verified against deterministic dummy data, live local
-Keycloak/Postgres/Mailpit/Docker infrastructure, host-run backend/frontend app
-tiers, OpenAPI/static contracts, production Compose config, and Helm renders.
+Costalyx has completed an Ultimate Master Run pass for the current environment.
+The app is verified against deterministic dummy data, local Keycloak/Postgres
+/Mailpit infrastructure, host-run app-tier browser evidence, focused Compose
+app-tier smoke evidence, OpenAPI/static contracts, production image smoke,
+backup/restore smoke, production Compose config, and Helm renders.
 
 It is not yet production-ready for real customer cloud validation because AWS,
 Azure, and GCP live probes require real readonly customer cloud references and
 Costalyx broker identities. That remaining incompleteness is documented under
 Blocked.
+
+Full Docker Compose app-tier browser proof is also environment-blocked on this
+workstation because Colima stopped during full-suite execution. The app-tier
+Compose path was hardened and focused-smoked, but the production-ready claim
+should rely on CI or a stable Docker daemon for full Compose browser evidence.
+
+## Ultimate Addendum
+
+| Gate | Status | Evidence |
+| --- | --- | --- |
+| Secret scan | Done | `npm run security:secrets` passed current-tree and history scans with no leaks; cloud-connection secret guard passed 1 suite / 2 tests. PR #44 CI now runs `gitleaks/gitleaks-action@v3` with full checkout history and `GITLEAKS_CONFIG=.gitleaks.toml`. |
+| Rate limiting | Done | Public endpoint limiter added; focused integration passed 1 suite / 1 test; backend build passed. |
+| RBAC penetration | Done | 25 mutating routes and 41 lower-role denial cases passed. |
+| Load / rollback | Done | Cost Explorer load and Postgres rollback proof passed 2 suites / 6 tests. |
+| Auth/Vault outage | Done | OIDC outage passed 1 suite / 6 tests; operator readiness passed 1 suite / 3 tests. |
+| Backup/restore | Done | Restore smoke verified 30 public tables and 15 cost records. |
+| Production image observability | Done | Production backend image smoke verified `/health/ready`, `/metrics`, and JSON logs. |
+| Audit log matrix | Done | Additive `audit_log.outcome`; audit matrix passed 2 suites / 8 tests; billing statement audit passed 1 suite / 2 tests; OpenAPI contract passed 13 files / 40 tests with 8 skipped. |
+| Compose app tier | Mitigated / blocked | Dev images pinned to Node 22.12 and local rate limit raised to 5000; `/healthz`, `/health/ready`, and frontend `/` responded; focused Compose E2E passed 5 Chromium tests in 19.4s. Full-suite proof blocked when Colima stopped and Docker reported `colima is not running`. |
+| Clean checkout | Done | Fresh `/tmp` clone installed 748 packages with 0 vulnerabilities, generated client with no diff, passed contracts 13 files / 40 tests, migration check 14 files, theme-color guard, and `docker compose config`. |
 
 ## Phase Status
 
@@ -46,20 +67,25 @@ Blocked.
 
 ## Regression Floor
 
-Latest full local regression after P3 backend/OpenAPI changes:
+Latest non-Docker regression after the Ultimate fixes:
 
-- `npm test`: backend 41 suites / 152 tests passed with 6 suites / 8 tests
-  skipped; frontend 23 files / 66 tests passed; contract 13 files / 39 tests
+- `npm test`: backend 45 suites / 200 tests passed with 6 suites / 8 tests
+  skipped; frontend 23 files / 66 tests passed; contract 13 files / 40 tests
   passed with 8 files / 15 tests skipped; additive migration check passed for
-  13 migration files; `lint:theme-colors` passed.
-- `npm run ci:live-contract`: 9 live files / 20 tests passed.
+  14 migration files; `lint:theme-colors` passed.
 - `npm --workspace backend run build`: passed.
 - `npm --workspace frontend run build`: passed.
+- `npm run security:secrets`: current-tree and git-history gitleaks scans
+  passed with no leaks.
 - `npm audit --audit-level=high`: 0 vulnerabilities.
-- Broad browser floor after P4 seed reset: 23 Chromium tests passed with 1
-  expected viewer-only skip in 1.3m.
-- `npm run seed:demo`: restored canonical dummy data with 2 tenants, 4 cloud
-  connections, 12 cost records, 3 statements, and 3 agent runs.
+- `docker compose config`: passed.
+- `docker compose -f docker-compose.prod.yml config`: passed with explicit
+  operator-supplied placeholder env.
+- `git diff --check`: passed.
+- Full live browser and live-contract reruns are currently blocked by the local
+  Colima runtime stopping mid-run; earlier host-run browser floor remains the
+  verified local full browser mode, and focused Compose E2E passed 5 Chromium
+  tests after app-tier hardening.
 
 ## Frontend And Theme
 
@@ -93,6 +119,7 @@ Latest full local regression after P3 backend/OpenAPI changes:
 | BLOCKED-002 | Azure real probe | Missing customer billing scope/delegated principal/export references and Costalyx Azure broker identity. | Billing scope ID, delegated principal ID, unsigned export Blob URI, and broker identity. |
 | BLOCKED-003 | GCP real probe | Missing customer billing resource/WIF/export references and Costalyx GCP broker identity. | Billing resource ID, Workload Identity Federation provider, BigQuery export URI, optional location, and broker identity. |
 | BLOCKED-004 | Production claim | Dummy data is verified(mock), not production cloud evidence. | At least one real readonly customer cloud account per provider or an explicit scoped launch decision. |
+| BLOCKED-005 | Full Compose app-tier browser proof | Local Colima stopped during the full Compose browser suite and Docker became unavailable. | Rerun on CI or a stable Docker daemon; current supported local browser path is Docker infra plus host-run backend/frontend. |
 
 ## HUMAN_DECISION_GATE Register
 
@@ -129,11 +156,23 @@ Latest full local regression after P3 backend/OpenAPI changes:
   client contracts.
 - Updated production Compose and Helm probes to use the explicit readiness and
   liveness endpoints.
+- Added Ultimate-run security/resilience/ops evidence: secret scan, rate
+  limiting, RBAC penetration matrix, load/rollback proof, outage probes,
+  backup/restore smoke, production-image observability smoke, audit-log outcome
+  matrix, and clean-checkout proof.
+- Hardened local dev Compose app-tier images and documented the remaining
+  Colima blocker.
 
 ## PR Summary
 
-PR opened: https://github.com/adeelarshad414/costalyx/pull/43
+PR opened: https://github.com/adeelarshad414/costalyx/pull/44
 
-At the time this report was updated, PR #43 was mergeable but unstable because
-the latest GitHub Actions checks were still in progress. No CI bypass has been
-used.
+At the time this report was updated, PR #44 had just been opened for the
+Ultimate Master Run branch. No CI bypass has been used. The first CI failure
+was classified as a secret-scan configuration false positive: allowlisted test
+fixture strings were scanned by the hosted action without the repo
+`.gitleaks.toml` config. CI has been updated to use `gitleaks-action@v3` with
+`GITLEAKS_CONFIG=.gitleaks.toml` and full checkout history. If GitHub Actions
+later fails only for billing/infra, merge may be annotated under the requested
+`ci-bypass: billing/infra` policy after the local regression floor evidence in
+this report is accepted; genuine test failures should not be bypassed.

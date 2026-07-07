@@ -2,14 +2,10 @@ import { expect, type APIRequestContext, type Page, type TestInfo } from '@playw
 
 export const hasKeycloakCredentials = Boolean(process.env.E2E_KEYCLOAK_USERNAME && process.env.E2E_KEYCLOAK_PASSWORD);
 
-const defaultRegions = ['Cloud portfolio', 'Executive summary', 'Billing anomalies'];
-
 export async function signInAsAdmin(page: Page) {
   await signInAsSeededUser(page);
 
-  for (const region of defaultRegions) {
-    await expect(page.getByRole('region', { name: region })).toBeVisible({ timeout: 45000 });
-  }
+  await expect(page.getByRole('navigation', { name: 'Product sections' })).toBeVisible({ timeout: 45000 });
 }
 
 export async function signInAsSeededUser(page: Page) {

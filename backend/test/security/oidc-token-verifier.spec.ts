@@ -1,6 +1,13 @@
 import { UnauthorizedException } from '@nestjs/common';
-import { extractRoleFromClaims, resolveJwksUrl } from '../../src/security/oidc-token-verifier';
+import { extractRoleFromClaims, OidcTokenVerifier, resolveJwksUrl } from '../../src/security/oidc-token-verifier';
 import { DEFAULT_TENANT_ID } from '../../src/security/token-verifier';
+
+jest.mock('jose', () => ({
+  createRemoteJWKSet: jest.fn(() => 'jwks-resolver'),
+  jwtVerify: jest.fn(async () => {
+    throw new Error('connect ECONNREFUSED keycloak.local Authorization: Bearer should-not-leak');
+  })
+}));
 
 describe('extractRoleFromClaims', () => {
   it('selects the highest fixed Costalyx role from Keycloak realm roles', () => {
@@ -49,5 +56,19 @@ describe('extractRoleFromClaims', () => {
         'http://keycloak:8080/realms/costalyx-dev/protocol/openid-connect/certs'
       ).toString()
     ).toBe('http://keycloak:8080/realms/costalyx-dev/protocol/openid-connect/certs');
+  });
+
+  it('sanitizes Keycloak/JWKS outage failures behind a stable unauthorized error', async () => {
+    const verifier = new OidcTokenVerifier({
+      get: (key: string) =>
+        ({
+          KEYCLOAK_ISSUER_URL: 'https://auth.example.test/realms/costalyx',
+          KEYCLOAK_JWKS_URL: 'https://auth.example.test/realms/costalyx/protocol/openid-connect/certs',
+          KEYCLOAK_CLIENT_ID: 'costalyx-web'
+        })[key]
+    } as never);
+
+    await expect(verifier.verifyBearerToken('header.payload.signature')).rejects.toThrow(UnauthorizedException);
+    await expect(verifier.verifyBearerToken('header.payload.signature')).rejects.toThrow('Invalid bearer token.');
   });
 });

@@ -31,6 +31,7 @@ export class OperatorReadinessService {
       configuredCheck('database-url', 'Postgres connection', 'supporting-service', 'DATABASE_URL'),
       configuredCheck('keycloak-issuer', 'Keycloak issuer', 'supporting-service', 'KEYCLOAK_ISSUER_URL'),
       configuredCheck('vault-address', 'Vault address', 'supporting-service', 'VAULT_ADDR'),
+      configuredCheck('vault-auth', 'Vault runtime auth', 'supporting-service', 'VAULT_TOKEN'),
       configuredCheck('redpanda-brokers', 'Redpanda brokers', 'supporting-service', 'REDPANDA_BROKERS'),
       configuredCheck('smtp-relay', 'SMTP relay', 'supporting-service', 'SMTP_HOST'),
       {

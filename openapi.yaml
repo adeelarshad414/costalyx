@@ -3400,7 +3400,7 @@ components:
 
     AuditLogEntry:
       type: object
-      required: [id, tenantId, actorId, action, targetType, targetId, prevHash, hash, createdAt]
+      required: [id, tenantId, actorId, action, targetType, targetId, outcome, prevHash, hash, createdAt]
       properties:
         id:
           type: string
@@ -3417,6 +3417,9 @@ components:
           type: string
         targetId:
           type: string
+        outcome:
+          type: string
+          enum: [succeeded, failed]
         prevHash:
           type: ["string", "null"]
         hash:

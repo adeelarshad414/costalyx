@@ -5,7 +5,76 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-07 17:23:13 PKT_
+_Last updated: 2026-07-07 19:11:47 PKT_
+
+## Ultimate Master Run — 2026-07-07
+
+Status: complete honest pass for the current environment. All Ultimate gaps are
+fixed or evidenced, except production cloud proof remains blocked on external
+AWS/Azure/GCP values and full Docker Compose app-tier browser proof remains
+environment-blocked by the local Colima runtime stopping mid-run.
+
+Evidence added in this run:
+- Added and pushed `16-ULTIMATE-MASTER-RUN.md`; created/updated
+  `GAP-REGISTER.md` entries GAP-032 through GAP-044 before remediation.
+- Added secret-scanning gate: `.gitleaks.toml`,
+  `scripts/check-secret-scan.mjs`, `npm run security:secrets`, and CI wiring.
+  `npm run security:secrets` passed current-tree and history scans with no
+  leaks; the cloud-connection secret guard passed 1 suite / 2 tests.
+- Corrected PR #44 CI secret-scan wiring after GitHub Actions reported
+  allowlisted fixture strings. The hosted action now uses
+  `gitleaks/gitleaks-action@v3`, full checkout history, and
+  `GITLEAKS_CONFIG=.gitleaks.toml`; local `npm run security:secrets` passed
+  current-tree and 88-commit history scans with no leaks.
+- Added public endpoint rate limiting with configurable
+  `COSTALYX_RATE_LIMIT_*` knobs. Focused rate-limit integration passed 1 suite
+  / 1 test and backend build passed.
+- Added mutating-route RBAC penetration matrix covering 25 mutating routes and
+  41 lower-role denial cases; focused suite passed 1 suite / 41 tests.
+- Added Cost Explorer load and ingestion rollback proof. Focused load/repository
+  run passed 2 suites / 6 tests.
+- Added Keycloak/JWKS and Vault outage probes. OIDC verifier outage passed 1
+  suite / 6 tests; operator readiness passed 1 suite / 3 tests.
+- Added backup/restore smoke and production image observability smoke.
+  `npm run ops:backup-restore-smoke` restored 30 public tables and 15 cost
+  records; `npm run ops:prod-image-observability-smoke` verified readiness,
+  metrics, and JSON logs from the production backend image.
+- Added additive `audit_log.outcome` migration/rollback, propagated outcome
+  through OpenAPI, generated frontend schema, Postgres audit writers, seed data,
+  and audit mappers. Audit matrix proof passed 2 suites / 8 tests; billing
+  statement audit proof passed 1 suite / 2 tests; OpenAPI contracts passed
+  13 files / 40 tests with 8 skipped; migration check passed 14 files.
+- Hardened local Compose app-tier path by pinning dev Docker images to
+  `node:22.12.0-alpine`, raising dev `COSTALYX_RATE_LIMIT_MAX` to 5000, and
+  tightening E2E waits. After rebuild, `/healthz`, `/health/ready`, and
+  frontend `/` responded correctly; focused Compose browser proof passed
+  5 Chromium tests in 19.4s. Full browser proof remains environment-blocked:
+  Colima stopped during full-suite execution and later Docker calls reported
+  `colima is not running`.
+- Added README quickstart fallback note and clean-checkout proof. Fresh clone at
+  `/tmp/costalyx-clean-checkout-20260707` ran `npm install` with 0
+  vulnerabilities, `npm run generate:client` with no diff, `npm run
+  test:contract` with 13 files / 40 tests and 8 skipped, `npm run
+  migration:check` for 14 files, `npm run lint:theme-colors`, and
+  `docker compose config`; final clean checkout status was empty.
+- Final non-Docker regression after the Ultimate fixes passed: `npm test`
+  passed backend 45 suites / 200 tests with 6 suites / 8 tests skipped,
+  frontend 23 files / 66 tests, contract 13 files / 40 tests with 8 files /
+  15 tests skipped, additive migration check for 14 migration files, and
+  `lint:theme-colors`; backend build passed; frontend build passed; `npm run
+  security:secrets` passed current-tree and git-history scans; `npm audit
+  --audit-level=high` found 0 vulnerabilities; `docker compose config` and
+  production Compose config rendered; `git diff --check` passed.
+
+Blocked/remaining for this Ultimate run:
+- GAP-034: full Docker Compose app-tier browser suite is mitigated but blocked
+  by the local Colima runtime stopping mid-run. Verified repeatable browser
+  mode remains Docker infra plus host-run app tiers or CI with a stable Docker
+  daemon.
+- GAP-044 / Milestone H real-cloud production proof: blocked pending real
+  customer readonly cloud references and Costalyx broker identities for AWS,
+  Azure, and GCP. Dummy data remains `verified(mock)` only.
+- PR opened for this Ultimate run: https://github.com/adeelarshad414/costalyx/pull/44.
 
 ## Production Readiness Orchestrator v2 Run — 2026-07-07
 

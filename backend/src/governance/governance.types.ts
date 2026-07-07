@@ -52,6 +52,7 @@ export interface AuditLogEntry {
   action: string;
   targetType: string;
   targetId: string;
+  outcome: 'succeeded' | 'failed';
   prevHash: string | null;
   hash: string;
   createdAt: string;

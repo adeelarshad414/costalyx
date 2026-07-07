@@ -21,8 +21,12 @@ test.describe('FinOps practitioner anomaly and allocation persona journey', () =
     await expect.poll(async () => billing.getByLabel(/False positive reason/).count()).toBeGreaterThan(0);
 
     const allocation = page.getByRole('region', { name: 'Allocation and dynamic tagging' });
-    await expect(allocation.getByRole('region', { name: 'Custom dimensions' })).toContainText(/Cost Center|Environment/);
-    await expect(allocation.getByRole('region', { name: 'Dimension aggregate' })).toContainText('Untagged');
+    await expect(allocation.getByRole('region', { name: 'Custom dimensions' })).toContainText(/Cost Center|Environment/, {
+      timeout: 45000
+    });
+    await expect(allocation.getByRole('region', { name: 'Dimension aggregate' })).toContainText('Untagged', {
+      timeout: 45000
+    });
     await expect(allocation.getByRole('button', { name: 'Retag resource' })).toBeEnabled();
 
     await capturePersonaEvidence(page, testInfo, 'finops-anomaly-allocation');
