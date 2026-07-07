@@ -165,8 +165,10 @@ Latest non-Docker regression after the Ultimate fixes:
 
 ## PR Summary
 
-PR opened: https://github.com/adeelarshad414/costalyx/pull/43
+PR opened: https://github.com/adeelarshad414/costalyx/pull/44
 
-At the time this report was updated, PR #43 was mergeable but unstable because
-the latest GitHub Actions checks were still in progress. No CI bypass has been
-used.
+At the time this report was updated, PR #44 had just been opened for the
+Ultimate Master Run branch. No CI bypass has been used. If GitHub Actions later
+fails only for billing/infra, merge may be annotated under the requested
+`ci-bypass: billing/infra` policy after the local regression floor evidence in
+this report is accepted; genuine test failures should not be bypassed.

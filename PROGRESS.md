@@ -69,6 +69,7 @@ Blocked/remaining for this Ultimate run:
 - GAP-044 / Milestone H real-cloud production proof: blocked pending real
   customer readonly cloud references and Costalyx broker identities for AWS,
   Azure, and GCP. Dummy data remains `verified(mock)` only.
+- PR opened for this Ultimate run: https://github.com/adeelarshad414/costalyx/pull/44.
 
 ## Production Readiness Orchestrator v2 Run — 2026-07-07
 
