@@ -120,4 +120,47 @@ describe('Operator readiness endpoint', () => {
     expect(serialized).not.toContain('auth.example.test');
     expect(serialized).not.toContain('vault.internal.example.test');
   });
+
+  it('reports a Vault outage/misconfiguration without leaking previous Vault values', async () => {
+    const previousVaultAddr = process.env.VAULT_ADDR;
+    const previousVaultToken = process.env.VAULT_TOKEN;
+    delete process.env.VAULT_ADDR;
+    delete process.env.VAULT_TOKEN;
+
+    try {
+      const response = await request(app.getHttpAdapter().getInstance())
+        .get('/api/v1/operator-readiness')
+        .set('x-costalyx-role', 'admin')
+        .expect(200);
+
+      expect(response.body.checks).toContainEqual(
+        expect.objectContaining({
+          id: 'vault-address',
+          status: 'attention',
+          remediation: 'Configure VAULT_ADDR before a production go-live check.'
+        })
+      );
+      expect(response.body.checks).toContainEqual(
+        expect.objectContaining({
+          id: 'vault-auth',
+          status: 'attention',
+          remediation: 'Configure VAULT_TOKEN before a production go-live check.'
+        })
+      );
+      const serialized = JSON.stringify(response.body);
+      expect(serialized).not.toContain('vault-root-token-super-secret');
+      expect(serialized).not.toContain('vault.internal.example.test');
+    } finally {
+      restoreEnvValue('VAULT_ADDR', previousVaultAddr);
+      restoreEnvValue('VAULT_TOKEN', previousVaultToken);
+    }
+  });
 });
+
+function restoreEnvValue(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+    return;
+  }
+  process.env[name] = value;
+}
