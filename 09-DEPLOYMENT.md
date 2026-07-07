@@ -35,9 +35,10 @@ approved sandbox.
   chart includes optional subchart references for self-hosters who want an
   in-cluster option, clearly labeled as non-HA
 - HorizontalPodAutoscaler on the backend keyed to CPU + request queue depth
-- Readiness probe checks DB connectivity + Vault reachability; liveness
-  probe is a lightweight `/healthz` that does not depend on external services
-  (so a transient Vault blip doesn't cause a restart storm)
+- Liveness uses `/health/live`, a lightweight process check. Readiness uses
+  `/health/ready`, a sanitized repository-backed dependency check, so a
+  transient readiness failure removes the pod from service without causing a
+  liveness restart storm.
 
 ## CI/CD pipeline (GitHub Actions, matching the feature-branch + PR workflow)
 ```
