@@ -17,10 +17,14 @@ services:
   backend:       # NestJS, hot-reload
   frontend:      # Vite dev server, proxies /api to backend
 ```
-A `make dev-up` target brings the full stack up and seeds: a dev Keycloak
-realm with the three fixed roles, a dev Vault instance with a placeholder
-secrets path, and fixture cost data from `test/fixtures/` so the UI is never
-empty on first run for a new contributor.
+A `make dev-up` target brings the full stack up and seeds the dev Keycloak
+realm with the three fixed roles plus a dev Vault instance with placeholder
+paths. Run `npm run seed:demo` from the repo root after Postgres is healthy
+to apply migrations and populate tenant-scoped AWS, Azure, and GCP demo
+data, portfolio connections, tags, recommendations, anomalies, statements,
+and agent-run evidence. The seed command refuses production-looking database
+targets unless `COSTALYX_ALLOW_DEMO_SEED=true` is explicitly set for an
+approved sandbox.
 
 ## Kubernetes / Helm (production)
 - Separate Deployments for `backend` (horizontally scalable, stateless) and
