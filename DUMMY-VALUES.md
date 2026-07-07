@@ -40,6 +40,10 @@ replace every item below. The backend startup guard fails when
 | Test-only email domains `example.test` | Backend integration tests; Keycloak E2E seeding script | Real user emails from the production identity provider | Production Keycloak/IdP user directory; never hardcoded |
 | `SEED_FIXTURE_DATA=true` | `docker-compose.yml` backend local env | Disabled unless explicitly running a demo/sandbox tenant | Deployment env `SEED_FIXTURE_DATA=false`; production seed jobs disabled |
 | `USE_MOCKS=false` local assertion | `docker-compose.yml`; docs | Keep `false`; no production feature should require frontend mocks | Deployment env and CI check remain `USE_MOCKS=false` |
+| Test idempotency keys such as `tenant-key-1`, `connection-key-1`, `validation-key-1`, and `recommendation-key-1` | `frontend/src/api/client.test.ts`; `.gitleaks.toml` scoped allowlist | Runtime-generated idempotency keys per mutating request | Client-generated UUID or equivalent request key; never a credential |
+| Test Vault path `kv/costalyx/aws/prod` | Backend governance tests; `.gitleaks.toml` scoped allowlist | Real Vault secret path selected by environment and tenant/provider | Vault namespace/path managed by deployment automation; path references may be logged only when sanitized |
+| Secret-guard fake AWS key-shaped fixture | Historical backend test fixture and `.gitleaks.toml` scoped allowlist | No customer access keys accepted; customers provide read-only role/principal/export references only | Cloud connection payload validation and live probes; real broker credentials live outside repo in Vault/workload identity |
+| Gitleaks false-positive allowlist | `.gitleaks.toml` | Narrow allowlist for documented non-secret fixtures and spec cross-references only | `npm run security:secrets` plus CI secret scan; any real finding requires removal and rotation |
 
 ## Startup Guard Evidence
 

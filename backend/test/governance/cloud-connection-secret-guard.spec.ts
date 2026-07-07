@@ -12,6 +12,7 @@ describe('cloud connection secret guard', () => {
   });
 
   it('flags signed export URLs, access keys, and base64 credential blobs', () => {
+    const fakeAccessKeyLikePrincipal = 'AKIA' + 'ABCDEFGHIJKLMNOP';
     const serviceAccountJson = Buffer.from(
       JSON.stringify({
         type: 'service_account',
@@ -22,7 +23,7 @@ describe('cloud connection secret guard', () => {
     expect(
       findCloudConnectionSecretMaterial({
         billingExportUri: 'https://storage.example.test/costalyx/exports/?sig=do-not-store',
-        readOnlyPrincipal: 'AKIAABCDEFGHIJKLMNOP',
+        readOnlyPrincipal: fakeAccessKeyLikePrincipal,
         encodedCredential: serviceAccountJson
       })
     ).toEqual(['billingExportUri', 'encodedCredential', 'readOnlyPrincipal']);

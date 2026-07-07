@@ -73,8 +73,8 @@ Full architectural detail: [`02-DATA-MODEL.md`](./02-DATA-MODEL.md),
 ```bash
 git clone https://github.com/<org>/costalyx.git
 cd costalyx
-cp .env.example .env
-make dev-up          # brings up Postgres, Keycloak, Vault, Redpanda, backend, frontend
+npm install
+npm run dev-up       # brings up Postgres, Keycloak, Vault, Redpanda, backend, frontend
 npm run seed:demo    # applies migrations and populates local demo data
 ```
 This seeds a dev Keycloak realm with the three fixed roles (`viewer`,
@@ -85,7 +85,8 @@ Frontend: http://localhost:5173 · Backend API:
 http://localhost:3000/api/v1 · API docs: http://localhost:3000/api/docs
 
 Full environment matrix and production deployment: see
-[`09-DEPLOYMENT.md`](./09-DEPLOYMENT.md).
+[`09-DEPLOYMENT.md`](./09-DEPLOYMENT.md) and the concise
+[`DEPLOY-GUIDE.md`](./DEPLOY-GUIDE.md).
 
 ## Documentation / spec chain
 | Doc | Purpose |
@@ -101,11 +102,17 @@ Full environment matrix and production deployment: see
 | [`08-TESTING-STRATEGY.md`](./08-TESTING-STRATEGY.md) | TDD discipline, coverage gates |
 | [`09-DEPLOYMENT.md`](./09-DEPLOYMENT.md) | CI/CD, environments, release process |
 | [`12-MULTITENANT-CLOUD-PORTFOLIO.md`](./12-MULTITENANT-CLOUD-PORTFOLIO.md) | Tenant-first cloud account onboarding and portfolio architecture |
+| [`13-BILLING-AGENT-SPEC.md`](./13-BILLING-AGENT-SPEC.md) | Agentic billing intelligence and statement workflow |
+| [`14-MASTER-GOAL-PROMPT.md`](./14-MASTER-GOAL-PROMPT.md) | Unified autonomous production run prompt |
+| [`16-ULTIMATE-MASTER-RUN.md`](./16-ULTIMATE-MASTER-RUN.md) | Current single-entry autonomous audit/fix/document/ship prompt |
+| [`HOW-TO-USE.md`](./HOW-TO-USE.md) | Task-oriented guide for operators and personas |
+| [`DEPLOY-GUIDE.md`](./DEPLOY-GUIDE.md) | Concise verified local, Compose, Helm, and go-live guide |
+| [`CHANGELOG.md`](./CHANGELOG.md) | Conventional-commit release summary |
 | [`PROGRESS.md`](./PROGRESS.md) | Live build status (source of truth over this README) |
 
 ## Contributing
 Conventional commits, feature-branch workflow, PR required for `main`. Every
-PR must pass lint, unit, integration, contract, and migration-safety checks
+PR must pass lint, secret scan, unit, integration, contract, and migration-safety checks
 (see `09-DEPLOYMENT.md`). No feature is merge-ready without the full-stack
 wiring checklist in `07-FRONTEND-BACKEND-WIRING.md` satisfied.
 
