@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { UserPreferencesProvider } from '../preferences/UserPreferences';
 import { ThemeToggle } from './ThemeToggle';
 
 describe('ThemeToggle', () => {
@@ -10,7 +11,11 @@ describe('ThemeToggle', () => {
 
   it('makes light mode reachable and persists the selected theme', async () => {
     const user = userEvent.setup();
-    render(<ThemeToggle />);
+    render(
+      <UserPreferencesProvider>
+        <ThemeToggle />
+      </UserPreferencesProvider>
+    );
 
     const toggle = screen.getByRole('button', { name: 'Switch to light theme' });
     expect(toggle).toHaveAttribute('aria-pressed', 'false');

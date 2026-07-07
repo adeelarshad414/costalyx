@@ -15,6 +15,7 @@ import { OptimizationConsole } from './features/optimization/OptimizationConsole
 import { OperatorReadinessConsole } from './features/operator/OperatorReadinessConsole';
 import { CloudPortfolioConsole } from './features/portfolio/CloudPortfolioConsole';
 import { ReportingConsole } from './features/reporting/ReportingConsole';
+import { SettingsConsole } from './features/settings/SettingsConsole';
 
 const productSections = [
   { id: 'cloud-portfolio', label: 'Cloud portfolio' },
@@ -26,6 +27,7 @@ const productSections = [
   { id: 'reporting', label: 'Reporting' },
   { id: 'allocation', label: 'Allocation' },
   { id: 'governance', label: 'Governance' },
+  { id: 'settings', label: 'Settings' },
   { id: 'operator', label: 'Operator', adminOnly: true }
 ] as const;
 
@@ -89,6 +91,9 @@ export function App() {
         </div>
         <div id="governance" className="section-anchor">
           <GovernanceConsole client={client} />
+        </div>
+        <div id="settings" className="section-anchor">
+          <SettingsConsole />
         </div>
         <PermissionGate requiredRole="admin" mode="hide">
           <div id="operator" className="section-anchor">

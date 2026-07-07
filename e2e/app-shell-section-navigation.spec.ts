@@ -10,7 +10,8 @@ const sections = [
   'Billing Agent',
   'Reporting',
   'Allocation',
-  'Governance'
+  'Governance',
+  'Settings'
 ];
 
 test.describe('App shell section navigation', () => {
