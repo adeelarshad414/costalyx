@@ -101,6 +101,7 @@ The API liveness probe is `/health/live`; readiness is `/health/ready`.
 - `npm audit --audit-level=high`
 - `npm run security:secrets`
 - `npm run ops:backup-restore-smoke`
+- `npm run ops:prod-image-observability-smoke`
 - `npm run probe:live-readiness`
 - Production Compose config render
 - Helm lint and template render
