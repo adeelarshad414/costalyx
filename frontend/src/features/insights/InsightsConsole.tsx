@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { LoadingState } from '../../components/LoadingState';
 import { toUserFacingError } from '../../utils/userFacingError';
 
 interface InsightsConsoleProps {
@@ -76,8 +77,8 @@ export function InsightsConsole({ client }: InsightsConsoleProps) {
 
   if (state === 'loading') {
     return (
-      <section className="panel" aria-busy="true">
-        <p>Loading insights</p>
+      <section className="panel">
+        <LoadingState title="Loading insights" variant="table" />
       </section>
     );
   }

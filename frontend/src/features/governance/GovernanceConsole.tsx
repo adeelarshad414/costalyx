@@ -4,6 +4,7 @@ import type { CostalyxClient } from '../../api/client';
 import { useAuth } from '../../auth/AuthProvider';
 import { PermissionGate } from '../../auth/PermissionGate';
 import { ErrorState } from '../../components/ErrorState';
+import { LoadingState } from '../../components/LoadingState';
 import { toUserFacingError } from '../../utils/userFacingError';
 
 interface GovernanceConsoleProps {
@@ -58,7 +59,7 @@ export function GovernanceConsole({ client }: GovernanceConsoleProps) {
         <div className="governance-grid">
           <section aria-label="Fixed role inventory">
             <h2>Fixed roles</h2>
-            {state === 'loading' ? <p>Loading roles</p> : null}
+            {state === 'loading' ? <LoadingState title="Loading roles" variant="list" rows={3} /> : null}
             {state === 'error' ? (
               <ErrorState title="Could not load roles" detail={error} onRetry={loadRoles} />
             ) : null}

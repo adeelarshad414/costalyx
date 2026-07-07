@@ -96,6 +96,7 @@ describe('IngestionOverview', () => {
     renderAsAdmin(<IngestionOverview client={client} />);
 
     expect(screen.getByText('Loading cost records')).toBeInTheDocument();
+    expect(screen.getByTestId('loading-skeleton')).toHaveAttribute('data-variant', 'table');
     await waitFor(() => expect(screen.getByText('i-aws-prod-001')).toBeInTheDocument());
     expect(screen.getByText('0.41600000')).toHaveClass('font-mono-data', 'numeric-cell');
   });
