@@ -20,7 +20,10 @@ test.describe('IT manager showback scopes persona journey', () => {
     await expect(portfolio).toContainText('3');
 
     const allocation = page.getByRole('region', { name: 'Allocation and dynamic tagging' });
-    await expect(allocation.getByRole('region', { name: 'Dimension aggregate' })).toContainText('Untagged');
+    await expect(allocation).toBeVisible({ timeout: 45000 });
+    const aggregate = allocation.getByRole('region', { name: 'Dimension aggregate' });
+    await expect(aggregate).toBeVisible({ timeout: 45000 });
+    await expect(aggregate).toContainText('Untagged', { timeout: 45000 });
 
     const billing = page.getByRole('region', { name: 'Billing anomalies' });
     await expect(billing).toContainText('Data Platform');

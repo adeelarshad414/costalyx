@@ -34,6 +34,7 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
   const [isMutating, setIsMutating] = useState(false);
   const [reasonById, setReasonById] = useState<Record<string, FalsePositiveReason>>({});
   const [selectedAnomalyId, setSelectedAnomalyId] = useState<string | null>(null);
+  const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
   const [period, setPeriod] = useState(defaultStatementPeriod);
 
   const loadConsole = useCallback(async () => {
@@ -55,7 +56,11 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
       setSelectedAnomalyId((current) =>
         current && loadedAnomalies.some((anomaly) => anomaly.id === current) ? current : null
       );
-      setStatements(statementResponse.data);
+      const loadedStatements: BillingStatement[] = (statementResponse.data ?? []) as BillingStatement[];
+      setStatements(loadedStatements);
+      setSelectedStatementId((current) =>
+        current && loadedStatements.some((statement) => statement.id === current) ? current : null
+      );
       setAgentRuns(agentRunResponse.data);
       setState('loaded');
     } catch (loadError) {
@@ -213,6 +218,7 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
   }
 
   const selectedAnomaly = anomalies.find((anomaly) => anomaly.id === selectedAnomalyId) ?? null;
+  const selectedStatement = statements.find((statement) => statement.id === selectedStatementId) ?? null;
 
   return (
     <section className="panel" aria-label="Billing anomalies">
@@ -345,6 +351,16 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
                 </div>
               </div>
               <div className="anomaly-actions statement-actions">
+                <button
+                  type="button"
+                  aria-controls="statement-detail-document"
+                  aria-expanded={selectedStatementId === statement.id}
+                  aria-label={`Review statement for ${statement.stakeholderName}`}
+                  onClick={() => setSelectedStatementId(statement.id)}
+                >
+                  <FileSearch aria-hidden="true" size={16} />
+                  Review
+                </button>
                 <button type="button" onClick={() => exportStatement(statement, 'csv')} disabled={isMutating}>
                   <FileDown aria-hidden="true" size={16} />
                   CSV
@@ -395,6 +411,15 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
           ))}
         </ul>
       )}
+
+      {selectedStatement ? (
+        <StatementDetailDocument
+          statement={selectedStatement}
+          isMutating={isMutating}
+          onClose={() => setSelectedStatementId(null)}
+          onExport={exportStatement}
+        />
+      ) : null}
 
       <PermissionGate requiredRole="admin" mode="hide">
         <div className="panel-toolbar anomaly-toolbar statement-toolbar">
@@ -510,6 +535,174 @@ function AnomalyEvidenceStory({ anomaly, onClose }: { anomaly: Anomaly; onClose:
   );
 }
 
+function StatementDetailDocument({
+  statement,
+  isMutating,
+  onClose,
+  onExport
+}: {
+  statement: BillingStatement;
+  isMutating: boolean;
+  onClose: () => void;
+  onExport: (statement: BillingStatement, format: 'csv' | 'pdf') => Promise<void>;
+}) {
+  const reconciliationRows = [
+    { label: 'Tenant total', amountUsd: statement.reconciliation.tenantTotalUsd },
+    { label: 'Allocated unique', amountUsd: statement.reconciliation.allocatedUniqueUsd },
+    { label: 'Unallocated', amountUsd: statement.reconciliation.unallocatedUsd },
+    { label: 'Overlap', amountUsd: statement.reconciliation.overlapUsd }
+  ];
+
+  return (
+    <section id="statement-detail-document" className="statement-detail-document" aria-label="Forwardable statement">
+      <div className="statement-document-header">
+        <div>
+          <p className="section-kicker">Statement detail</p>
+          <h3>{statement.stakeholderName}</h3>
+          <p>{statement.stakeholderEmail}</p>
+        </div>
+        <div className="statement-document-actions">
+          <button type="button" onClick={() => void onExport(statement, 'csv')} disabled={isMutating}>
+            <FileDown aria-hidden="true" size={16} />
+            Export CSV
+          </button>
+          <button type="button" onClick={() => void onExport(statement, 'pdf')} disabled={isMutating}>
+            <FileDown aria-hidden="true" size={16} />
+            Export PDF
+          </button>
+          <button type="button" className="icon-button" aria-label="Close statement detail" onClick={onClose}>
+            <X aria-hidden="true" size={18} />
+          </button>
+        </div>
+      </div>
+
+      <dl className="statement-document-summary">
+        <div>
+          <dt>Total</dt>
+          <dd className="font-mono-data">${statement.totalUsd}</dd>
+        </div>
+        <div>
+          <dt>Period</dt>
+          <dd>
+            <span className="font-mono-data">{formatDate(statement.periodStart)}</span>
+            <span aria-hidden="true"> to </span>
+            <span className="font-mono-data">{formatDate(statement.periodEnd)}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd>{labelForToken(statement.status)}</dd>
+        </div>
+        <div>
+          <dt>Open anomalies</dt>
+          <dd className="font-mono-data">{statement.openAnomalyCount}</dd>
+        </div>
+      </dl>
+
+      <div className="statement-document-narrative">
+        <h4>Narrative</h4>
+        <p>{statement.narrativeMd}</p>
+      </div>
+
+      <div className="statement-document-grid">
+        <section className="statement-document-section statement-document-section-wide">
+          <h4>Line items</h4>
+          <div className="table-wrap">
+            <table className="statement-document-table" aria-label="Statement line items">
+              <thead>
+                <tr>
+                  <th scope="col">Type</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Evidence</th>
+                  <th scope="col">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {statement.lineItems.map((lineItem) => (
+                  <tr key={lineItem.id}>
+                    <td>{labelForToken(lineItem.lineType)}</td>
+                    <td>{lineItem.description}</td>
+                    <td>{statementLineEvidence(lineItem)}</td>
+                    <td className="font-mono-data numeric-cell">${lineItem.amountUsd}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="statement-document-section">
+          <h4>Reconciliation</h4>
+          <div className="table-wrap">
+            <table className="statement-document-table" aria-label="Statement reconciliation">
+              <tbody>
+                {reconciliationRows.map((row) => (
+                  <tr key={row.label}>
+                    <th scope="row">{row.label}</th>
+                    <td className="font-mono-data numeric-cell">${row.amountUsd}</td>
+                  </tr>
+                ))}
+                <tr>
+                  <th scope="row">Status</th>
+                  <td>{statement.reconciliation.reconcilesToTenantTotal ? 'Reconciles to tenant total' : 'Needs allocation review'}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="statement-document-section">
+          <h4>Scope warnings</h4>
+          {statement.scopeWarnings.length === 0 ? (
+            <p>No scope warnings detected.</p>
+          ) : (
+            <ul className="statement-document-list" aria-label="Statement warnings">
+              {statement.scopeWarnings.map((warning) => (
+                <li key={`${warning.code}-${warning.amountUsd}-${warning.costRecordIds.join('-')}`}>
+                  <strong>{labelForToken(warning.code)}</strong>
+                  <span>{warning.message}</span>
+                  <span className="font-mono-data">${warning.amountUsd}</span>
+                  <span>{warning.costRecordIds.length} cost records</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="statement-document-section">
+          <h4>Variance movers</h4>
+          {statement.varianceTopMovers.length === 0 ? (
+            <p>No variance movers for this period.</p>
+          ) : (
+            <div className="table-wrap">
+              <table className="statement-document-table" aria-label="Statement variance movers">
+                <thead>
+                  <tr>
+                    <th scope="col">Driver</th>
+                    <th scope="col">Current</th>
+                    <th scope="col">Prior</th>
+                    <th scope="col">Delta</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {statement.varianceTopMovers.map((mover) => (
+                    <tr key={`${mover.label}-${mover.deltaUsd}`}>
+                      <td>{mover.label}</td>
+                      <td className="font-mono-data numeric-cell">${mover.currentUsd}</td>
+                      <td className="font-mono-data numeric-cell">${mover.priorUsd}</td>
+                      <td className="font-mono-data numeric-cell">${mover.deltaUsd}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+    </section>
+  );
+}
+
 function requireListAnomalies(client: CostalyxClient): NonNullable<CostalyxClient['listAnomalies']> {
   if (!client.listAnomalies) {
     throw new Error('Billing agent client is not configured');
@@ -574,24 +767,29 @@ function requireExportBillingStatementPdf(client: CostalyxClient): NonNullable<C
 }
 
 function labelForType(type: Anomaly['type']): string {
-  return type
-    .split('_')
-    .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
-    .join(' ');
+  return labelForToken(type);
 }
 
 function reasonLabel(reason: FalsePositiveReason): string {
-  return reason
+  return labelForToken(reason);
+}
+
+function labelForRunType(type: AgentRun['runType']): string {
+  return labelForToken(type);
+}
+
+function labelForToken(value: string): string {
+  return value
     .split('_')
     .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
     .join(' ');
 }
 
-function labelForRunType(type: AgentRun['runType']): string {
-  return type
-    .split('_')
-    .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
-    .join(' ');
+function statementLineEvidence(lineItem: BillingStatement['lineItems'][number]): string {
+  const scopeType = typeof lineItem.evidence.scopeType === 'string' ? labelForToken(lineItem.evidence.scopeType) : 'Scope';
+  const scopeRef = typeof lineItem.evidence.scopeRef === 'string' ? ` ${lineItem.evidence.scopeRef}` : '';
+  const recordLabel = lineItem.costRecordIds.length === 1 ? 'cost record' : 'cost records';
+  return `${scopeType}${scopeRef} · ${lineItem.costRecordIds.length} ${recordLabel}`;
 }
 
 function recommendedActionForType(type: Anomaly['type']): string {

@@ -59,7 +59,7 @@ const statement = {
   approvedBy: null,
   sentAt: null,
   narrativeMd: 'Finance Partner is assigned $10.00 for June.',
-  openAnomalyCount: 0,
+  openAnomalyCount: 2,
   lineItems: [
     {
       id: '55555555-5555-4555-8555-555555555555',
@@ -79,8 +79,22 @@ const statement = {
     overlapUsd: '0.00',
     reconcilesToTenantTotal: true
   },
-  scopeWarnings: [],
-  varianceTopMovers: [],
+  scopeWarnings: [
+    {
+      code: 'unallocated_spend_detected' as const,
+      message: 'Unallocated spend detected outside the Finance Partner scope.',
+      amountUsd: '2.00',
+      costRecordIds: ['77777777-7777-4777-8777-777777777777']
+    }
+  ],
+  varianceTopMovers: [
+    {
+      label: 'AWS compute',
+      currentUsd: '10.00',
+      priorUsd: '8.00',
+      deltaUsd: '2.00'
+    }
+  ],
   dispute: null,
   sendEvidence: null
 };
@@ -272,6 +286,20 @@ describe('BillingAgentConsole', () => {
     expect(screen.getByText('$10.00')).toHaveClass('font-mono-data');
     expect(screen.getByText('Statement Generation')).toBeInTheDocument();
     expect(screen.getByText('2026-07-06')).toHaveClass('font-mono-data');
+
+    await user.click(screen.getByRole('button', { name: 'Review statement for Finance Partner' }));
+    const statementDetail = await screen.findByRole('region', { name: 'Forwardable statement' });
+    expect(within(statementDetail).getByRole('heading', { name: 'Finance Partner' })).toBeInTheDocument();
+    expect(statementDetail).toHaveTextContent('finance-partner@example.test');
+    expect(within(statementDetail).getByRole('table', { name: 'Statement line items' })).toHaveTextContent(
+      'Billing owner account group spend'
+    );
+    expect(within(statementDetail).getByRole('table', { name: 'Statement line items' })).toHaveTextContent('$10.00');
+    expect(within(statementDetail).getByRole('table', { name: 'Statement reconciliation' })).toHaveTextContent('$12.00');
+    expect(statementDetail).toHaveTextContent('Unallocated spend detected outside the Finance Partner scope.');
+    expect(statementDetail).toHaveTextContent('AWS compute');
+    expect(statementDetail).toHaveTextContent('Open anomalies');
+    expect(within(statementDetail).getByText('2', { selector: '.font-mono-data' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'CSV' }));
     await user.click(screen.getByRole('button', { name: 'PDF' }));
