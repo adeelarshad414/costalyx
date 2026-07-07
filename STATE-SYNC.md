@@ -5,6 +5,32 @@ This file is the required pre-change continuation snapshot for
 before touching application code, theme files, API schemas, tests, or docs other
 than this state register.
 
+## Ultimate Master Run Delta - 2026-07-07 17:56 PKT
+
+The attached `16-ULTIMATE-MASTER-RUN.md` supersedes earlier run prompts for this
+continuation. Before product fixes, Gate 1 reproduced the current state and
+appended new findings `GAP-032` through `GAP-044` to `GAP-REGISTER.md`.
+
+| Area | Classification | Evidence |
+| --- | --- | --- |
+| Branch and remote | verified | Active branch is `feature/costalyx-ultimate-master-run-2026-07-07`; `origin/main` is merge commit `8d676eda154883797c989e1164e84b2eaff67cd9`; GitHub API returned no open pull requests. |
+| GitHub Actions | verified | Latest `main` workflow run for `8d676ed` completed successfully. No CI bypass is active for this run. |
+| Unit/contract/build floor | verified | `npm test` passed backend 41 suites / 152 tests with 6 suites / 8 tests skipped, frontend 23 files / 66 tests, contract 13 files / 39 tests with 8 files / 15 tests skipped, and additive migration check for 13 migration files. Backend and frontend builds passed. `npm audit --audit-level=high` found 0 vulnerabilities. |
+| Live contracts | verified | `npm run ci:live-contract` passed 9 files / 20 tests after localhost escalation for the live server bind. |
+| Demo data | verified(mock) | `npm run seed:demo` restored 2 tenants, 4 users, 4 cloud connections, 4 accounts, 12 cost records, default tenant total `239.93800000`, 2 anomalies, 3 statements, and 3 agent runs. This remains dummy data only. |
+| Host-run browser floor | verified | With Docker infra plus host-run backend/frontend, the broad Keycloak browser suite passed 23 Chromium tests with 1 expected viewer-only skip in 27.7s. Separate viewer-role proof for `e2e/insufficient-role-ux.spec.ts` passed 1 Chromium test in 2.2s. |
+| Compose app-tier browser floor | broken | The same broad browser suite against Compose backend/frontend failed 21 tests; data panels remained loading and backend `/healthz` timed out with 0 bytes after accepting TCP. Tracked as `GAP-034`. |
+| Secret scanning | in-progress | `gitleaks dir --no-banner --redact=100 --verbose .` found 8 current-tree fixture/doc false positives; history scan also found 8. Tracked as `GAP-035`; current tree must become scan-clean through fixture cleanup and scoped config. |
+| Real AWS/Azure/GCP probes | blocked | `npm run probe:live-readiness` exited 2 with sanitized missing customer readonly role/principal/export references plus Costalyx broker identities. Tracked as `GAP-044`. |
+
+Additional Ultimate-run gaps opened before fixes: missing committed
+`16-ULTIMATE-MASTER-RUN.md`, missing `HOW-TO-USE.md`, `DEPLOY-GUIDE.md`, and
+`CHANGELOG.md`, no public rate-limit proof, incomplete mutating-route RBAC
+matrix, missing load/ingestion consistency proof, missing Keycloak/Vault outage
+probe suite, missing backup/restore exercise, incomplete production-image
+metrics/log proof, missing audit-log completeness matrix, and no clean-checkout
+README proof for this run.
+
 ## Product Detection
 
 - Product: Costalyx.
