@@ -4,6 +4,7 @@ import type { CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { LoadingState } from '../../components/LoadingState';
 import { toUserFacingError } from '../../utils/userFacingError';
 
 interface ReportingConsoleProps {
@@ -84,8 +85,8 @@ export function ReportingConsole({ client }: ReportingConsoleProps) {
 
   if (state === 'loading') {
     return (
-      <section className="panel" aria-busy="true">
-        <p>Loading reports</p>
+      <section className="panel">
+        <LoadingState title="Loading reports" variant="table" />
       </section>
     );
   }

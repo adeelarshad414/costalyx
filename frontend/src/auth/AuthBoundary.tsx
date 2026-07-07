@@ -1,4 +1,5 @@
 import { ErrorState } from '../components/ErrorState';
+import { LoadingState } from '../components/LoadingState';
 import { useAuth } from './AuthProvider';
 
 interface AuthBoundaryProps {
@@ -10,8 +11,8 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
 
   if (auth.status === 'loading') {
     return (
-      <section className="panel" aria-busy="true">
-        <p>Checking sign in</p>
+      <section className="panel">
+        <LoadingState title="Checking sign in" variant="cards" rows={2} />
       </section>
     );
   }

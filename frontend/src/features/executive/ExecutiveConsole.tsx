@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { LoadingState } from '../../components/LoadingState';
 import { toUserFacingError } from '../../utils/userFacingError';
 
 interface ExecutiveConsoleProps {
@@ -75,8 +76,8 @@ export function ExecutiveConsole({ client }: ExecutiveConsoleProps) {
 
   if (state === 'loading') {
     return (
-      <section className="panel" aria-busy="true">
-        <p>Loading executive summary</p>
+      <section className="panel">
+        <LoadingState title="Loading executive summary" variant="cards" rows={4} />
       </section>
     );
   }

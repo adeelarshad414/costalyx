@@ -6,6 +6,7 @@ import { PermissionGate } from '../../auth/PermissionGate';
 import { hasRequiredRole } from '../../auth/roles';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { LoadingState } from '../../components/LoadingState';
 import { toUserFacingError } from '../../utils/userFacingError';
 
 interface BillingAgentConsoleProps {
@@ -191,8 +192,8 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
 
   if (state === 'loading') {
     return (
-      <section className="panel" aria-busy="true">
-        <p>Loading anomalies</p>
+      <section className="panel">
+        <LoadingState title="Loading anomalies" variant="list" rows={4} />
       </section>
     );
   }

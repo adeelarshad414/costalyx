@@ -4,6 +4,7 @@ import type { CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { LoadingState } from '../../components/LoadingState';
 import { toUserFacingError } from '../../utils/userFacingError';
 
 interface CloudPortfolioConsoleProps {
@@ -195,8 +196,8 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
 
   if (state === 'loading') {
     return (
-      <section className="panel" aria-busy="true">
-        <p>Loading cloud portfolio</p>
+      <section className="panel">
+        <LoadingState title="Loading cloud portfolio" variant="form" rows={4} />
       </section>
     );
   }

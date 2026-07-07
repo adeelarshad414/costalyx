@@ -197,6 +197,120 @@ tbody tr:hover {
   margin: 0;
 }
 
+.loading-state {
+  display: grid;
+  gap: 14px;
+  min-height: 180px;
+  width: 100%;
+}
+
+.loading-state p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.skeleton-layout {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.skeleton-line,
+.skeleton-dot,
+.skeleton-input {
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+  background: linear-gradient(90deg, var(--surface-2), var(--border-subtle), var(--surface-2));
+  border-radius: 6px;
+  display: block;
+}
+
+.skeleton-line {
+  height: 14px;
+  min-width: 0;
+}
+
+.skeleton-line-wide {
+  width: 100%;
+}
+
+.skeleton-line-short {
+  width: 48%;
+}
+
+.skeleton-dot {
+  aspect-ratio: 1;
+  border-radius: 999px;
+  width: 18px;
+}
+
+.skeleton-input {
+  height: 42px;
+  width: 100%;
+}
+
+.skeleton-table-header,
+.skeleton-table-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 1fr) minmax(88px, 0.7fr);
+}
+
+.skeleton-table-header {
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 10px;
+}
+
+.skeleton-table-row {
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  min-height: 44px;
+}
+
+.skeleton-card-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.skeleton-card,
+.skeleton-list-item,
+.skeleton-field {
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.skeleton-list {
+  display: grid;
+  gap: 10px;
+}
+
+.skeleton-list-item {
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) minmax(80px, 0.3fr);
+}
+
+.skeleton-form {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.58;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
 .font-mono-data {
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   font-variant-numeric: tabular-nums;
@@ -811,5 +925,11 @@ tbody tr:hover {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .skeleton-line,
+  .skeleton-dot,
+  .skeleton-input {
+    animation: none;
   }
 }

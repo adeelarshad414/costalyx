@@ -4,6 +4,7 @@ import type { CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { LoadingState } from '../../components/LoadingState';
 import { toUserFacingError } from '../../utils/userFacingError';
 
 interface OptimizationConsoleProps {
@@ -63,8 +64,8 @@ export function OptimizationConsole({ client }: OptimizationConsoleProps) {
 
   if (state === 'loading') {
     return (
-      <section className="panel" aria-busy="true">
-        <p>Loading optimization</p>
+      <section className="panel">
+        <LoadingState title="Loading optimization" variant="list" rows={4} />
       </section>
     );
   }
