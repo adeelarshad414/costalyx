@@ -40,7 +40,7 @@ services:
       - "${KEYCLOAK_PORT:-8080}:8080"
       - "${KEYCLOAK_MANAGEMENT_PORT:-9000}:9000"
     volumes:
-      - ./deploy/keycloak/costalyx-realm.json:/opt/keycloak/data/import/costalyx-realm.json:ro
+      - ./deploy/keycloak/costalyx-realm.json:/opt/keycloak/data/import/costalyx-dev-realm.json:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -112,11 +112,11 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: backend/Dockerfile.dev
     container_name: costalyx-backend
     restart: unless-stopped
-    command: ["npm", "run", "start:dev"]
+    command: ["npm", "--workspace", "backend", "run", "start:dev"]
     environment:
       APP_ENV: local
       NODE_ENV: development
@@ -138,8 +138,8 @@ services:
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     volumes:
-      - ./backend:/app
-      - /app/node_modules
+      - .:/workspace
+      - /workspace/node_modules
     depends_on:
       postgres:
         condition: service_healthy
@@ -156,11 +156,11 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: frontend/Dockerfile.dev
     container_name: costalyx-frontend
     restart: unless-stopped
-    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+    command: ["npm", "--workspace", "frontend", "run", "dev", "--", "--host", "0.0.0.0"]
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000/api/v1}
       VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL:-http://localhost:8080}
@@ -169,8 +169,8 @@ services:
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - .:/workspace
+      - /workspace/node_modules
     depends_on:
       backend:
         condition: service_started

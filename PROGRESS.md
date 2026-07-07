@@ -5,7 +5,24 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-07 11:33:18 PKT_
+_Last updated: 2026-07-07 12:55:00 PKT_
+
+## Gap Audit / UIUX Elevation Run — 2026-07-07
+
+Status: partially completed; code fixes implemented and live verification partly blocked by local Docker/Vite/Keycloak instability.
+
+Evidence added in this run:
+- Fixed local dev Docker stack structure: backend/frontend dev images now build from repo root, run workspace scripts from `/workspace`, and mount the repo root so `tsconfig.base.json` and workspace dependencies resolve correctly.
+- Fixed Keycloak realm import mount path for Keycloak 26 (`costalyx-dev-realm.json`); discovery endpoint returned the `costalyx-dev` OpenID configuration after rebuild.
+- Fixed frontend Keycloak login blockers: stable adapter/init promise under React StrictMode, removed automatic silent SSO iframe/full-window redirects, and verified `npm run test:e2e:keycloak` passed 1 Chromium login/API/UI smoke in 5.8s.
+- Fixed auth API fan-out: fresh Keycloak tokens are returned without forced refresh, and refresh calls are de-duplicated. `npm --workspace frontend test -- AuthProvider.test.tsx` passed 7 tests.
+- Added `e2e/costalyx-full-stack-walkthrough.spec.ts`; desktop authenticated full-stack walkthrough passed against seeded data, including all main product regions plus TCO/report actions.
+- Added responsive viewport checks and CSS containment fixes for tablet/mobile: border-box sizing, fixed-layout wrapping tables, wrapped toolbars, panel `min-width: 0`, and 900px grid breakpoint.
+- Final non-live verification passed after the fixes: `npm --workspace frontend test -- AuthProvider.test.tsx` passed 7 tests; `npm run test:contract -- --run contract/dev-stack.spec.ts` passed contract totals 12 files / 37 tests with 8 files / 15 tests skipped; `npm test` passed backend 40 suites / 150 tests, frontend 15 files / 52 tests, contract 12 files / 37 tests, and additive migration check 13 files; backend and frontend builds passed; `git diff --check` passed.
+
+Blocked/remaining:
+- Repeated live E2E eventually wedged the local Docker runtime: frontend/backend curls timed out, `docker compose restart frontend` hung, Keycloak discovery intermittently exceeded the prior 10s request timeout, and logs showed a blocked Vert.x event-loop warning. Colima restart recovered once, but instability recurred. See `GAP-REGISTER.md` GAP-009.
+- Final tablet/mobile responsive proof should be rerun on a fresh Docker VM/CI runner. The last stable evidence after CSS reload reduced tablet overflow from 310px to a non-visible 28px document-scroll artifact with no element-bound offenders, but mobile/tablet completion was blocked before a clean pass.
 
 ## Milestone status
 

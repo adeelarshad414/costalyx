@@ -1,11 +1,12 @@
 import Keycloak from 'keycloak-js';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { highestRole, type Role } from './roles';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'error';
 
 interface KeycloakClaims {
   sub?: string;
+  exp?: number;
   realm_access?: { roles?: unknown[] };
   resource_access?: Record<string, { roles?: unknown[] }>;
 }
@@ -31,34 +32,44 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const tokenRefreshSkewSeconds = 30;
 
 interface AuthProviderProps {
   adapter?: KeycloakAdapter;
   children: React.ReactNode;
 }
 
-export function AuthProvider({ adapter = createKeycloakAdapter(), children }: AuthProviderProps) {
+export function AuthProvider({ adapter, children }: AuthProviderProps) {
+  const keycloakAdapter = useMemo(() => adapter ?? createKeycloakAdapter(), [adapter]);
+  const initAdapterRef = useRef<KeycloakAdapter | null>(null);
+  const initPromiseRef = useRef<Promise<boolean> | null>(null);
+  const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [role, setRole] = useState<Role | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   const captureAuthenticatedSession = useCallback(() => {
-    setRole(extractRoleFromToken(adapter.tokenParsed));
-    setToken(adapter.token ?? null);
+    setRole(extractRoleFromToken(keycloakAdapter.tokenParsed));
+    setToken(keycloakAdapter.token ?? null);
     setStatus('authenticated');
-  }, [adapter]);
+  }, [keycloakAdapter]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function initialize() {
       try {
-        const authenticated = await adapter.init({
-          onLoad: 'check-sso',
-          pkceMethod: 'S256',
-          silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`
+        if (initAdapterRef.current !== keycloakAdapter) {
+          initAdapterRef.current = keycloakAdapter;
+          initPromiseRef.current = null;
+          refreshPromiseRef.current = null;
+        }
+        initPromiseRef.current ??= keycloakAdapter.init({
+          checkLoginIframe: false,
+          pkceMethod: 'S256'
         });
+        const authenticated = await initPromiseRef.current;
         if (cancelled) {
           return;
         }
@@ -81,28 +92,31 @@ export function AuthProvider({ adapter = createKeycloakAdapter(), children }: Au
     return () => {
       cancelled = true;
     };
-  }, [adapter, captureAuthenticatedSession]);
+  }, [keycloakAdapter, captureAuthenticatedSession]);
 
   const login = useCallback(async () => {
-    await adapter.login({ redirectUri: window.location.origin });
-  }, [adapter]);
+    await keycloakAdapter.login({ redirectUri: window.location.origin });
+  }, [keycloakAdapter]);
 
   const logout = useCallback(async () => {
-    await adapter.logout({ redirectUri: window.location.origin });
-  }, [adapter]);
+    await keycloakAdapter.logout({ redirectUri: window.location.origin });
+  }, [keycloakAdapter]);
 
   const getAccessToken = useCallback(async () => {
-    const currentToken = adapter.token ?? token;
+    const currentToken = keycloakAdapter.token ?? token;
     if (status !== 'authenticated' && !currentToken) {
       return null;
     }
-    if (adapter.refreshToken) {
-      await adapter.updateToken(30);
+    if (keycloakAdapter.refreshToken && shouldRefreshToken(keycloakAdapter.tokenParsed, tokenRefreshSkewSeconds)) {
+      refreshPromiseRef.current ??= keycloakAdapter.updateToken(tokenRefreshSkewSeconds).finally(() => {
+        refreshPromiseRef.current = null;
+      });
+      await refreshPromiseRef.current;
     }
-    const refreshedToken = adapter.token ?? currentToken ?? null;
+    const refreshedToken = keycloakAdapter.token ?? currentToken ?? null;
     setToken(refreshedToken);
     return refreshedToken;
-  }, [adapter, status, token]);
+  }, [keycloakAdapter, status, token]);
 
   const value = useMemo(
     () => ({ status, role, token, error, login, logout, getAccessToken }),
@@ -125,6 +139,13 @@ export function extractRoleFromToken(claims: KeycloakClaims | undefined, clientI
     return null;
   }
   return highestRole([...(claims.realm_access?.roles ?? []), ...(claims.resource_access?.[clientId]?.roles ?? [])]);
+}
+
+function shouldRefreshToken(claims: KeycloakClaims | undefined, minValiditySeconds: number): boolean {
+  if (typeof claims?.exp !== 'number') {
+    return true;
+  }
+  return claims.exp - Math.floor(Date.now() / 1000) <= minValiditySeconds;
 }
 
 function createKeycloakAdapter(): KeycloakAdapter {
