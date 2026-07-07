@@ -5,7 +5,7 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-07 19:11:47 PKT_
+_Last updated: 2026-07-07 19:17:00 PKT_
 
 ## Ultimate Master Run — 2026-07-07
 
@@ -26,6 +26,11 @@ Evidence added in this run:
   `gitleaks/gitleaks-action@v3`, full checkout history, and
   `GITLEAKS_CONFIG=.gitleaks.toml`; local `npm run security:secrets` passed
   current-tree and 88-commit history scans with no leaks.
+- PR #44 final CI passed after the wiring correction: two `verify` jobs passed,
+  two `deploy-check` jobs passed, optional `e2e` jobs were skipped by repo
+  setting, and no CI bypass was used. PR #44 was merged into `main` at
+  2026-07-07 19:15:58 PKT with merge commit
+  `bc8bf58eb1f48055582449e1f8e5f8817b27530d`.
 - Added public endpoint rate limiting with configurable
   `COSTALYX_RATE_LIMIT_*` knobs. Focused rate-limit integration passed 1 suite
   / 1 test and backend build passed.
@@ -74,7 +79,7 @@ Blocked/remaining for this Ultimate run:
 - GAP-044 / Milestone H real-cloud production proof: blocked pending real
   customer readonly cloud references and Costalyx broker identities for AWS,
   Azure, and GCP. Dummy data remains `verified(mock)` only.
-- PR opened for this Ultimate run: https://github.com/adeelarshad414/costalyx/pull/44.
+- PR merged for this Ultimate run: https://github.com/adeelarshad414/costalyx/pull/44.
 
 ## Production Readiness Orchestrator v2 Run — 2026-07-07
 

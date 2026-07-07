@@ -1,6 +1,6 @@
 # Costalyx Production Readiness Report
 
-Generated: 2026-07-07 19:11 PKT
+Generated: 2026-07-07 19:17 PKT
 Branch: `feature/costalyx-ultimate-master-run-2026-07-07`
 Entry point: `16-ULTIMATE-MASTER-RUN.md`
 
@@ -46,8 +46,8 @@ should rely on CI or a stable Docker daemon for full Compose browser evidence.
 | P2 Frontend audit | Done | CEO timing fix, 23 passed / 1 skipped browser floor, 12 screenshot artifacts, `SCREENSHOT-INDEX.md`, committed as `11dfa4f`. |
 | P3 Backend production bar | Done | `/health/live`, `/health/ready`, OpenAPI/client sync, backend audit, live contracts, committed as `0740ac8`. |
 | P4 Verification | Done | Full browser floor, audit, production Compose config, Helm lint/template, readiness doctor blocked as expected, committed as `44074f5`. |
-| P5 PR lifecycle | In progress | Feature branch pushed; latest branch CI for P4 was in progress when this report was drafted. |
-| P6 End report | In progress | This file plus final `PROGRESS.md` update. |
+| P5 PR lifecycle | Done | PR #44 passed CI after the secret-scan config correction and was merged into `main` at 2026-07-07 19:15:58 PKT with merge commit `bc8bf58eb1f48055582449e1f8e5f8817b27530d`; no CI bypass was used. |
+| P6 End report | Done | This file plus final `PROGRESS.md` update record final CI, merge, blocked items, and evidence. |
 
 ## Product Milestones
 
@@ -165,14 +165,13 @@ Latest non-Docker regression after the Ultimate fixes:
 
 ## PR Summary
 
-PR opened: https://github.com/adeelarshad414/costalyx/pull/44
+PR merged: https://github.com/adeelarshad414/costalyx/pull/44
 
-At the time this report was updated, PR #44 had just been opened for the
-Ultimate Master Run branch. No CI bypass has been used. The first CI failure
-was classified as a secret-scan configuration false positive: allowlisted test
-fixture strings were scanned by the hosted action without the repo
-`.gitleaks.toml` config. CI has been updated to use `gitleaks-action@v3` with
-`GITLEAKS_CONFIG=.gitleaks.toml` and full checkout history. If GitHub Actions
-later fails only for billing/infra, merge may be annotated under the requested
-`ci-bypass: billing/infra` policy after the local regression floor evidence in
-this report is accepted; genuine test failures should not be bypassed.
+PR #44 merged into `main` at 2026-07-07 19:15:58 PKT with merge commit
+`bc8bf58eb1f48055582449e1f8e5f8817b27530d`. No CI bypass was used. The first
+CI failure was classified as a secret-scan configuration false positive:
+allowlisted test fixture strings were scanned by the hosted action without the
+repo `.gitleaks.toml` config. CI was updated to use `gitleaks-action@v3` with
+`GITLEAKS_CONFIG=.gitleaks.toml` and full checkout history. The rerun passed
+two `verify` jobs and two `deploy-check` jobs; optional `e2e` jobs were skipped
+by repository setting.
