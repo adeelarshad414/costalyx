@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, CheckCircle2, FileDown, Radar, Send, ShieldCheck } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, FileDown, FileSearch, Radar, Send, ShieldCheck, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
 import { useAuth } from '../../auth/AuthProvider';
@@ -33,6 +33,7 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
   const [error, setError] = useState('');
   const [isMutating, setIsMutating] = useState(false);
   const [reasonById, setReasonById] = useState<Record<string, FalsePositiveReason>>({});
+  const [selectedAnomalyId, setSelectedAnomalyId] = useState<string | null>(null);
   const [period, setPeriod] = useState(defaultStatementPeriod);
 
   const loadConsole = useCallback(async () => {
@@ -49,7 +50,11 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
           ? client.listAgentRuns({ pageSize: 5 })
           : Promise.resolve({ data: [], meta: { total: 0, page: 1, pageSize: 5 } })
       ]);
-      setAnomalies(anomalyResponse.data);
+      const loadedAnomalies: Anomaly[] = anomalyResponse.data ?? [];
+      setAnomalies(loadedAnomalies);
+      setSelectedAnomalyId((current) =>
+        current && loadedAnomalies.some((anomaly) => anomaly.id === current) ? current : null
+      );
       setStatements(statementResponse.data);
       setAgentRuns(agentRunResponse.data);
       setState('loaded');
@@ -207,6 +212,8 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
     );
   }
 
+  const selectedAnomaly = anomalies.find((anomaly) => anomaly.id === selectedAnomalyId) ?? null;
+
   return (
     <section className="panel" aria-label="Billing anomalies">
       <div className="panel-toolbar anomaly-toolbar">
@@ -242,8 +249,18 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
                   <span className="font-mono-data">{anomaly.windowEnd.slice(0, 10)}</span>
                 </div>
               </div>
-              <PermissionGate requiredRole="analyst" mode="hide">
-                <div className="anomaly-actions">
+              <div className="anomaly-actions">
+                <button
+                  type="button"
+                  aria-controls="anomaly-evidence-story"
+                  aria-expanded={selectedAnomalyId === anomaly.id}
+                  aria-label={`Review evidence for ${labelForType(anomaly.type)}`}
+                  onClick={() => setSelectedAnomalyId(anomaly.id)}
+                >
+                  <FileSearch aria-hidden="true" size={16} />
+                  Review evidence
+                </button>
+                <PermissionGate requiredRole="analyst" mode="hide">
                   <select
                     aria-label={`False positive reason for ${labelForType(anomaly.type)}`}
                     value={reasonById[anomaly.id] ?? 'seasonal'}
@@ -268,12 +285,14 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
                     <ShieldCheck aria-hidden="true" size={16} />
                     False positive
                   </ConfirmAction>
-                </div>
-              </PermissionGate>
+                </PermissionGate>
+              </div>
             </li>
           ))}
         </ul>
       )}
+
+      {selectedAnomaly ? <AnomalyEvidenceStory anomaly={selectedAnomaly} onClose={() => setSelectedAnomalyId(null)} /> : null}
 
       <div className="panel-toolbar anomaly-toolbar statement-toolbar">
         <h3>Stakeholder Statements</h3>
@@ -418,6 +437,79 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
   );
 }
 
+function AnomalyEvidenceStory({ anomaly, onClose }: { anomaly: Anomaly; onClose: () => void }) {
+  const primaryRow = anomaly.evidence.pricingRows[0];
+  const impactedSpendUsd = formatComputedSpendUsd(anomaly.evidence.pricingRows);
+
+  return (
+    <section id="anomaly-evidence-story" className="anomaly-detail-story" aria-label="Anomaly evidence story">
+      <div className="anomaly-detail-header">
+        <div>
+          <p className="section-kicker">Evidence story</p>
+          <h3>{labelForType(anomaly.type)}</h3>
+        </div>
+        <button type="button" className="icon-button" aria-label="Close anomaly detail" onClick={onClose}>
+          <X aria-hidden="true" size={18} />
+        </button>
+      </div>
+
+      <dl className="anomaly-story-grid">
+        <div>
+          <dt>What changed</dt>
+          <dd>{anomaly.explanationMd}</dd>
+        </div>
+        <div>
+          <dt>Since when</dt>
+          <dd>
+            <span className="font-mono-data">{formatDate(anomaly.windowStart)}</span>
+            <span aria-hidden="true"> to </span>
+            <span className="font-mono-data">{formatDate(anomaly.windowEnd)}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Impact</dt>
+          <dd>
+            <span className="font-mono-data">{impactedSpendUsd}</span> affected spend computed from hourly rate and usage.
+          </dd>
+        </div>
+        <div>
+          <dt>Recommended action</dt>
+          <dd>{recommendedActionForType(anomaly.type)}</dd>
+        </div>
+      </dl>
+
+      <div className="anomaly-story-evidence">
+        <h4>Evidence chain</h4>
+        <ul>
+          {anomaly.evidence.pricingRows.map((row) => (
+            <li key={`${row.costRecordId}-${row.resourceId}-${row.validFrom}`}>
+              <span className="font-mono-data">{row.resourceId}</span>
+              <span>
+                Rate <strong className="font-mono-data">${row.hourlyRateUsd}</strong>
+              </span>
+              <span>
+                Usage <strong className="font-mono-data">{row.usageHours} h</strong>
+              </span>
+              <span>
+                Valid from <strong className="font-mono-data">{formatDate(row.validFrom)}</strong>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p>
+          Fingerprint <span className="font-mono-data">{anomaly.evidence.fingerprint}</span>
+          {primaryRow ? (
+            <>
+              {' '}
+              links back to cost record <span className="font-mono-data">{primaryRow.costRecordId}</span>.
+            </>
+          ) : null}
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function requireListAnomalies(client: CostalyxClient): NonNullable<CostalyxClient['listAnomalies']> {
   if (!client.listAnomalies) {
     throw new Error('Billing agent client is not configured');
@@ -500,6 +592,25 @@ function labelForRunType(type: AgentRun['runType']): string {
     .split('_')
     .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
     .join(' ');
+}
+
+function recommendedActionForType(type: Anomaly['type']): string {
+  const actionByType: Record<Anomaly['type'], string> = {
+    coverage: 'Review commitment coverage, confirm expected demand, and attach the decision to the stakeholder statement.',
+    new_spend: 'Confirm the new billing source owner, then assign or dispute the spend before the next statement is sent.',
+    unit_price: 'Check the pricing row against the contract rate and escalate any unexplained rate movement.',
+    usage: 'Investigate the affected resource and either assign an owner, resolve the driver, or mark it false positive with evidence.'
+  };
+  return actionByType[type];
+}
+
+function formatComputedSpendUsd(rows: Anomaly['evidence']['pricingRows']): string {
+  const total = rows.reduce((sum, row) => sum + Number(row.hourlyRateUsd) * Number(row.usageHours), 0);
+  return `$${total.toFixed(2)}`;
+}
+
+function formatDate(value: string): string {
+  return value.slice(0, 10);
 }
 
 function sumActionCounts(actions: AgentRun['actionsTaken']): number {
