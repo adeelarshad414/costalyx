@@ -5,7 +5,7 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-07 14:49:00 PKT_
+_Last updated: 2026-07-07 15:04:00 PKT_
 
 ## Gap Audit / UIUX Elevation Run — 2026-07-07
 
@@ -49,6 +49,9 @@ Evidence added in this run:
 - Added copyable first-run cloud onboarding artifacts. New portfolio test assertions failed first because no accessible `Copy External ID` control existed; fixed with copy controls for External ID, trust policy, permissions policy, CloudFormation, and Terraform artifacts plus named copied-state feedback. Focused frontend proof passed 1 file / 4 tests.
 - Latest explicit live E2E verification passed: after reseeding and running backend/frontend on the host with Docker infra and `COSTALYX_AWS_BROKER_PRINCIPAL_ARN` set, focused onboarding-copy E2E passed 1 Chromium test in 10.5s with real browser clipboard assertions and a screenshot artifact; the full live browser suite passed 17 Chromium tests in 40.4s with onboarding copy included.
 - Latest full regression passed: `npm test` passed backend 40 suites / 150 tests, frontend 19 files / 58 tests, contract 12 files / 38 tests, and additive migration check for 13 files. `npm run ci:live-contract` passed 9 live files / 20 tests. Backend/frontend builds passed; `npm audit --audit-level=high` found 0 vulnerabilities; `git diff --check` passed. Final `npm run seed:demo` restored canonical dummy-data counts.
+- Added app-shell section navigation for dense one-page workflows. New live E2E failed first because no `Product sections` navigation landmark existed; fixed with a compact sticky navigation band linking to Cloud portfolio, Costs, Executive, Insights, Optimization, Billing Agent, Reporting, Allocation, and Governance. Focused live navigation proof passed 1 Chromium test in 4.4s.
+- Latest explicit live E2E verification passed: after reseeding and running backend/frontend on the host with Docker infra, the full live browser suite passed 18 Chromium tests in 22.8s with app-shell navigation, cloud onboarding copy, login, full-stack desktop/tablet/mobile, persona journeys, accessibility/theme, table density, Cost Explorer fallback, loading skeletons, and statement confirmations included.
+- Latest full regression passed: `npm test` passed backend 40 suites / 150 tests, frontend 19 files / 58 tests, contract 12 files / 38 tests, and additive migration check for 13 files. `npm run ci:live-contract` passed 9 live files / 20 tests. Backend/frontend builds passed; `npm audit --audit-level=high` found 0 vulnerabilities; `git diff --check` passed. Final `npm run seed:demo` restored canonical dummy-data counts.
 
 Blocked/remaining:
 - Docker-hosted frontend/backend remain unreliable for repeated local browser-audit loops in this environment; the verified local mode is Docker infra plus host-run app tiers. See `GAP-REGISTER.md` GAP-009.
@@ -89,6 +92,9 @@ Definition of Done is satisfied.
 
 ## Latest cross-milestone verification
 
+- Current checkpoint (2026-07-07 15:04 PKT): app-shell section navigation landed with failed-first evidence. `npm run test:e2e:keycloak -- e2e/app-shell-section-navigation.spec.ts` initially failed because no `Product sections` navigation landmark existed; after the fix it passed 1 Chromium test in 4.4s with keyboard section-jump proof and screenshot evidence.
+- Current checkpoint (2026-07-07 15:04 PKT): full regression passed with `npm test` backend 40 suites / 150 tests, frontend 19 files / 58 tests, contract 12 files / 38 tests, and 13 migration files scanned. `npm run ci:live-contract` passed 9 live files / 20 tests; backend/frontend builds, high-severity audit, and whitespace checks passed.
+- Current checkpoint (2026-07-07 15:04 PKT): the full live browser suite passed 18 Chromium tests in 22.8s against Docker infra plus host-run backend/frontend. A preceding broad-suite attempt aborted before Playwright while fetching the Keycloak admin token; rerun completed successfully. Final `npm run seed:demo` restored canonical seeded counts afterward.
 - Current checkpoint (2026-07-07 14:49 PKT): first-run cloud onboarding copy artifacts landed with failed-first evidence. `npm --workspace frontend test -- --run src/features/portfolio/CloudPortfolioConsole.test.tsx` initially failed because the selected AWS connection had no accessible `Copy External ID` button; after the fix it passed 1 file / 4 tests and full frontend passed 19 files / 58 tests.
 - Current checkpoint (2026-07-07 14:49 PKT): full regression passed with `npm test` backend 40 suites / 150 tests, frontend 19 files / 58 tests, contract 12 files / 38 tests, and 13 migration files scanned. `npm run ci:live-contract` passed 9 live files / 20 tests; backend/frontend builds, high-severity audit, and whitespace checks passed.
 - Current checkpoint (2026-07-07 14:49 PKT): focused live onboarding-copy E2E passed 1 Chromium test in 10.5s with real browser clipboard assertions, and the full live browser suite passed 17 Chromium tests in 40.4s against Docker infra plus host-run backend/frontend. Final `npm run seed:demo` restored canonical seeded counts afterward.
