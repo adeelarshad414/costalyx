@@ -4,6 +4,7 @@ import type { CostalyxClient } from '../../api/client';
 import { useAuth } from '../../auth/AuthProvider';
 import { PermissionGate } from '../../auth/PermissionGate';
 import { hasRequiredRole } from '../../auth/roles';
+import { ConfirmAction } from '../../components/ConfirmAction';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
@@ -256,10 +257,17 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
                       </option>
                     ))}
                   </select>
-                  <button type="button" onClick={() => markFalsePositive(anomaly)} disabled={isMutating}>
+                  <ConfirmAction
+                    actionLabel="False positive"
+                    consequence={`Mark ${labelForType(anomaly.type)} as false positive with ${reasonLabel(
+                      reasonById[anomaly.id] ?? 'seasonal'
+                    )}. Future scans will suppress matching anomalies.`}
+                    disabled={isMutating}
+                    onConfirm={() => markFalsePositive(anomaly)}
+                  >
                     <ShieldCheck aria-hidden="true" size={16} />
                     False positive
-                  </button>
+                  </ConfirmAction>
                 </div>
               </PermissionGate>
             </li>
@@ -327,20 +335,41 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
                   PDF
                 </button>
                 <PermissionGate requiredRole="admin" mode="hide">
-                  <button type="button" onClick={() => approveStatement(statement)} disabled={isMutating}>
+                  <ConfirmAction
+                    actionLabel="Approve"
+                    consequence={`Approve the ${statement.stakeholderName} statement for ${statement.periodEnd.slice(
+                      0,
+                      10
+                    )}. This allows an admin to send it.`}
+                    disabled={isMutating}
+                    onConfirm={() => approveStatement(statement)}
+                  >
                     <CheckCircle2 aria-hidden="true" size={16} />
                     Approve
-                  </button>
-                  <button type="button" onClick={() => sendStatement(statement)} disabled={isMutating}>
+                  </ConfirmAction>
+                  <ConfirmAction
+                    actionLabel="Send"
+                    consequence={`Send the ${statement.stakeholderName} statement for ${statement.periodEnd.slice(
+                      0,
+                      10
+                    )} to its stakeholder and record delivery evidence.`}
+                    disabled={isMutating}
+                    onConfirm={() => sendStatement(statement)}
+                  >
                     <Send aria-hidden="true" size={16} />
                     Send
-                  </button>
+                  </ConfirmAction>
                 </PermissionGate>
                 <PermissionGate requiredRole="analyst" mode="hide">
-                  <button type="button" onClick={() => disputeStatement(statement)} disabled={isMutating}>
+                  <ConfirmAction
+                    actionLabel="Dispute"
+                    consequence={`Open a stakeholder dispute on the ${statement.stakeholderName} statement and record an allocation review note.`}
+                    disabled={isMutating}
+                    onConfirm={() => disputeStatement(statement)}
+                  >
                     <AlertTriangle aria-hidden="true" size={16} />
                     Dispute
-                  </button>
+                  </ConfirmAction>
                 </PermissionGate>
               </div>
             </li>

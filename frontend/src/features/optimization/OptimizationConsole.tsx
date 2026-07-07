@@ -2,6 +2,7 @@ import { CheckCircle2, PiggyBank } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
+import { ConfirmAction } from '../../components/ConfirmAction';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
@@ -96,9 +97,14 @@ export function OptimizationConsole({ client }: OptimizationConsoleProps) {
                   </div>
                   <span className="font-mono-data">{recommendation.estimatedSavingsUsd}</span>
                   <PermissionGate requiredRole="analyst" mode="hide">
-                    <button type="button" onClick={() => applyRecommendation(recommendation)} disabled={isApplying}>
+                    <ConfirmAction
+                      actionLabel="Apply recommendation"
+                      consequence={`Apply the ${recommendation.type} recommendation for ${recommendation.resourceId} and record verified savings after the next reload.`}
+                      disabled={isApplying}
+                      onConfirm={() => applyRecommendation(recommendation)}
+                    >
                       Apply recommendation
-                    </button>
+                    </ConfirmAction>
                   </PermissionGate>
                 </li>
               ))}

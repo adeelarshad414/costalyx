@@ -185,6 +185,40 @@ tbody tr:hover {
   width: 42px;
 }
 
+.secondary-button {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.confirm-action {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.confirm-action-panel {
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  max-width: 360px;
+  min-width: min(260px, 100%);
+  padding: 12px;
+}
+
+.confirm-action-panel p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.confirm-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .state {
   display: grid;
   gap: 12px;

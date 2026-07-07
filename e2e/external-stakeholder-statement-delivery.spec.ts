@@ -28,9 +28,17 @@ test.describe('External stakeholder statement delivery persona journey', () => {
     await expect(statement).toContainText('pending approval', { timeout: 45000 });
     await expect(statement.getByRole('button', { name: 'Approve' })).toBeEnabled();
     await statement.getByRole('button', { name: 'Approve' }).click();
+    await expect(statement.getByRole('alertdialog', { name: 'Confirm Approve' })).toContainText(
+      'This allows an admin to send it.'
+    );
+    await statement.getByRole('button', { name: 'Confirm approve' }).click();
     await expect(statement).toContainText('approved', { timeout: 45000 });
     await expect(statement.getByRole('button', { name: 'Send' })).toBeEnabled();
     await statement.getByRole('button', { name: 'Send' }).click();
+    await expect(statement.getByRole('alertdialog', { name: 'Confirm Send' })).toContainText(
+      'record delivery evidence'
+    );
+    await statement.getByRole('button', { name: 'Confirm send' }).click();
     await expect(statement).toContainText('sent', { timeout: 45000 });
 
     await expect
