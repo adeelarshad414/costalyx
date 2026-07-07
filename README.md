@@ -81,6 +81,9 @@ This seeds a dev Keycloak realm with the three fixed roles (`viewer`,
 `analyst`, `admin`). `npm run seed:demo` loads tenant-scoped AWS, Azure, and
 GCP demo data, portfolio connections, tags, recommendations, anomalies,
 statements, and agent-run evidence so the UI is populated on first run.
+If the local Docker runtime cannot keep the backend/frontend dev containers
+stable, keep Docker for Postgres, Keycloak, Vault, Redpanda, and Mailpit, then
+run backend/frontend on the host as documented in `DEPLOY-GUIDE.md`.
 Frontend: http://localhost:5173 · Backend API:
 http://localhost:3000/api/v1 · API docs: http://localhost:3000/api/docs
 
