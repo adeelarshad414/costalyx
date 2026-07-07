@@ -184,6 +184,33 @@ tbody tr:hover {
   font-weight: 700;
 }
 
+.role-scope-notice {
+  align-items: start;
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(220px, 0.75fr);
+  margin-bottom: 16px;
+  padding: 18px;
+}
+
+.role-scope-notice h2,
+.role-scope-notice p {
+  margin: 0;
+}
+
+.role-scope-notice h2 {
+  font-size: 1.1rem;
+  margin-bottom: 6px;
+}
+
+.role-scope-notice p {
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
 .section-nav {
   align-items: center;
   background: var(--surface-1);
@@ -1113,6 +1140,7 @@ tbody tr:hover {
 }
 
 @media (max-width: 900px) {
+  .role-scope-notice,
   .allocation-grid,
   .executive-grid,
   .insights-grid,
