@@ -5,11 +5,11 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-07 17:22:08 PKT_
+_Last updated: 2026-07-07 17:23:13 PKT_
 
 ## Production Readiness Orchestrator v2 Run — 2026-07-07
 
-Status: P0 through P4 completed; P5 and P6 in progress pending PR creation/final CI.
+Status: P0 through P6 completed locally; P5 merge is pending final GitHub Actions completion.
 
 Evidence added in this run:
 - Created `STATE-SYNC.md` before application changes, per v2 section 1. It records product detection as Costalyx, open PR status as none, latest `main` GitHub Actions run as successful, the current milestone classifications, the real-cloud blocker, and the HUMAN_DECISION_GATE register.
@@ -30,10 +30,11 @@ Evidence added in this run:
 - Completed P4 verification gate. After reseeding canonical dummy data, broad browser regression passed 23 Chromium tests with 1 expected viewer-only skip in 1.3m. `npm audit --audit-level=high` found 0 vulnerabilities. Production Compose config rendered successfully with backend healthcheck on `/health/ready`. Helm lint passed with 1 chart / 0 failures. Helm template rendered successfully with and without worker/cloud-ingestion overrides, and backend liveness/readiness probes now render as `/health/live` and `/health/ready`.
 - P4 real-cloud readiness doctor remained blocked as expected: `npm run probe:live-readiness` exited 2 and printed sanitized missing references for `COSTALYX_TENANT_ID`, AWS readonly role/CUR refs plus broker identity, Azure billing scope/delegated principal/export refs plus broker identity, and GCP billing resource/WIF/export refs plus broker identity.
 - Drafted `PRODUCTION-READINESS-REPORT.md` with final milestone status, phase evidence, screenshot index reference, regression floor results, Blocked entries, HUMAN_DECISION_GATE register, ambiguity resolutions, duplicate-work flags, and diff/PR summary. Latest feature-branch GitHub Actions run for `44074f5` was still in progress when this checkpoint was written; prior P1/P2/P3 feature-branch runs were successful.
+- Opened PR #43: https://github.com/adeelarshad414/costalyx/pull/43. At creation time it was mergeable but unstable because latest GitHub Actions checks for head `7834f18` were still in progress. No CI bypass was used.
 
 Blocked/remaining for this v2 run:
 - Live AWS/Azure/GCP customer-cloud probes remain blocked pending real readonly customer roles/federated identities/export references and Costalyx broker identities.
-- P5/P6 remaining: commit and push this report, open the PR, wait for or classify CI, and merge only under the v2 CI-bypass rules.
+- Remaining: wait for final GitHub Actions checks on PR #43, classify any failures, then merge under v2 section 8 rules.
 
 ## Gap Audit / UIUX Elevation Run — 2026-07-07
 

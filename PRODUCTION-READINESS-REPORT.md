@@ -132,5 +132,8 @@ Latest full local regression after P3 backend/OpenAPI changes:
 
 ## PR Summary
 
-PR is to be opened after this report and final progress update are committed
-and pushed. Latest feature-branch CI status must be checked before merge.
+PR opened: https://github.com/adeelarshad414/costalyx/pull/43
+
+At the time this report was updated, PR #43 was mergeable but unstable because
+the latest GitHub Actions checks were still in progress. No CI bypass has been
+used.
