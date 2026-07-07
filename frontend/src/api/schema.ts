@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/operator-readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get sanitized operator go-live readiness */
+        get: operations["getOperatorReadiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ingestion/batches": {
         parameters: {
             query?: never;
@@ -856,6 +873,38 @@ export interface components {
         HealthStatus: {
             /** @enum {string} */
             status: "ok";
+        };
+        OperatorReadiness: {
+            status: components["schemas"]["OperatorReadinessStatus"];
+            /** Format: date-time */
+            generatedAt: string;
+            environment: components["schemas"]["OperatorReadinessEnvironment"];
+            checks: components["schemas"]["OperatorReadinessCheck"][];
+            blockers: string[];
+            nextActions: components["schemas"]["OperatorNextAction"][];
+        };
+        /** @enum {string} */
+        OperatorReadinessStatus: "ready" | "attention" | "blocked";
+        OperatorReadinessEnvironment: {
+            appEnv: string;
+            nodeEnv: string;
+            useMocks: boolean;
+            liveCloudProbes: boolean;
+        };
+        OperatorReadinessCheck: {
+            /** @enum {string} */
+            id: "use-mocks" | "database-url" | "keycloak-issuer" | "vault-address" | "redpanda-brokers" | "smtp-relay" | "aws-broker-principal" | "live-cloud-probes";
+            label: string;
+            /** @enum {string} */
+            category: "runtime" | "cloud" | "supporting-service";
+            status: components["schemas"]["OperatorReadinessStatus"];
+            detail: string;
+            remediation?: string;
+        };
+        OperatorNextAction: {
+            label: string;
+            command?: string;
+            detail: string;
         };
         /** @enum {string} */
         CloudProvider: "aws" | "azure" | "gcp";
@@ -1719,6 +1768,28 @@ export interface operations {
                 };
                 content: {
                     "text/plain": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getOperatorReadiness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sanitized deployment and customer-cloud readiness state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorReadiness"];
                 };
             };
             401: components["responses"]["Unauthorized"];

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { createCostalyxClient } from './api/client';
 import { AuthBoundary } from './auth/AuthBoundary';
 import { useAuth } from './auth/AuthProvider';
+import { PermissionGate } from './auth/PermissionGate';
 import { ThemeToggle } from './components/ThemeToggle';
 import { AllocationConsole } from './features/allocation/AllocationConsole';
 import { BillingAgentConsole } from './features/billing-agent/BillingAgentConsole';
@@ -10,6 +11,7 @@ import { GovernanceConsole } from './features/governance/GovernanceConsole';
 import { IngestionOverview } from './features/ingestion/IngestionOverview';
 import { InsightsConsole } from './features/insights/InsightsConsole';
 import { OptimizationConsole } from './features/optimization/OptimizationConsole';
+import { OperatorReadinessConsole } from './features/operator/OperatorReadinessConsole';
 import { CloudPortfolioConsole } from './features/portfolio/CloudPortfolioConsole';
 import { ReportingConsole } from './features/reporting/ReportingConsole';
 
@@ -22,7 +24,8 @@ const productSections = [
   { id: 'billing-agent', label: 'Billing Agent' },
   { id: 'reporting', label: 'Reporting' },
   { id: 'allocation', label: 'Allocation' },
-  { id: 'governance', label: 'Governance' }
+  { id: 'governance', label: 'Governance' },
+  { id: 'operator', label: 'Operator', adminOnly: true }
 ] as const;
 
 export function App() {
@@ -50,11 +53,13 @@ export function App() {
       </header>
       <AuthBoundary>
         <nav className="section-nav" aria-label="Product sections">
-          {productSections.map((section) => (
-            <a key={section.id} href={`#${section.id}`}>
-              {section.label}
-            </a>
-          ))}
+          {productSections
+            .filter((section) => !('adminOnly' in section) || auth.role === 'admin')
+            .map((section) => (
+              <a key={section.id} href={`#${section.id}`}>
+                {section.label}
+              </a>
+            ))}
         </nav>
         <div id="cloud-portfolio" className="section-anchor">
           <CloudPortfolioConsole client={client} />
@@ -83,6 +88,11 @@ export function App() {
         <div id="governance" className="section-anchor">
           <GovernanceConsole client={client} />
         </div>
+        <PermissionGate requiredRole="admin" mode="hide">
+          <div id="operator" className="section-anchor">
+            <OperatorReadinessConsole client={client} />
+          </div>
+        </PermissionGate>
       </AuthBoundary>
     </main>
   );

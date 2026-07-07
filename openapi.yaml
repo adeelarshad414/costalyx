@@ -69,6 +69,24 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /operator-readiness:
+    get:
+      tags: [admin]
+      summary: Get sanitized operator go-live readiness
+      operationId: getOperatorReadiness
+      x-required-role: admin
+      responses:
+        "200":
+          description: Sanitized deployment and customer-cloud readiness state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorReadiness"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /ingestion/batches:
     post:
       tags: [ingestion]
@@ -1781,6 +1799,85 @@ components:
         status:
           type: string
           enum: [ok]
+
+    OperatorReadiness:
+      type: object
+      required: [status, generatedAt, environment, checks, blockers, nextActions]
+      properties:
+        status:
+          $ref: "#/components/schemas/OperatorReadinessStatus"
+        generatedAt:
+          type: string
+          format: date-time
+        environment:
+          $ref: "#/components/schemas/OperatorReadinessEnvironment"
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperatorReadinessCheck"
+        blockers:
+          type: array
+          items:
+            type: string
+        nextActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperatorNextAction"
+
+    OperatorReadinessStatus:
+      type: string
+      enum: [ready, attention, blocked]
+
+    OperatorReadinessEnvironment:
+      type: object
+      required: [appEnv, nodeEnv, useMocks, liveCloudProbes]
+      properties:
+        appEnv:
+          type: string
+        nodeEnv:
+          type: string
+        useMocks:
+          type: boolean
+        liveCloudProbes:
+          type: boolean
+
+    OperatorReadinessCheck:
+      type: object
+      required: [id, label, category, status, detail]
+      properties:
+        id:
+          type: string
+          enum:
+            - use-mocks
+            - database-url
+            - keycloak-issuer
+            - vault-address
+            - redpanda-brokers
+            - smtp-relay
+            - aws-broker-principal
+            - live-cloud-probes
+        label:
+          type: string
+        category:
+          type: string
+          enum: [runtime, cloud, supporting-service]
+        status:
+          $ref: "#/components/schemas/OperatorReadinessStatus"
+        detail:
+          type: string
+        remediation:
+          type: string
+
+    OperatorNextAction:
+      type: object
+      required: [label, detail]
+      properties:
+        label:
+          type: string
+        command:
+          type: string
+        detail:
+          type: string
 
     CloudProvider:
       type: string

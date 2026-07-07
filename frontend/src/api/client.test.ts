@@ -32,6 +32,38 @@ describe('createCostalyxClient', () => {
     expect(JSON.stringify(fetchMock.mock.calls[0][1])).not.toContain('x-costalyx-role');
   });
 
+  it('fetches sanitized operator readiness with bearer auth', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'blocked',
+        generatedAt: '2026-07-07T00:00:00.000Z',
+        environment: { appEnv: 'local', nodeEnv: 'test', useMocks: false, liveCloudProbes: false },
+        checks: [],
+        blockers: [],
+        nextActions: []
+      })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createCostalyxClient({
+      baseUrl: 'http://api.test/api/v1',
+      getAccessToken: async () => 'signed-keycloak-token'
+    });
+
+    await client.getOperatorReadiness?.();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://api.test/api/v1/operator-readiness',
+      expect.objectContaining({
+        headers: {
+          Accept: 'application/json',
+          Authorization: 'Bearer signed-keycloak-token'
+        }
+      })
+    );
+  });
+
   it('creates ingestion batches with bearer auth and an idempotency key', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
