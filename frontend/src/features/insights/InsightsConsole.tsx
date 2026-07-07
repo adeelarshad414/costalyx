@@ -145,7 +145,7 @@ export function InsightsConsole({ client }: InsightsConsoleProps) {
                   <th>Resource</th>
                   <th>Service</th>
                   <th>Lease</th>
-                  <th>Cost</th>
+                  <th className="numeric-cell">Cost</th>
                 </tr>
               </thead>
               <tbody>
@@ -154,7 +154,7 @@ export function InsightsConsole({ client }: InsightsConsoleProps) {
                     <td className="font-mono-data">{record.resourceId}</td>
                     <td>{record.serviceName}</td>
                     <td>{record.leaseType}</td>
-                    <td className="font-mono-data">USD {record.costTotalUsd}</td>
+                    <td className="font-mono-data numeric-cell">USD {record.costTotalUsd}</td>
                   </tr>
                 ))}
               </tbody>
