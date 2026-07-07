@@ -123,6 +123,7 @@ describe('GovernanceService', () => {
     expect(audit.data[0]).toEqual(
       expect.objectContaining({
         actorId: expect.any(String),
+        outcome: 'succeeded',
         hash: expect.any(String),
         prevHash: expect.any(String)
       })

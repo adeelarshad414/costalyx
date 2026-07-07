@@ -590,7 +590,7 @@ export class PostgresGovernanceRepository implements GovernanceRepository, OnMod
   async listAuditLog(query: PageQuery, actor: AuthenticatedUser): Promise<Paginated<AuditLogEntry>> {
     const offset = (query.page - 1) * query.pageSize;
     const result = await this.pool.query(
-      `SELECT id, tenant_id, actor_id, action, target_type, target_id, prev_hash, hash, created_at
+      `SELECT id, tenant_id, actor_id, action, target_type, target_id, outcome, prev_hash, hash, created_at
        FROM audit_log
        WHERE tenant_id = $1
        ORDER BY created_at DESC, id DESC
@@ -791,13 +791,14 @@ export class PostgresGovernanceRepository implements GovernanceRepository, OnMod
       action,
       targetType,
       targetId,
+      outcome: 'succeeded' as const,
       prevHash: (previous.rows[0] as PgRow | undefined)?.hash ? String((previous.rows[0] as PgRow).hash) : null,
       createdAt: new Date().toISOString()
     };
     const hash = createHash('sha256').update(canonicalJson(entryWithoutHash)).digest('hex');
     await client.query(
-      `INSERT INTO audit_log (id, tenant_id, actor_id, action, target_type, target_id, prev_hash, hash, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      `INSERT INTO audit_log (id, tenant_id, actor_id, action, target_type, target_id, outcome, prev_hash, hash, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
         entryWithoutHash.id,
         actor.tenantId,
@@ -805,6 +806,7 @@ export class PostgresGovernanceRepository implements GovernanceRepository, OnMod
         action,
         targetType,
         targetId,
+        entryWithoutHash.outcome,
         entryWithoutHash.prevHash,
         hash,
         entryWithoutHash.createdAt
@@ -876,6 +878,7 @@ function mapAuditLogEntry(row: PgRow): AuditLogEntry {
     action: String(row.action),
     targetType: String(row.target_type),
     targetId: String(row.target_id),
+    outcome: row.outcome === 'failed' ? 'failed' : 'succeeded',
     prevHash: row.prev_hash ? String(row.prev_hash) : null,
     hash: String(row.hash),
     createdAt: toIso(row.created_at)

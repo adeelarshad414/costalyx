@@ -1627,6 +1627,8 @@ export interface components {
             action: string;
             targetType: string;
             targetId: string;
+            /** @enum {string} */
+            outcome: "succeeded" | "failed";
             prevHash: string | null;
             hash: string;
             /** Format: date-time */

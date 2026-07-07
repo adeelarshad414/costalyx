@@ -863,10 +863,20 @@ async function seedAgentRuns(client, runs) {
 async function seedAuditEntries(client, entries) {
   for (const entry of entries) {
     await client.query(
-      `INSERT INTO audit_log (id, tenant_id, actor_id, action, target_type, target_id, prev_hash, hash, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, $8)
+      `INSERT INTO audit_log (id, tenant_id, actor_id, action, target_type, target_id, outcome, prev_hash, hash, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NULL, $8, $9)
        ON CONFLICT (id) DO NOTHING`,
-      [entry.id, entry.tenantId, entry.actorId, entry.action, entry.targetType, entry.targetId, entry.hash, entry.createdAt]
+      [
+        entry.id,
+        entry.tenantId,
+        entry.actorId,
+        entry.action,
+        entry.targetType,
+        entry.targetId,
+        entry.outcome,
+        entry.hash,
+        entry.createdAt
+      ]
     );
   }
 }
@@ -1267,10 +1277,11 @@ function buildAuditEntries({ users, cloudConnections, statements }) {
 
 function auditEntry(tenantId, actorId, action, targetType, targetId, createdAt) {
   const id = stableId(`audit:${tenantId}:${action}:${targetId}`);
+  const outcome = 'succeeded';
   const hash = createHash('sha256')
-    .update(JSON.stringify({ id, tenantId, actorId, action, targetType, targetId, createdAt }))
+    .update(JSON.stringify({ id, tenantId, actorId, action, targetType, targetId, outcome, createdAt }))
     .digest('hex');
-  return { id, tenantId, actorId, action, targetType, targetId, hash, createdAt };
+  return { id, tenantId, actorId, action, targetType, targetId, outcome, hash, createdAt };
 }
 
 function tenantScopedValue(tenantId, value) {

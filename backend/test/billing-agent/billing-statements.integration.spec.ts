@@ -195,6 +195,7 @@ describe('Milestone I.2 stakeholder statement API', () => {
     const disputedAudit = transitions.find((entry: { action: string }) => entry.action === 'billing_statement_disputed');
     const sentAudit = transitions.find((entry: { action: string }) => entry.action === 'billing_statement_sent');
     const approvedAudit = transitions.find((entry: { action: string }) => entry.action === 'billing_statement_approved');
+    expect(transitions.every((entry: { outcome: string }) => entry.outcome === 'succeeded')).toBe(true);
     expect(disputedAudit.prevHash).toBe(sentAudit.hash);
     expect(sentAudit.prevHash).toBe(approvedAudit.hash);
   });

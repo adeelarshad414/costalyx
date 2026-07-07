@@ -246,6 +246,28 @@ describeIfPostgres('Milestone B governance API with PostgreSQL persistence', () 
             'role_change'
           ])
         );
+        expect(
+          body.data.every(
+            (entry: {
+              tenantId: string;
+              actorId: string;
+              action: string;
+              targetType: string;
+              targetId: string;
+              outcome: string;
+              hash: string;
+              createdAt: string;
+            }) =>
+              entry.tenantId &&
+              entry.actorId &&
+              entry.action &&
+              entry.targetType &&
+              entry.targetId &&
+              entry.outcome === 'succeeded' &&
+              entry.hash &&
+              entry.createdAt
+          )
+        ).toBe(true);
       });
     await reader.close();
   });
