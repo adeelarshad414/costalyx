@@ -17,6 +17,7 @@
     "test:frontend": "npm --workspace frontend test -- --run",
     "test:contract": "vitest run contract",
     "test:contract:live": "vitest run contract/live",
+    "test:load": "npm --workspace backend test -- --runTestsByPath test/cost-model/cost-explorer-load.spec.ts",
     "ci:live-contract": "node scripts/run-live-contract.mjs",
     "probe:live-readiness": "node scripts/live-cloud-readiness.mjs",
     "probe:aws-live": "npm --workspace backend run probe:aws-live",

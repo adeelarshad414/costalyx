@@ -4,18 +4,23 @@ import type { NormalizedCostRecord } from '../../src/cost-model/cost-record.type
 import { DEFAULT_TENANT_ID } from '../../src/security/token-verifier';
 
 type QueryResult = { rows: unknown[]; rowCount?: number };
+type FakeResult = QueryResult | Error;
 
 class FakePgClient {
   readonly queries: Array<{ sql: string; params: unknown[] }> = [];
 
-  constructor(private readonly results: QueryResult[]) {}
+  constructor(private readonly results: FakeResult[]) {}
 
   async query(sql: string, params: unknown[] = []) {
     this.queries.push({ sql, params });
     if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(sql)) {
       return { rows: [], rowCount: 0 };
     }
-    return this.results.shift() ?? { rows: [], rowCount: 0 };
+    const result = this.results.shift();
+    if (result instanceof Error) {
+      throw result;
+    }
+    return result ?? { rows: [], rowCount: 0 };
   }
 
   release = jest.fn();
@@ -24,7 +29,7 @@ class FakePgClient {
 class FakePool {
   readonly client: FakePgClient;
 
-  constructor(results: QueryResult[]) {
+  constructor(results: FakeResult[]) {
     this.client = new FakePgClient(results);
   }
 
@@ -121,6 +126,37 @@ describe('PostgresCostModelRepository', () => {
     expect(combinedSql).toContain('INSERT INTO cost_records');
     expect(combinedSql).toContain('UPDATE ingestion_batches');
     expect(combinedSql).not.toContain('cost_total_usd');
+  });
+
+  it('rolls back the whole ingestion transaction when a row insert fails mid-batch', async () => {
+    const pool = new FakePool([
+      { rows: [], rowCount: 0 },
+      { rows: [], rowCount: 0 },
+      { rows: [], rowCount: 1 },
+      { rows: [], rowCount: 0 },
+      { rows: [], rowCount: 0 },
+      { rows: [], rowCount: 1 },
+      { rows: [], rowCount: 0 },
+      new Error('simulated cost_records insert failure')
+    ]);
+    const repository = new PostgresCostModelRepository(pool as never);
+
+    await expect(
+      repository.saveIngestion({
+        tenantId: DEFAULT_TENANT_ID,
+        provider: 'aws',
+        sourceUri: 'backend/test/fixtures/aws-cur-sample.csv',
+        idempotencyKey: 'idem-mid-batch-failure',
+        rows: [normalizedRow, { ...normalizedRow, id: '33333333-3333-4333-8333-333333333333', fingerprint: 'mid-batch-row-2' }]
+      })
+    ).rejects.toThrow('simulated cost_records insert failure');
+
+    const statements = pool.client.queries.map((query) => query.sql);
+    expect(statements[0]).toBe('BEGIN');
+    expect(statements).toContain('ROLLBACK');
+    expect(statements).not.toContain('COMMIT');
+    expect(statements.some((sql) => sql.includes('UPDATE ingestion_batches'))).toBe(false);
+    expect(pool.client.release).toHaveBeenCalled();
   });
 
   it('computes cost totals from hourly rate and usage hours when listing records', async () => {
