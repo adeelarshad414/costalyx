@@ -31,7 +31,7 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
         <section className="panel state" aria-label="Session expired">
           <h2>Session expired</h2>
           <p>{auth.error}</p>
-          <button type="button" onClick={auth.login}>
+          <button type="button" onClick={() => auth.login()}>
             Sign in
           </button>
         </section>
@@ -42,7 +42,7 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
       <section className="panel state">
         <h2>Sign in</h2>
         <p>Cost data is available after authentication.</p>
-        <button type="button" onClick={auth.login}>
+        <button type="button" onClick={() => auth.login()}>
           Sign in
         </button>
       </section>

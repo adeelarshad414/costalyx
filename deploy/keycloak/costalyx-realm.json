@@ -1,6 +1,8 @@
 {
   "realm": "costalyx-dev",
   "enabled": true,
+  "registrationAllowed": true,
+  "defaultRoles": ["viewer"],
   "roles": {
     "realm": [
       { "name": "viewer", "description": "Can view scoped cost data" },

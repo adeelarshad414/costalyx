@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { capturePersonaEvidence, hasKeycloakCredentials, personaSkipReason, signInAsSeededUser } from './support/persona-helpers';
+import {
+  capturePersonaEvidence,
+  hasKeycloakCredentials,
+  openProductPage,
+  personaSkipReason,
+  signInAsSeededUser
+} from './support/persona-helpers';
 
 const seededRoles = (process.env.E2E_KEYCLOAK_ROLE ?? 'admin')
   .split(',')
@@ -25,6 +31,7 @@ test.describe('Insufficient-role UX', () => {
     await expect(nav).toBeVisible();
     await expect(nav).not.toContainText('Operator');
     await expect(page.getByRole('region', { name: 'Cloud portfolio' })).toBeVisible();
+    await openProductPage(page, 'Costs');
     await expect(page.getByRole('region', { name: 'Normalized cost records' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Export CSV' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Run ingestion' })).toHaveCount(0);

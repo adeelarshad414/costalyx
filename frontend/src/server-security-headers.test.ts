@@ -37,7 +37,7 @@ describe('frontend production static server security headers', () => {
     expect(headers['Strict-Transport-Security']).toBe('max-age=31536000; includeSubDomains');
   });
 
-  it('serves SPA fallback responses with baseline browser security headers', async () => {
+  it('serves routed page fallback responses with baseline browser security headers', async () => {
     const root = await makeStaticRoot();
     const server = createStaticServer({
       root,

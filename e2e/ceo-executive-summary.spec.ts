@@ -12,7 +12,7 @@ test.describe('CEO executive summary persona journey', () => {
   test.skip(!hasKeycloakCredentials, personaSkipReason());
 
   test('answers what are we spending and why within the seeded dashboard', async ({ page }, testInfo) => {
-    await signInAsSeededUser(page);
+    await signInAsSeededUser(page, '/executive');
 
     const startedAt = Date.now();
     const executive = page.getByRole('region', { name: 'Executive summary' });

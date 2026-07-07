@@ -12,7 +12,7 @@ test.describe('Cost Explorer table fallback', () => {
   test.skip(!hasKeycloakCredentials, personaSkipReason());
 
   test('makes the Explorer flow available as a keyboard-reachable table', async ({ page }, testInfo) => {
-    await signInAsAdmin(page);
+    await signInAsAdmin(page, '/insights');
     await expectNoUserVisibleFailures(page);
 
     const explorer = page.getByRole('region', { name: 'Cost Explorer', exact: true });

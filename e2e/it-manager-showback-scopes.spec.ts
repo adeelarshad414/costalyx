@@ -3,6 +3,7 @@ import {
   capturePersonaEvidence,
   expectNoUserVisibleFailures,
   hasKeycloakCredentials,
+  openProductPage,
   personaSkipReason,
   signInAsAdmin
 } from './support/persona-helpers';
@@ -19,12 +20,14 @@ test.describe('IT manager showback scopes persona journey', () => {
     await expect(portfolio).toContainText('Groups');
     await expect(portfolio).toContainText('3');
 
+    await openProductPage(page, 'Allocation');
     const allocation = page.getByRole('region', { name: 'Allocation and dynamic tagging' });
     await expect(allocation).toBeVisible({ timeout: 45000 });
     const aggregate = allocation.getByRole('region', { name: 'Dimension aggregate' });
     await expect(aggregate).toBeVisible({ timeout: 45000 });
     await expect(aggregate).toContainText('Untagged', { timeout: 45000 });
 
+    await openProductPage(page, 'Billing Agent');
     const billing = page.getByRole('region', { name: 'Billing anomalies' });
     await expect(billing).toContainText('Data Platform');
     await expect(billing).toContainText(/Warnings\s+\d+/);

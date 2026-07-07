@@ -3,6 +3,7 @@ import {
   capturePersonaEvidence,
   expectNoUserVisibleFailures,
   hasKeycloakCredentials,
+  openProductPage,
   personaSkipReason,
   signInAsAdmin
 } from './support/persona-helpers';
@@ -12,7 +13,7 @@ test.describe('FinOps practitioner anomaly and allocation persona journey', () =
   test.skip(!hasKeycloakCredentials, personaSkipReason());
 
   test('triages billing anomalies and confirms allocation coverage without leaving the app', async ({ page }, testInfo) => {
-    await signInAsAdmin(page);
+    await signInAsAdmin(page, '/billing-agent');
     await expectNoUserVisibleFailures(page);
 
     const billing = page.getByRole('region', { name: 'Billing anomalies' });
@@ -20,6 +21,7 @@ test.describe('FinOps practitioner anomaly and allocation persona journey', () =
     await expect(billing).toContainText(/Coverage|New Spend|Unit Price|Usage/);
     await expect.poll(async () => billing.getByLabel(/False positive reason/).count()).toBeGreaterThan(0);
 
+    await openProductPage(page, 'Allocation');
     const allocation = page.getByRole('region', { name: 'Allocation and dynamic tagging' });
     await expect(allocation.getByRole('region', { name: 'Custom dimensions' })).toContainText(/Cost Center|Environment/, {
       timeout: 45000
