@@ -190,6 +190,12 @@ describe('BillingAgentConsole', () => {
     await user.selectOptions(screen.getByLabelText('False positive reason for Usage'), 'planned_change');
     await user.click(screen.getByRole('button', { name: /False positive/ }));
 
+    expect(updateAnomalyStatus).not.toHaveBeenCalled();
+    expect(screen.getByRole('alertdialog', { name: 'Confirm False positive' })).toHaveTextContent(
+      'Mark Usage as false positive with Planned Change. Future scans will suppress matching anomalies.'
+    );
+    await user.click(screen.getByRole('button', { name: 'Confirm false positive' }));
+
     expect(scanBillingAnomalies).toHaveBeenCalledTimes(1);
     expect(updateAnomalyStatus).toHaveBeenCalledWith(
       expect.objectContaining({ id: anomaly.id, status: 'false_positive', falsePositiveReason: 'planned_change' })
@@ -247,8 +253,28 @@ describe('BillingAgentConsole', () => {
     await user.click(screen.getByRole('button', { name: 'PDF' }));
     await user.click(screen.getByRole('button', { name: /Generate/ }));
     await user.click(screen.getByRole('button', { name: /Approve/ }));
+
+    expect(approveBillingStatement).not.toHaveBeenCalled();
+    expect(screen.getByRole('alertdialog', { name: 'Confirm Approve' })).toHaveTextContent(
+      'Approve the Finance Partner statement for 2026-06-30. This allows an admin to send it.'
+    );
+    await user.click(screen.getByRole('button', { name: 'Confirm approve' }));
+
     await user.click(screen.getByRole('button', { name: /Send/ }));
+
+    expect(sendBillingStatement).not.toHaveBeenCalled();
+    expect(screen.getByRole('alertdialog', { name: 'Confirm Send' })).toHaveTextContent(
+      'Send the Finance Partner statement for 2026-06-30 to its stakeholder and record delivery evidence.'
+    );
+    await user.click(screen.getByRole('button', { name: 'Confirm send' }));
+
     await user.click(screen.getByRole('button', { name: /Dispute/ }));
+
+    expect(disputeBillingStatement).not.toHaveBeenCalled();
+    expect(screen.getByRole('alertdialog', { name: 'Confirm Dispute' })).toHaveTextContent(
+      'Open a stakeholder dispute on the Finance Partner statement and record an allocation review note.'
+    );
+    await user.click(screen.getByRole('button', { name: 'Confirm dispute' }));
 
     expect(exportBillingStatementCsv).toHaveBeenCalledWith({ id: statement.id });
     expect(exportBillingStatementPdf).toHaveBeenCalledWith({ id: statement.id });
