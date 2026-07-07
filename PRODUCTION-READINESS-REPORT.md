@@ -1,6 +1,6 @@
 # Costalyx Production Readiness Report
 
-Generated: 2026-07-07 19:05 PKT
+Generated: 2026-07-07 19:11 PKT
 Branch: `feature/costalyx-ultimate-master-run-2026-07-07`
 Entry point: `16-ULTIMATE-MASTER-RUN.md`
 
@@ -26,7 +26,7 @@ should rely on CI or a stable Docker daemon for full Compose browser evidence.
 
 | Gate | Status | Evidence |
 | --- | --- | --- |
-| Secret scan | Done | `npm run security:secrets` passed current-tree and history scans with no leaks; cloud-connection secret guard passed 1 suite / 2 tests. |
+| Secret scan | Done | `npm run security:secrets` passed current-tree and history scans with no leaks; cloud-connection secret guard passed 1 suite / 2 tests. PR #44 CI now runs `gitleaks/gitleaks-action@v3` with full checkout history and `GITLEAKS_CONFIG=.gitleaks.toml`. |
 | Rate limiting | Done | Public endpoint limiter added; focused integration passed 1 suite / 1 test; backend build passed. |
 | RBAC penetration | Done | 25 mutating routes and 41 lower-role denial cases passed. |
 | Load / rollback | Done | Cost Explorer load and Postgres rollback proof passed 2 suites / 6 tests. |
@@ -168,7 +168,11 @@ Latest non-Docker regression after the Ultimate fixes:
 PR opened: https://github.com/adeelarshad414/costalyx/pull/44
 
 At the time this report was updated, PR #44 had just been opened for the
-Ultimate Master Run branch. No CI bypass has been used. If GitHub Actions later
-fails only for billing/infra, merge may be annotated under the requested
+Ultimate Master Run branch. No CI bypass has been used. The first CI failure
+was classified as a secret-scan configuration false positive: allowlisted test
+fixture strings were scanned by the hosted action without the repo
+`.gitleaks.toml` config. CI has been updated to use `gitleaks-action@v3` with
+`GITLEAKS_CONFIG=.gitleaks.toml` and full checkout history. If GitHub Actions
+later fails only for billing/infra, merge may be annotated under the requested
 `ci-bypass: billing/infra` policy after the local regression floor evidence in
 this report is accepted; genuine test failures should not be bypassed.

@@ -5,7 +5,7 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-07 19:05:11 PKT_
+_Last updated: 2026-07-07 19:11:47 PKT_
 
 ## Ultimate Master Run — 2026-07-07
 
@@ -21,6 +21,11 @@ Evidence added in this run:
   `scripts/check-secret-scan.mjs`, `npm run security:secrets`, and CI wiring.
   `npm run security:secrets` passed current-tree and history scans with no
   leaks; the cloud-connection secret guard passed 1 suite / 2 tests.
+- Corrected PR #44 CI secret-scan wiring after GitHub Actions reported
+  allowlisted fixture strings. The hosted action now uses
+  `gitleaks/gitleaks-action@v3`, full checkout history, and
+  `GITLEAKS_CONFIG=.gitleaks.toml`; local `npm run security:secrets` passed
+  current-tree and 88-commit history scans with no leaks.
 - Added public endpoint rate limiting with configurable
   `COSTALYX_RATE_LIMIT_*` knobs. Focused rate-limit integration passed 1 suite
   / 1 test and backend build passed.
