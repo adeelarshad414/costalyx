@@ -5,7 +5,7 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-07 13:01:07 PKT_
+_Last updated: 2026-07-07 13:15:33 PKT_
 
 ## Gap Audit / UIUX Elevation Run — 2026-07-07
 
@@ -22,6 +22,9 @@ Evidence added in this run:
 - Fixed the remaining mobile overflow in Stakeholder Statements by constraining billing-agent row content/actions/evidence and allowing status/evidence text to wrap inside narrow cells.
 - Final live seeded walkthrough passed: `npm run test:e2e:keycloak -- e2e/costalyx-full-stack-walkthrough.spec.ts` seeded `costalyx-e2e-admin` and Playwright reported 3 Chromium tests passed in 10.5s across desktop, tablet, and mobile, with no viewport overflow or clipped buttons.
 - Post-fix regression verification passed: `npm --workspace frontend test -- --run src/features/billing-agent/BillingAgentConsole.test.tsx` passed 1 file / 4 tests; `npm test` passed backend 40 suites / 150 tests, frontend 15 files / 52 tests, contract 12 files / 37 tests, and additive migration check 13 files; backend and frontend production builds passed; `git diff --check` passed.
+- Added seven consumer-persona Playwright journeys required by docs 08/14. `npm run test:e2e:keycloak -- e2e/ceo-executive-summary.spec.ts e2e/cfo-statement-narrative.spec.ts e2e/finops-anomaly-allocation.spec.ts e2e/devops-sre-waste-signals.spec.ts e2e/it-manager-showback-scopes.spec.ts e2e/solution-architect-tco.spec.ts e2e/external-stakeholder-statement-delivery.spec.ts` passed 7 Chromium tests in 13.5s with screenshot artifacts under `test-results/`.
+- Fixed repeatability of local dummy data after E2E mutations: `seed:demo` had drifted to verification counts `default_tenant_cost_records: 14`, total `290.09400000`, `anomalies: 5`, and `statements: 6`; after the broadened reset it returns canonical verification counts `default_tenant_cost_records: 11`, total `239.93800000`, `anomalies: 2`, `statements: 3`, and `agent_runs: 3`. `npm run test:contract -- --run contract/demo-seed.spec.ts` passed with contract totals 12 files / 38 tests and 8 files / 15 tests skipped.
+- Final explicit live E2E verification passed: after reseeding, `npm run test:e2e:keycloak -- e2e/milestone-a-keycloak-login.spec.ts e2e/costalyx-full-stack-walkthrough.spec.ts e2e/ceo-executive-summary.spec.ts e2e/cfo-statement-narrative.spec.ts e2e/finops-anomaly-allocation.spec.ts e2e/devops-sre-waste-signals.spec.ts e2e/it-manager-showback-scopes.spec.ts e2e/solution-architect-tco.spec.ts e2e/external-stakeholder-statement-delivery.spec.ts` passed 11 Chromium tests in 14.1s.
 - Final non-live verification passed after the fixes: `npm --workspace frontend test -- AuthProvider.test.tsx` passed 7 tests; `npm run test:contract -- --run contract/dev-stack.spec.ts` passed contract totals 12 files / 37 tests with 8 files / 15 tests skipped; `npm test` passed backend 40 suites / 150 tests, frontend 15 files / 52 tests, contract 12 files / 37 tests, and additive migration check 13 files; backend and frontend builds passed; `git diff --check` passed.
 
 Blocked/remaining:
@@ -49,8 +52,24 @@ linked)`. A milestone only moves to `Done` when every item in its
 `07-FRONTEND-BACKEND-WIRING.md` checklist and `08-TESTING-STRATEGY.md`
 Definition of Done is satisfied.
 
+## Consumer persona E2E matrix
+
+| Persona | Spec | Evidence |
+|---|---|---|
+| CEO | `e2e/ceo-executive-summary.spec.ts` | Answers spend/budget/trend/top-mover question within the seeded dashboard; passed in the 7-spec Keycloak run. |
+| CFO | `e2e/cfo-statement-narrative.spec.ts` | Reads explainable Platform Engineering statement narrative with total and warnings; passed in the 7-spec Keycloak run. |
+| FinOps practitioner | `e2e/finops-anomaly-allocation.spec.ts` | Runs anomaly scan, verifies triage controls, and confirms allocation dimensions/aggregate state; passed in the 7-spec Keycloak run. |
+| DevOps/SRE consumer | `e2e/devops-sre-waste-signals.spec.ts` | Finds spot/lease signals, open recommendations, apply actions, and realized savings evidence; passed in the 7-spec Keycloak run. |
+| IT manager | `e2e/it-manager-showback-scopes.spec.ts` | Verifies account groups, allocation aggregate, Data Platform statement, and visible warnings; passed in the 7-spec Keycloak run. |
+| Solution architect | `e2e/solution-architect-tco.spec.ts` | Runs What-if TCO and verifies AWS/Azure/GCP/tolerance outputs from the live pricing model; passed in the 7-spec Keycloak run. |
+| External stakeholder | `e2e/external-stakeholder-statement-delivery.spec.ts` | Generates, approves, sends a Platform Engineering statement, and verifies Mailpit recipient `platform-finance@example.test`; passed in the 7-spec Keycloak run. |
+
 ## Latest cross-milestone verification
 
+- Current checkpoint (2026-07-07 13:15 PKT): `npm run test:e2e:keycloak -- e2e/ceo-executive-summary.spec.ts e2e/cfo-statement-narrative.spec.ts e2e/finops-anomaly-allocation.spec.ts e2e/devops-sre-waste-signals.spec.ts e2e/it-manager-showback-scopes.spec.ts e2e/solution-architect-tco.spec.ts e2e/external-stakeholder-statement-delivery.spec.ts` passed 7 Chromium persona journeys in 13.5s against Keycloak, host-run backend/frontend, local Docker Postgres, and Mailpit. Screenshot artifacts were produced for all seven persona journeys under `test-results/`.
+- Current checkpoint (2026-07-07 13:19 PKT): after reseeding, `npm run test:e2e:keycloak -- e2e/milestone-a-keycloak-login.spec.ts e2e/costalyx-full-stack-walkthrough.spec.ts e2e/ceo-executive-summary.spec.ts e2e/cfo-statement-narrative.spec.ts e2e/finops-anomaly-allocation.spec.ts e2e/devops-sre-waste-signals.spec.ts e2e/it-manager-showback-scopes.spec.ts e2e/solution-architect-tco.spec.ts e2e/external-stakeholder-statement-delivery.spec.ts` passed 11 Chromium tests in 14.1s.
+- Current checkpoint (2026-07-07 13:18 PKT): `npm run test:contract -- --run contract/demo-seed.spec.ts` passed with 12 contract files / 38 tests and 8 skipped files / 15 skipped tests after adding the demo-seed reset guard. Repeated `npm run seed:demo` verified canonical counts: 11 default-tenant cost records, total `239.93800000`, 2 anomalies, 3 statements, and 3 agent runs.
+- Current checkpoint (2026-07-07 13:23 PKT): `npm test` passed with backend 40 suites / 150 tests, frontend 15 files / 52 tests, contract 12 files / 38 tests, and additive migration check for 13 files. `npm run ci:live-contract` passed 9 live files / 20 tests. `npm --workspace backend run build`, `npm --workspace frontend run build`, and `git diff --check` passed. A final `npm run seed:demo` left local Postgres at canonical dummy-data counts.
 - Current checkpoint (2026-07-07 11:33 PKT): `npm run seed:demo` applied 13 migrations to local Docker Postgres `costalyx_dev` and verified demo data: 2 tenants, 4 ready-for-live-probe cloud connections across AWS/Azure/GCP, 12 cost records, 11 default-tenant records across 3 providers, default-tenant computed total `239.93800000`, 2 anomalies, 3 statements, and 3 agent runs. A repeated run returned identical counts, proving the seed is idempotent.
 - Current checkpoint (2026-07-07 11:33 PKT): `npm test` passed after adding the demo seed path: backend 40 suites / 150 tests with 6 suites and 8 tests skipped, frontend 15 files / 49 tests, contract 11 files / 33 tests with 8 files and 15 tests skipped, and additive migration check for 13 files. `npm run ci:live-contract` passed 9 live files / 20 tests. `npm --workspace backend run build`, `npm --workspace frontend run build`, `docker compose config`, `npm audit --audit-level=high` (0 vulnerabilities), and `git diff --check` passed.
 - Current checkpoint (2026-07-06 21:57 PKT): Milestone I.3 focused backend tests passed 3 suites / 16 tests; coverage includes deterministic disabled-LLM narrative fallback, `agent_runs` ledger write/list behavior, admin-only `/agent-runs`, scheduler invocation of anomaly/statement/send cycles, approval-preserving send caps, and existing SMTP statement send behavior.

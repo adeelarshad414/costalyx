@@ -1,0 +1,28 @@
+import { expect, test } from '@playwright/test';
+import {
+  capturePersonaEvidence,
+  expectNoUserVisibleFailures,
+  hasKeycloakCredentials,
+  personaSkipReason,
+  signInAsAdmin
+} from './support/persona-helpers';
+
+test.describe('CEO executive summary persona journey', () => {
+  test.setTimeout(120000);
+  test.skip(!hasKeycloakCredentials, personaSkipReason());
+
+  test('answers what are we spending and why within the seeded dashboard', async ({ page }, testInfo) => {
+    const startedAt = Date.now();
+    await signInAsAdmin(page);
+    await expectNoUserVisibleFailures(page);
+
+    const executive = page.getByRole('region', { name: 'Executive summary' });
+    await expect(executive).toContainText('Total spend');
+    await expect(executive).toContainText('Budget used');
+    await expect(executive).toContainText('Trend delta');
+    await expect(executive.getByRole('region', { name: 'Top Movers' })).toContainText(/Amazon|Azure|Compute|BigQuery/);
+
+    expect(Date.now() - startedAt).toBeLessThan(30000);
+    await capturePersonaEvidence(page, testInfo, 'ceo-executive-summary');
+  });
+});
