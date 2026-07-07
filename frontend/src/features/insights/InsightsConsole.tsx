@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { toUserFacingError } from '../../utils/userFacingError';
 
 interface InsightsConsoleProps {
   client: CostalyxClient;
@@ -50,7 +51,7 @@ export function InsightsConsole({ client }: InsightsConsoleProps) {
       setFlow(nextFlow);
       setState('loaded');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unknown insights request failure');
+      setError(toUserFacingError(loadError, 'Load insights'));
       setState('error');
     }
   }, [client, costFloorUsd, provider]);
@@ -64,7 +65,7 @@ export function InsightsConsole({ client }: InsightsConsoleProps) {
       const csv = await client.exportCostRecords();
       setExportStatus(`${csvRows(csv)} CSV rows ready`);
     } catch (exportError) {
-      setError(exportError instanceof Error ? exportError.message : 'Unknown export failure');
+      setError(toUserFacingError(exportError, 'Export inventory CSV'));
       setState('error');
     }
   }, [client]);

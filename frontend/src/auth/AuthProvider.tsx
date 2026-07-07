@@ -1,5 +1,6 @@
 import Keycloak from 'keycloak-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { toUserFacingError } from '../utils/userFacingError';
 import { highestRole, type Role } from './roles';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'error';
@@ -82,7 +83,7 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
         }
       } catch (initError) {
         if (!cancelled) {
-          setError(initError instanceof Error ? initError.message : 'Keycloak initialization failed');
+          setError(toUserFacingError(initError, 'Initialize sign in'));
           setStatus('error');
         }
       }

@@ -267,4 +267,21 @@ describe('CloudPortfolioConsole', () => {
     expect(screen.getByRole('heading', { name: 'costalyx_aws_readonly_role.tf' })).toBeInTheDocument();
     expect(screen.getByText(/aws_iam_role/)).toBeInTheDocument();
   });
+
+  it('keeps onboarding subpanel failures user-facing instead of raw API payloads', async () => {
+    const user = userEvent.setup();
+    const getCloudConnectionOnboarding = vi.fn().mockRejectedValue(
+      new Error('HTTP 403 {"detail":"denied","authorization":"Bearer secret","stack":"at onboarding"}')
+    );
+
+    renderWithRole(<CloudPortfolioConsole client={createClient({ getCloudConnectionOnboarding })} />, ['admin']);
+
+    await user.selectOptions(await screen.findByLabelText('Connection'), connection.id);
+    await user.click(screen.getByRole('button', { name: 'Load policies' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Load onboarding guidance failed. Try again or contact an administrator if this keeps happening.'
+    );
+    expect(screen.queryByText(/authorization|Bearer|HTTP 403|stack/)).not.toBeInTheDocument();
+  });
 });

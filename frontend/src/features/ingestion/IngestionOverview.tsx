@@ -3,6 +3,7 @@ import { costalyxClient, type CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { toUserFacingError } from '../../utils/userFacingError';
 
 interface IngestionOverviewProps {
   client?: CostalyxClient;
@@ -26,7 +27,7 @@ export function IngestionOverview({ client = costalyxClient }: IngestionOverview
       setRecords(response.data);
       setState('loaded');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unknown API failure');
+      setError(toUserFacingError(loadError, 'Load cost records'));
       setState('error');
     }
   }, [client]);
@@ -41,7 +42,7 @@ export function IngestionOverview({ client = costalyxClient }: IngestionOverview
       });
       await loadRecords();
     } catch (ingestionError) {
-      setError(ingestionError instanceof Error ? ingestionError.message : 'Unknown ingestion failure');
+      setError(toUserFacingError(ingestionError, 'Run ingestion'));
       setState('error');
     } finally {
       setIsIngesting(false);

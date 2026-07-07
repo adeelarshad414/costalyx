@@ -4,6 +4,7 @@ import type { CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { toUserFacingError } from '../../utils/userFacingError';
 
 interface AllocationConsoleProps {
   client: CostalyxClient;
@@ -36,7 +37,7 @@ export function AllocationConsole({ client }: AllocationConsoleProps) {
       setSummary(selected ? await client.getCostSummary({ dimension: selected }) : null);
       setState('loaded');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unknown allocation request failure');
+      setError(toUserFacingError(loadError, 'Load allocation model'));
       setState('error');
     }
   }, [client]);
@@ -63,7 +64,7 @@ export function AllocationConsole({ client }: AllocationConsoleProps) {
       setSummary(await client.getCostSummary({ dimension: dimension.id }));
       setState('loaded');
     } catch (mutationError) {
-      setError(mutationError instanceof Error ? mutationError.message : 'Unknown dimension mutation failure');
+      setError(toUserFacingError(mutationError, 'Create allocation dimension'));
       setState('error');
     } finally {
       setIsMutating(false);
@@ -84,7 +85,7 @@ export function AllocationConsole({ client }: AllocationConsoleProps) {
         setSummary(await client.getCostSummary({ dimension: selectedDimensionId }));
       }
     } catch (mutationError) {
-      setError(mutationError instanceof Error ? mutationError.message : 'Unknown tag mutation failure');
+      setError(toUserFacingError(mutationError, 'Retag resource'));
       setState('error');
     } finally {
       setIsMutating(false);
