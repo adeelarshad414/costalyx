@@ -251,6 +251,11 @@ describe('CloudPortfolioConsole', () => {
   it('lets admins load AWS onboarding policies for the selected connection', async () => {
     const user = userEvent.setup();
     const getCloudConnectionOnboarding = vi.fn(createClient().getCloudConnectionOnboarding);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText }
+    });
 
     renderWithRole(<CloudPortfolioConsole client={createClient({ getCloudConnectionOnboarding })} />, ['admin']);
 
@@ -266,6 +271,14 @@ describe('CloudPortfolioConsole', () => {
     expect(screen.getByText(/CostalyxReadOnlyBillingRole/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'costalyx_aws_readonly_role.tf' })).toBeInTheDocument();
     expect(screen.getByText(/aws_iam_role/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Copy External ID' }));
+    expect(writeText).toHaveBeenCalledWith(connection.externalId);
+    expect(screen.getByRole('status')).toHaveTextContent('Copied External ID');
+    expect(screen.getByRole('button', { name: 'Copy Trust policy' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy Permissions policy' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy costalyx-aws-readonly-role.yaml' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy costalyx_aws_readonly_role.tf' })).toBeInTheDocument();
   });
 
   it('keeps onboarding subpanel failures user-facing instead of raw API payloads', async () => {

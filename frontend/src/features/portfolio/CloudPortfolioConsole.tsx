@@ -1,5 +1,5 @@
-import { Activity, Cloud, KeyRound, Plus, RefreshCw, ShieldCheck } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Activity, Check, Clipboard, Cloud, KeyRound, Plus, RefreshCw, ShieldCheck } from 'lucide-react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
 import { EmptyState } from '../../components/EmptyState';
@@ -73,6 +73,7 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
   const [form, setForm] = useState<CloudConnectionForm>(connectionDefaults.aws);
   const [onboarding, setOnboarding] = useState<CloudConnectionOnboarding | null>(null);
   const [onboardingError, setOnboardingError] = useState('');
+  const [copyStatus, setCopyStatus] = useState('');
   const [connectionRuns, setConnectionRuns] = useState<CloudConnectionRun[]>([]);
   const [runError, setRunError] = useState('');
 
@@ -131,6 +132,7 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
   useEffect(() => {
     setOnboarding(null);
     setOnboardingError('');
+    setCopyStatus('');
   }, [connectionId]);
 
   const createConnection = useCallback(async () => {
@@ -164,12 +166,26 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
       if (!getCloudConnectionOnboarding) {
         throw new Error('Cloud portfolio client is unavailable');
       }
+      setCopyStatus('');
       setOnboarding(await getCloudConnectionOnboarding({ id: selectedConnection.id }));
       setOnboardingError('');
     } catch (onboardingLoadError) {
       setOnboardingError(toUserFacingError(onboardingLoadError, 'Load onboarding guidance'));
     }
   }, [client, selectedConnection]);
+
+  const copyOnboardingText = useCallback(async (label: string, value: string) => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      setCopyStatus(`Copy unavailable for ${label}`);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyStatus(`Copied ${label}`);
+    } catch {
+      setCopyStatus(`Could not copy ${label}`);
+    }
+  }, []);
 
   const loadConnectionRuns = useCallback(async () => {
     if (!selectedConnection) {
@@ -340,23 +356,42 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
       </div>
 
       {selectedConnection ? (
-        <dl className="connection-detail" aria-label="Selected cloud connection details">
-          <div>
-            <dt>
-              <KeyRound aria-hidden="true" size={16} />
-              External ID
-            </dt>
-            <dd className="font-mono-data">{selectedConnection.externalId}</dd>
-          </div>
-          <div>
-            <dt>Principal</dt>
-            <dd className="font-mono-data">{selectedConnection.readOnlyPrincipal}</dd>
-          </div>
-          <div>
-            <dt>Probe result</dt>
-            <dd>{selectedConnection.lastValidationMessage ?? statusLabel(selectedConnection.status)}</dd>
-          </div>
-        </dl>
+        <>
+          <dl className="connection-detail" aria-label="Selected cloud connection details">
+            <div>
+              <dt>
+                <KeyRound aria-hidden="true" size={16} />
+                External ID
+              </dt>
+              <dd className="copyable-value">
+                <span className="font-mono-data">{selectedConnection.externalId}</span>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  aria-label="Copy External ID"
+                  onClick={() => copyOnboardingText('External ID', selectedConnection.externalId)}
+                >
+                  <Clipboard aria-hidden="true" size={16} />
+                  Copy
+                </button>
+              </dd>
+            </div>
+            <div>
+              <dt>Principal</dt>
+              <dd className="font-mono-data">{selectedConnection.readOnlyPrincipal}</dd>
+            </div>
+            <div>
+              <dt>Probe result</dt>
+              <dd>{selectedConnection.lastValidationMessage ?? statusLabel(selectedConnection.status)}</dd>
+            </div>
+          </dl>
+          {copyStatus ? (
+            <p className="copy-status" role="status" aria-label="Onboarding copy status">
+              <Check aria-hidden="true" size={16} />
+              {copyStatus}
+            </p>
+          ) : null}
+        </>
       ) : null}
 
       {selectedConnection ? (
@@ -417,24 +452,28 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
                     <li key={step}>{step}</li>
                   ))}
                 </ol>
-                <div>
-                  <h3>Trust policy</h3>
-                  <pre className="policy-json">{JSON.stringify(onboarding.trustPolicy, null, 2)}</pre>
-                </div>
-                <div>
-                  <h3>Permissions policy</h3>
-                  <pre className="policy-json">{JSON.stringify(onboarding.permissionsPolicy, null, 2)}</pre>
-                </div>
+                <OnboardingArtifact
+                  title="Trust policy"
+                  body={JSON.stringify(onboarding.trustPolicy, null, 2)}
+                  onCopy={copyOnboardingText}
+                />
+                <OnboardingArtifact
+                  title="Permissions policy"
+                  body={JSON.stringify(onboarding.permissionsPolicy, null, 2)}
+                  onCopy={copyOnboardingText}
+                />
                 {onboarding.deploymentTemplates ? (
                   <>
-                    <div>
-                      <h3>{onboarding.deploymentTemplates.cloudFormation.fileName}</h3>
-                      <pre className="policy-json">{onboarding.deploymentTemplates.cloudFormation.body}</pre>
-                    </div>
-                    <div>
-                      <h3>{onboarding.deploymentTemplates.terraform.fileName}</h3>
-                      <pre className="policy-json">{onboarding.deploymentTemplates.terraform.body}</pre>
-                    </div>
+                    <OnboardingArtifact
+                      title={onboarding.deploymentTemplates.cloudFormation.fileName}
+                      body={onboarding.deploymentTemplates.cloudFormation.body}
+                      onCopy={copyOnboardingText}
+                    />
+                    <OnboardingArtifact
+                      title={onboarding.deploymentTemplates.terraform.fileName}
+                      body={onboarding.deploymentTemplates.terraform.body}
+                      onCopy={copyOnboardingText}
+                    />
                   </>
                 ) : null}
               </div>
@@ -442,6 +481,28 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
           </section>
         </PermissionGate>
       ) : null}
+    </section>
+  );
+}
+
+interface OnboardingArtifactProps {
+  title: string;
+  body: string;
+  onCopy: (label: string, value: string) => void | Promise<void>;
+  children?: ReactNode;
+}
+
+function OnboardingArtifact({ title, body, onCopy, children }: OnboardingArtifactProps) {
+  return (
+    <section className="onboarding-artifact" aria-label={`${title} artifact`}>
+      <div className="artifact-header">
+        <h3>{title}</h3>
+        <button type="button" className="secondary-button artifact-copy-button" aria-label={`Copy ${title}`} onClick={() => onCopy(title, body)}>
+          <Clipboard aria-hidden="true" size={16} />
+          Copy
+        </button>
+      </div>
+      {children ?? <pre className="policy-json">{body}</pre>}
     </section>
   );
 }
