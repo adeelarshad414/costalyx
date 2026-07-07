@@ -297,6 +297,11 @@ async function seedDataset(client, dataset) {
   await client.query('BEGIN');
   try {
     await seedTenants(client, dataset.tenants);
+    await resetDemoGeneratedState(
+      client,
+      dataset.tenants.map((tenant) => tenant.id),
+      dataset.costRecords.map((record) => record.resourceId)
+    );
     await seedUsers(client, dataset.users);
     await seedCloudConnections(client, dataset.cloudConnections);
     await seedAccounts(client, dataset.accounts);
@@ -317,6 +322,53 @@ async function seedDataset(client, dataset) {
     await client.query('ROLLBACK');
     throw error;
   }
+}
+
+export async function resetDemoGeneratedState(
+  client,
+  tenantIds = [DEFAULT_TENANT_ID, SECONDARY_TENANT_ID],
+  resourceIds = []
+) {
+  await client.query('DELETE FROM statement_line_items WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM statements WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM billing_scopes WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM stakeholders WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM anomaly_suppressions WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM anomalies WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM agent_runs WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM billing_agent_idempotency WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM audit_log WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM realized_savings WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM recommendations WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM optimization_idempotency WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM cloud_connection_runs WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM views WHERE org_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query(
+    `DELETE FROM dimension_tag_mappings
+     WHERE dimension_id IN (SELECT id FROM dimensions WHERE org_id = ANY($1::uuid[]))`,
+    [tenantIds]
+  );
+  await client.query('DELETE FROM dimensions WHERE org_id = ANY($1::uuid[])', [tenantIds]);
+  if (resourceIds.length > 0) {
+    await client.query('DELETE FROM resource_tags WHERE resource_id = ANY($1::text[])', [resourceIds]);
+  }
+  await client.query(
+    `DELETE FROM account_group_members
+     WHERE account_group_id IN (SELECT id FROM account_groups WHERE tenant_id = ANY($1::uuid[]))
+        OR account_id IN (SELECT id FROM accounts WHERE tenant_id = ANY($1::uuid[]))`,
+    [tenantIds]
+  );
+  await client.query('DELETE FROM account_groups WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM cloud_credentials WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM cost_records WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM ingestion_batches WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM accounts WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM cloud_connections WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM governance_idempotency WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
+  await client.query('DELETE FROM user_roles WHERE user_id IN (SELECT id FROM users WHERE tenant_id = ANY($1::uuid[]))', [
+    tenantIds
+  ]);
+  await client.query('DELETE FROM users WHERE tenant_id = ANY($1::uuid[])', [tenantIds]);
 }
 
 async function verifySeed(client) {

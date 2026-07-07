@@ -79,6 +79,7 @@ async function signIn(page: Page) {
   await page.getByLabel(/username|email/i).fill(process.env.E2E_KEYCLOAK_USERNAME ?? '');
   await page.getByRole('textbox', { name: /^password$/i }).fill(process.env.E2E_KEYCLOAK_PASSWORD ?? '');
   await page.getByRole('button', { name: /sign in/i }).click();
+  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible({ timeout: 45000 });
 }
 
 async function expectNoViewportOverflow(page: Page) {

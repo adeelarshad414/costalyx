@@ -26,6 +26,11 @@ type DemoSeedModule = {
   summarizeDataset: (dataset: ReturnType<DemoSeedModule['buildDemoDataset']>) => Record<string, unknown>;
   assertSafeToSeed: (databaseUrl: string, env?: Record<string, string>) => void;
   getMigrationFiles: (root?: string) => Array<{ name: string }>;
+  resetDemoGeneratedState: (
+    client: { query: (sql: string, params?: unknown[]) => Promise<unknown> },
+    tenantIds?: string[],
+    resourceIds?: string[]
+  ) => Promise<void>;
 };
 
 async function loadSeedModule(): Promise<DemoSeedModule> {
@@ -106,5 +111,55 @@ describe('demo seed dataset', () => {
       migrations.map((migration) => migration.name).slice().sort()
     );
     expect(migrations.some((migration) => migration.name.includes('rollback'))).toBe(false);
+  });
+
+  it('resets generated and mutable demo rows before reseeding canonical fixtures', async () => {
+    const seed = await loadSeedModule();
+    const queries: Array<{ sql: string; params?: unknown[] }> = [];
+    const fakeClient = {
+      async query(sql: string, params?: unknown[]) {
+        queries.push({ sql, params });
+        return { rows: [] };
+      }
+    };
+    const tenantIds = [seed.DEFAULT_TENANT_ID];
+    const resourceIds = ['i-aws-prod-001'];
+
+    await seed.resetDemoGeneratedState(fakeClient, tenantIds, resourceIds);
+
+    expect(queries.map((query) => query.sql)).toEqual([
+      'DELETE FROM statement_line_items WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM statements WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM billing_scopes WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM stakeholders WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM anomaly_suppressions WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM anomalies WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM agent_runs WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM billing_agent_idempotency WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM audit_log WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM realized_savings WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM recommendations WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM optimization_idempotency WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM cloud_connection_runs WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM views WHERE org_id = ANY($1::uuid[])',
+      `DELETE FROM dimension_tag_mappings
+     WHERE dimension_id IN (SELECT id FROM dimensions WHERE org_id = ANY($1::uuid[]))`,
+      'DELETE FROM dimensions WHERE org_id = ANY($1::uuid[])',
+      'DELETE FROM resource_tags WHERE resource_id = ANY($1::text[])',
+      `DELETE FROM account_group_members
+     WHERE account_group_id IN (SELECT id FROM account_groups WHERE tenant_id = ANY($1::uuid[]))
+        OR account_id IN (SELECT id FROM accounts WHERE tenant_id = ANY($1::uuid[]))`,
+      'DELETE FROM account_groups WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM cloud_credentials WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM cost_records WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM ingestion_batches WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM accounts WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM cloud_connections WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM governance_idempotency WHERE tenant_id = ANY($1::uuid[])',
+      'DELETE FROM user_roles WHERE user_id IN (SELECT id FROM users WHERE tenant_id = ANY($1::uuid[]))',
+      'DELETE FROM users WHERE tenant_id = ANY($1::uuid[])'
+    ]);
+    expect(queries.filter((query) => query.sql.includes('resource_tags')).every((query) => query.params?.[0] === resourceIds)).toBe(true);
+    expect(queries.filter((query) => !query.sql.includes('resource_tags')).every((query) => query.params?.[0] === tenantIds)).toBe(true);
   });
 });
