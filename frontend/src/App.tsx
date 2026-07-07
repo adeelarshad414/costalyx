@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { createCostalyxClient } from './api/client';
 import { AuthBoundary } from './auth/AuthBoundary';
 import { useAuth } from './auth/AuthProvider';
+import { ThemeToggle } from './components/ThemeToggle';
 import { AllocationConsole } from './features/allocation/AllocationConsole';
 import { BillingAgentConsole } from './features/billing-agent/BillingAgentConsole';
 import { ExecutiveConsole } from './features/executive/ExecutiveConsole';
@@ -23,14 +24,17 @@ export function App() {
           <p>Costalyx</p>
           <h1>Cloud spend, normalized at the source</h1>
         </div>
-        {auth.status === 'authenticated' ? (
-          <div className="session-pill">
-            <span>{auth.role}</span>
-            <button type="button" onClick={auth.logout}>
-              Sign out
-            </button>
-          </div>
-        ) : null}
+        <div className="header-actions">
+          <ThemeToggle />
+          {auth.status === 'authenticated' ? (
+            <div className="session-pill">
+              <span>{auth.role}</span>
+              <button type="button" onClick={auth.logout}>
+                Sign out
+              </button>
+            </div>
+          ) : null}
+        </div>
       </header>
       <AuthBoundary>
         <CloudPortfolioConsole client={client} />

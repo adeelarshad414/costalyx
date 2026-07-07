@@ -11,6 +11,7 @@ enforced by a lint rule (`no-hardcoded-color`) checked in CI.
   --brand-primary-dim: #3D3FA6;
   --brand-accent: #22D3B8;
   --brand-ink: #0B0E14;
+  --text-on-primary: #FFFFFF;
   --surface-1: #12151C;
   --surface-2: #1B1F29;
   --border-subtle: #262B36;
@@ -23,14 +24,15 @@ enforced by a lint rule (`no-hardcoded-color`) checked in CI.
 }
 :root[data-theme="light"] {
   --brand-primary: #5B5FEF;
-  --brand-accent: #1FAE96;
+  --brand-accent: #0F766E;
   --brand-ink: #FFFFFF;
+  --text-on-primary: #FFFFFF;
   --surface-1: #F4F5F8;
   --surface-2: #E9EBF0;
   --border-subtle: #D8DBE3;
   --text-primary: #12151C;
   --text-secondary: #5B6070;
-  /* status tokens unchanged across themes */
+  /* status tokens are contrast-adjusted per theme for WCAG AA */
 }
 ```
 
@@ -70,6 +72,10 @@ the two unhandled-state bugs observed in the Cloudability UI audit
 - All interactive elements keyboard-navigable; charts have a data-table
   fallback view for screen readers (`<SankeyFlow>` and `<TrendChart>` both
   expose a "View as table" toggle)
+- A reachable theme toggle is required in the app shell. Dark is the
+  default; light mode must be verified with the same accessibility checks.
+- `prefers-reduced-motion: reduce` disables non-essential transitions and
+  animations across the shell.
 
 ## Layout / IA
 Sidebar IA mirrors the verb-based structure validated in the competitive

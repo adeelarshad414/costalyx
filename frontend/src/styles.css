@@ -3,6 +3,7 @@
   --brand-primary-dim: #3D3FA6;
   --brand-accent: #22D3B8;
   --brand-ink: #0B0E14;
+  --text-on-primary: #FFFFFF;
   --surface-1: #12151C;
   --surface-2: #1B1F29;
   --border-subtle: #262B36;
@@ -17,17 +18,18 @@
 :root[data-theme="light"] {
   --brand-primary: #5B5FEF;
   --brand-primary-dim: #3D3FA6;
-  --brand-accent: #1FAE96;
+  --brand-accent: #0F766E;
   --brand-ink: #FFFFFF;
+  --text-on-primary: #FFFFFF;
   --surface-1: #F4F5F8;
   --surface-2: #E9EBF0;
   --border-subtle: #D8DBE3;
   --text-primary: #12151C;
   --text-secondary: #5B6070;
-  --status-success: #2FBF71;
-  --status-warning: #F2B84B;
-  --status-danger: #EF5C5C;
-  --status-info: #4EA8DE;
+  --status-success: #1D7A46;
+  --status-warning: #8A5A00;
+  --status-danger: #B42323;
+  --status-info: #1D6FA5;
 }
 
 *,
@@ -48,10 +50,19 @@ button {
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
   background: var(--brand-primary);
-  color: var(--text-primary);
+  color: var(--text-on-primary);
   cursor: pointer;
   font: inherit;
   padding: 0.65rem 0.9rem;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--brand-accent);
+  outline-offset: 3px;
 }
 
 button,
@@ -126,9 +137,26 @@ td {
   gap: 10px;
 }
 
+.header-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .session-pill span {
   color: var(--brand-accent);
   font-weight: 700;
+}
+
+.icon-button {
+  align-items: center;
+  aspect-ratio: 1;
+  display: inline-flex;
+  justify-content: center;
+  padding: 0;
+  width: 42px;
 }
 
 .state {
@@ -349,10 +377,12 @@ td {
 
 .provider-tabs button {
   background: var(--surface-2);
+  color: var(--text-primary);
 }
 
 .provider-tabs button.is-active {
   background: var(--brand-primary);
+  color: var(--text-on-primary);
 }
 
 .insights-metrics,
@@ -737,5 +767,16 @@ td {
   .anomaly-actions {
     grid-column: 2;
     justify-content: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
