@@ -12,11 +12,12 @@ test.describe('UIUX accessibility and theme elevation', () => {
   test.setTimeout(120000);
   test.skip(!hasKeycloakCredentials, personaSkipReason());
 
-  test('passes WCAG AA scans in dark and light themes', async ({ page }, testInfo) => {
+  test('passes WCAG AA scans in default and terracotta accents', async ({ page }, testInfo) => {
     await signInAsAdmin(page);
     await expectNoUserVisibleFailures(page);
 
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await expect(page.locator('html')).toHaveAttribute('data-accent', 'default');
     await expect(page.getByRole('button', { name: 'Switch to light theme' })).toBeVisible();
     await expectNoAxeViolations(page);
     await capturePersonaEvidence(page, testInfo, 'uiux-accessibility-dark');
@@ -26,6 +27,13 @@ test.describe('UIUX accessibility and theme elevation', () => {
     await expect(page.getByRole('button', { name: 'Switch to dark theme' })).toBeVisible();
     await expectNoAxeViolations(page);
     await capturePersonaEvidence(page, testInfo, 'uiux-accessibility-light');
+
+    await page.getByRole('navigation', { name: 'Product sections' }).getByRole('link', { name: 'Settings' }).click();
+    const settings = page.getByRole('region', { name: 'Settings', exact: true });
+    await settings.getByRole('button', { name: 'Terracotta' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-accent', 'terracotta');
+    await expectNoAxeViolations(page);
+    await capturePersonaEvidence(page, testInfo, 'uiux-accessibility-terracotta');
   });
 
   test('keeps app-shell controls keyboard reachable with visible focus and reduced motion respected', async ({ page }) => {

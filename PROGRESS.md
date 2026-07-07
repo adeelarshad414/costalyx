@@ -5,11 +5,11 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-07 16:53:13 PKT_
+_Last updated: 2026-07-07 17:00:56 PKT_
 
 ## Production Readiness Orchestrator v2 Run — 2026-07-07
 
-Status: P0 continuation sync completed; P1 through P6 remain in progress.
+Status: P0 and P1 completed; P2 through P6 remain in progress.
 
 Evidence added in this run:
 - Created `STATE-SYNC.md` before application changes, per v2 section 1. It records product detection as Costalyx, open PR status as none, latest `main` GitHub Actions run as successful, the current milestone classifications, the real-cloud blocker, and the HUMAN_DECISION_GATE register.
@@ -19,10 +19,13 @@ Evidence added in this run:
 - Reproduced dummy-data seed state: `npm run seed:demo` restored 2 tenants, 4 cloud connections, 12 cost records, 3 statements, and 3 agent runs. This is verified(mock), not production cloud evidence.
 - Reproduced the real-cloud readiness blocker: `npm run probe:live-readiness` exited non-zero with sanitized missing-value output for AWS, Azure, GCP, tenant ID, and broker identities.
 - Re-ran the broad browser floor against Docker infra plus host-run app tiers. Result: 22 Chromium tests passed, 1 viewer-only spec skipped, and 1 failed. The failure was `e2e/ceo-executive-summary.spec.ts`: content expectations were met, but the persona journey exceeded the 30s performance budget at 44.721s. Milestone F is therefore temporarily classified as claimed-complete(unverified) until the performance finding is fixed and reverified.
+- Completed P1 brand/theme injection. Added `frontend/src/tokens.css`, imported it before app styles, removed raw runtime color literals from `frontend/src/styles.css`, extended preferences to support Mode (`system`, `dark`, `light`) and Accent (`default`, `terracotta`), added Settings Appearance controls, kept the header toggle as a resolved-theme quick action, and updated `04-DESIGN-SYSTEM.md`.
+- Added `scripts/check-no-raw-frontend-colors.mjs`, `npm run lint:theme-colors`, CI execution of the guard, and `feature/**` CI push coverage. Guard result: `npm run lint:theme-colors` passed with "No raw frontend colors outside frontend/src/tokens.css."
+- P1 focused verification passed: `npm --workspace frontend test -- --run src/features/settings/SettingsConsole.test.tsx src/components/ThemeToggle.test.tsx` passed 2 files / 2 tests; `npm --workspace frontend run build` passed; focused browser proof `npm run test:e2e:keycloak -- e2e/settings-preferences.spec.ts e2e/uiux-accessibility-theme.spec.ts` passed 3 Chromium tests in 19.2s, including default and terracotta axe scans.
+- P1 regression floor passed: `npm test` passed backend 41 suites / 152 tests with 6 suites / 8 tests skipped, frontend 23 files / 66 tests, contract 13 files / 39 tests with 8 files / 15 tests skipped, additive migration check for 13 files, and `lint:theme-colors`. `npm run ci:live-contract` passed 9 files / 20 tests. `npm --workspace backend run build` passed. `npm --workspace frontend run build` passed.
 
 Blocked/remaining for this v2 run:
 - Live AWS/Azure/GCP customer-cloud probes remain blocked pending real readonly customer roles/federated identities/export references and Costalyx broker identities.
-- P1 must split runtime tokens into `frontend/src/tokens.css`, add system/default/terracotta preferences, and add a green raw-color guard.
 - P2 must run the universal frontend audit in default and terracotta modes, including screenshot evidence.
 - P3 must map the backend to v2 section 6 explicitly.
 - P4 through P6 must produce screenshots, regression evidence, PR/merge evidence, and `PRODUCTION-READINESS-REPORT.md`.

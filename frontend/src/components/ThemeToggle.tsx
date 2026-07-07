@@ -1,20 +1,20 @@
 import { Moon, Sun } from 'lucide-react';
-import { useUserPreferences, type ThemePreference } from '../preferences/UserPreferences';
+import { useUserPreferences, type ThemeModePreference } from '../preferences/UserPreferences';
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useUserPreferences();
-  const nextTheme: ThemePreference = theme === 'dark' ? 'light' : 'dark';
+  const { resolvedTheme, setTheme } = useUserPreferences();
+  const nextTheme: ThemeModePreference = resolvedTheme === 'dark' ? 'light' : 'dark';
 
   return (
     <button
       type="button"
       className="icon-button"
       aria-label={`Switch to ${nextTheme} theme`}
-      aria-pressed={theme === 'light'}
+      aria-pressed={resolvedTheme === 'light'}
       title={`Switch to ${nextTheme} theme`}
       onClick={() => setTheme(nextTheme)}
     >
-      {theme === 'dark' ? <Sun aria-hidden="true" size={18} /> : <Moon aria-hidden="true" size={18} />}
+      {resolvedTheme === 'dark' ? <Sun aria-hidden="true" size={18} /> : <Moon aria-hidden="true" size={18} />}
     </button>
   );
 }
