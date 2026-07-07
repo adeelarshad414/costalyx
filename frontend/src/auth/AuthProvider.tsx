@@ -5,6 +5,8 @@ import { highestRole, type Role } from './roles';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'error';
 
+const sessionExpiredMessage = 'Sign in again to continue.';
+
 interface KeycloakClaims {
   sub?: string;
   exp?: number;
@@ -100,6 +102,10 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
   }, [keycloakAdapter]);
 
   const logout = useCallback(async () => {
+    setRole(null);
+    setToken(null);
+    setError('');
+    setStatus('unauthenticated');
     await keycloakAdapter.logout({ redirectUri: window.location.origin });
   }, [keycloakAdapter]);
 
@@ -112,7 +118,15 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
       refreshPromiseRef.current ??= keycloakAdapter.updateToken(tokenRefreshSkewSeconds).finally(() => {
         refreshPromiseRef.current = null;
       });
-      await refreshPromiseRef.current;
+      try {
+        await refreshPromiseRef.current;
+      } catch {
+        setRole(null);
+        setToken(null);
+        setError(sessionExpiredMessage);
+        setStatus('unauthenticated');
+        return null;
+      }
     }
     const refreshedToken = keycloakAdapter.token ?? currentToken ?? null;
     setToken(refreshedToken);

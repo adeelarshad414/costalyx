@@ -26,6 +26,18 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
   }
 
   if (auth.status === 'unauthenticated') {
+    if (auth.error) {
+      return (
+        <section className="panel state" aria-label="Session expired">
+          <h2>Session expired</h2>
+          <p>{auth.error}</p>
+          <button type="button" onClick={auth.login}>
+            Sign in
+          </button>
+        </section>
+      );
+    }
+
     return (
       <section className="panel state">
         <h2>Sign in</h2>
