@@ -63,7 +63,7 @@ The shell mounts all major feature sections at once and navigates by hash links:
 | Keyboard/focus | Existing theme/accessibility E2E covers focus and reduced motion. |
 | Dark/light parity | Existing axe E2E covers dark and light. |
 | Terracotta variant | Implemented and covered by Settings E2E plus axe scan. |
-| Desktop/tablet/mobile screenshots | Partial E2E coverage exists; v2 screenshot index not yet generated. |
+| Desktop/tablet/mobile screenshots | Complete P2 archive generated for dark/light and default/terracotta. |
 | Raw hex guard | Implemented for runtime frontend source. |
 | Brand-token-only components | Verified by guard and focused tests. |
 
@@ -75,8 +75,8 @@ The shell mounts all major feature sections at once and navigates by hash links:
 | P0-CI-001 | major | CI push trigger excludes `feature/**`, while v2 branch default is `feature/<product>-prod-ready-<date>`. | Fixed in P1 by adding `feature/**` to CI triggers. |
 | P1-TOKEN-001 | major | Runtime hex tokens live in `frontend/src/styles.css`; v2 requires `tokens.css` and a green raw-hex grep guard. | Fixed in P1 with `frontend/src/tokens.css`, guard script, npm script, and CI step. |
 | P1-PREF-001 | major | Settings Appearance lacks Mode: system/dark/light and Accent: default/terracotta. | Fixed in P1 with preference state, Settings controls, header toggle updates, focused component tests, and browser proof. |
-| P2-SS-001 | major | No v2 screenshot index exists for default and terracotta across desktop/tablet/mobile. | Capture and index screenshots after P1/P2 fixes. |
-| P2-PERF-001 | major | CEO E2E content passed but exceeded the 30s journey budget in the full regression floor. | Investigate shell fan-out/performance and re-run browser floor. |
+| P2-SS-001 | major | No v2 screenshot index exists for default and terracotta across desktop/tablet/mobile. | Fixed in P2 with `SCREENSHOT-INDEX.md` and 12 screenshots under `artifacts/theme-audit/2026-07-07/`. |
+| P2-PERF-001 | major | CEO E2E content passed but exceeded the 30s journey budget in the full regression floor. | Fixed in P2 by scoping the CEO spec to the executive journey. Focused rerun passed in 2.0s; broad browser floor passed with CEO at 8.6s. |
 
 ## Verification Baseline
 
@@ -88,6 +88,10 @@ The shell mounts all major feature sections at once and navigates by hash links:
   toggle.
 - P1 focused browser proof passed 3 Chromium tests for Settings persistence and
   default/terracotta accessibility coverage.
+- P2 broad browser floor passed 23 Chromium tests with 1 expected viewer-only
+  skip in 43.1s.
+- P2 screenshot capture produced 12 full-page artifacts covering dark/light,
+  default/terracotta, and desktop/tablet/mobile.
 - `npm run ci:live-contract`: passed 9 files / 20 tests.
 - Backend and frontend builds: passed.
 - `npm audit --audit-level=high`: 0 vulnerabilities.

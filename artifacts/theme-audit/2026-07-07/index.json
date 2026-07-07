@@ -1,0 +1,101 @@
+{
+  "baseUrl": "http://localhost:5173",
+  "screenshots": [
+    {
+      "mode": "dark",
+      "accent": "default",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 1000,
+      "path": "artifacts/theme-audit/2026-07-07/costalyx-dark-default-desktop.png"
+    },
+    {
+      "mode": "dark",
+      "accent": "default",
+      "viewport": "tablet",
+      "width": 768,
+      "height": 1024,
+      "path": "artifacts/theme-audit/2026-07-07/costalyx-dark-default-tablet.png"
+    },
+    {
+      "mode": "dark",
+      "accent": "default",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "path": "artifacts/theme-audit/2026-07-07/costalyx-dark-default-mobile.png"
+    },
+    {
+      "mode": "dark",
+      "accent": "terracotta",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 1000,
+      "path": "artifacts/theme-audit/2026-07-07/costalyx-dark-terracotta-desktop.png"
+    },
+    {
+      "mode": "dark",
+      "accent": "terracotta",
+      "viewport": "tablet",
+      "width": 768,
+      "height": 1024,
+      "path": "artifacts/theme-audit/2026-07-07/costalyx-dark-terracotta-tablet.png"
+    },
+    {
+      "mode": "dark",
+      "accent": "terracotta",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "path": "artifacts/theme-audit/2026-07-07/costalyx-dark-terracotta-mobile.png"
+    },
+    {
+      "mode": "light",
+      "accent": "default",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 1000,
+      "path": "artifacts/theme-audit/2026-07-07/costalyx-light-default-desktop.png"
+    },
+    {
+      "mode": "light",
+      "accent": "default",
+      "viewport": "tablet",
+      "width": 768,
+      "height": 1024,
+      "path": "artifacts/theme-audit/2026-07-07/costalyx-light-default-tablet.png"
+    },
+    {
+      "mode": "light",
+      "accent": "default",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "path": "artifacts/theme-audit/2026-07-07/costalyx-light-default-mobile.png"
+    },
+    {
+      "mode": "light",
+      "accent": "terracotta",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 1000,
+      "path": "artifacts/theme-audit/2026-07-07/costalyx-light-terracotta-desktop.png"
+    },
+    {
+      "mode": "light",
+      "accent": "terracotta",
+      "viewport": "tablet",
+      "width": 768,
+      "height": 1024,
+      "path": "artifacts/theme-audit/2026-07-07/costalyx-light-terracotta-tablet.png"
+    },
+    {
+      "mode": "light",
+      "accent": "terracotta",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "path": "artifacts/theme-audit/2026-07-07/costalyx-light-terracotta-mobile.png"
+    }
+  ]
+}
