@@ -17,13 +17,14 @@ and `docs/design/universal-theme-audit-orchestrator.md`.
 ## Shell And Routes
 
 Costalyx now uses path-routed product pages in `frontend/src/App.tsx` rather
-than a single hash-navigated dashboard. Public auth routes are `/login` and
-`/signup`; authenticated product routes render one major feature page at a
-time:
+than a single hash-navigated dashboard. Public auth routes are `/login`,
+`/signin`, and `/signup`; authenticated product routes render one major feature
+page at a time:
 
 | Route | Component | Current Coverage |
 | --- | --- | --- |
 | `/login` | first-party auth page | `App.test.tsx` proves Keycloak login redirect with route return. |
+| `/signin` | first-party auth page | `App.test.tsx` proves the sign-in alias uses the same Keycloak sign-in module with route return. |
 | `/signup` | first-party auth page | `App.test.tsx` proves Keycloak registration action with email hint. |
 | `/portfolio` | `CloudPortfolioConsole` | Component tests, live onboarding/copy E2E, full-stack walkthrough |
 | `/costs` | `IngestionOverview` | Component tests, loading skeleton E2E, cost explorer fallback E2E |
@@ -102,6 +103,6 @@ time:
 - Full browser floor: 22 passed, 1 skipped, 1 failed due to CEO performance
   budget. Treat this as an active finding.
 - Route/auth update proof on 2026-07-07: focused auth/routing tests passed
-  3 files / 13 tests; full frontend suite passed 24 files / 71 tests;
+  4 files / 16 tests; full frontend suite passed 24 files / 72 tests;
   frontend production build passed; `npm run lint:theme-colors` and
   `git diff --check` passed.

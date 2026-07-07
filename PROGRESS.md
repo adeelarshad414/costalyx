@@ -5,7 +5,7 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-07 20:36:36 PKT_
+_Last updated: 2026-07-07 20:46:53 PKT_
 
 ## Routed Pages And Auth — 2026-07-07
 
@@ -16,17 +16,22 @@ Evidence added in this run:
   `/portfolio`, `/costs`, `/executive`, `/insights`, `/optimization`,
   `/billing-agent`, `/reporting`, `/allocation`, `/governance`, `/settings`,
   and admin-only `/operator`.
-- Added first-party `/login` and `/signup` screens. Login preserves the
-  requested protected route through the Keycloak redirect; signup launches
-  Keycloak registration with `action: register` and an optional email hint.
+- Added first-party `/login`, `/signin`, and `/signup` screens. Login/signin
+  preserve the requested protected route through the Keycloak redirect; signup
+  launches Keycloak registration with `action: register` and an optional email
+  hint.
+- Extracted the auth screen into `frontend/src/auth/AuthPage.tsx`, leaving
+  `frontend/src/App.tsx` responsible for route selection and product-page
+  rendering only.
 - Updated local Keycloak dev realm import with `registrationAllowed: true` and
   a default `viewer` role for newly registered dev users.
 - Updated route-aware Playwright helpers and persona journeys so they navigate
   by product routes instead of assuming all surfaces render on one long page.
 - Verification: focused `npm --workspace frontend test -- --run
-  src/App.test.tsx src/auth/AuthProvider.test.tsx src/auth/AuthBoundary.test.tsx`
-  passed 3 files / 13 tests; full `npm --workspace frontend test -- --run`
-  passed 24 files / 71 tests with localhost permission; `npm --workspace
+  src/App.test.tsx src/auth/AuthProvider.test.tsx src/auth/AuthBoundary.test.tsx
+  src/auth/PermissionGate.test.tsx` passed 4 files / 16 tests; full
+  `npm --workspace frontend test -- --run` passed 24 files / 72 tests with
+  localhost permission; `npm --workspace
   frontend run build` passed; `npm run lint:theme-colors` passed; `git diff
   --check` passed.
 

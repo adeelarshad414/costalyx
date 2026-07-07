@@ -24,7 +24,7 @@ export function PermissionGate({ requiredRole, mode = 'hide', children }: Permis
     <ErrorState
       title="Access restricted"
       detail={`Requires ${requiredRole} access.`}
-      onRetry={auth.login}
+      onRetry={() => auth.login()}
       actionLabel={auth.status === 'authenticated' ? 'Sign in again' : 'Sign in'}
     />
   );

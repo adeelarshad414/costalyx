@@ -20,7 +20,7 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
   if (auth.status === 'error') {
     return (
       <section className="panel">
-        <ErrorState title="Could not initialize sign in" detail={auth.error} onRetry={auth.login} actionLabel="Sign in" />
+        <ErrorState title="Could not initialize sign in" detail={auth.error} onRetry={() => auth.login()} actionLabel="Sign in" />
       </section>
     );
   }
