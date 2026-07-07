@@ -141,6 +141,25 @@ reads; otherwise the ingestion path falls back to `COSTALYX_AWS_PROBE_REGION`,
 `COSTALYX_GCP_BIGQUERY_LOCATION` may be set for BigQuery export reads when the
 billing export dataset is pinned to a specific multi-region or region.
 
+Run the repo-root readiness doctor before any provider-specific live probe:
+
+```bash
+export COSTALYX_LIVE_PROVIDERS=aws,azure,gcp
+export COSTALYX_TENANT_ID=tenant-id-from-oidc-or-provisioning
+npm run probe:live-readiness
+```
+
+`COSTALYX_LIVE_PROVIDERS` is optional. When omitted, the command checks any
+provider with configured references, or all three providers if none are set
+yet. The command exits `0` only when the selected providers have the required
+tenant reference, provider export/role/principal references, and a Costalyx
+broker identity source. It prints variable names, readiness states, credential
+source types, blockers, and next commands; it must not print customer account
+IDs, role ARNs, bucket names, Blob hostnames, BigQuery table names, access
+keys, SAS tokens, service-account JSON, client secrets, OAuth tokens, or
+passwords. Passing readiness does not prove cloud access — it only means the
+operator can safely run the provider-specific live probe next.
+
 Before marking the first real AWS customer connection validated, run the
 same STS/CUR path from the repo root with operator-provided references only:
 
