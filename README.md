@@ -18,9 +18,13 @@ places in their IAM role trust policy. The admin onboarding endpoint also
 generates connection-specific CloudFormation and Terraform for the customer
 readonly IAM role and CUR S3 policy; live validation then assumes the role
 and checks the CUR S3 export before the connection is marked validated.
-Operators can preflight real customer connections with `npm run probe:aws-live`,
-`npm run probe:azure-live`, or `npm run probe:gcp-live` using only
-tenant/account/principal/export references and Costalyx broker credentials.
+Operators first run `npm run probe:live-readiness` to confirm the tenant,
+provider references, and broker identity source are present without printing
+customer account IDs, role ARNs, bucket names, SAS strings, tokens, or keys.
+They can then preflight real customer connections with
+`npm run probe:aws-live`, `npm run probe:azure-live`, or
+`npm run probe:gcp-live` using only tenant/account/principal/export
+references and Costalyx broker credentials.
 Azure and GCP live validation use federated broker identities to check Cost
 Management / Blob exports and BigQuery billing exports without accepting
 customer secrets.
