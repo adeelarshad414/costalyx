@@ -23,7 +23,7 @@ export async function signInAsAdmin(page: Page, landingPath = '/portfolio') {
 }
 
 export async function signInAsSeededUser(page: Page, landingPath = '/portfolio') {
-  await page.goto(`/login?next=${encodeURIComponent(landingPath)}`);
+  await page.goto(`/signin?next=${encodeURIComponent(landingPath)}`);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL(/protocol\/openid-connect\/auth|\/realms\/costalyx-dev/, { timeout: 90000 });
   await page.getByLabel(/username|email/i).fill(process.env.E2E_KEYCLOAK_USERNAME ?? '');

@@ -71,6 +71,20 @@ describe('App routing and auth pages', () => {
     expect(adapter.login).toHaveBeenCalledWith(expect.objectContaining({ redirectUri: `${window.location.origin}/portfolio` }));
   });
 
+  it('renders a first-party signin route that starts the same Keycloak sign-in module', async () => {
+    const user = userEvent.setup();
+    const adapter = unauthenticatedAdapter();
+    window.history.replaceState({}, '', '/signin?next=/costs');
+
+    renderApp(adapter);
+
+    await screen.findByRole('region', { name: 'Signin' });
+    await screen.findByRole('heading', { name: 'Sign in to Costalyx' });
+    await user.click(await screen.findByRole('button', { name: 'Sign in' }));
+
+    expect(adapter.login).toHaveBeenCalledWith(expect.objectContaining({ redirectUri: `${window.location.origin}/costs` }));
+  });
+
   it('renders a first-party signup route that opens Keycloak registration with an email hint', async () => {
     const user = userEvent.setup();
     const adapter = unauthenticatedAdapter();
@@ -81,6 +95,7 @@ describe('App routing and auth pages', () => {
     await screen.findByRole('heading', { name: 'Create your Costalyx account' });
     await screen.findByRole('button', { name: 'Create account' });
     await user.type(screen.getByLabelText('Email'), 'cfo@example.com');
+    expect(screen.getByRole('link', { name: 'Already have an account?' })).toHaveAttribute('href', '/signin?next=%2Fexecutive');
     await user.click(screen.getByRole('button', { name: 'Create account' }));
 
     expect(adapter.login).toHaveBeenCalledWith(

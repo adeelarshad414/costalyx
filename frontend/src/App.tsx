@@ -1,10 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { createCostalyxClient, type CostalyxClient } from './api/client';
+import { AuthPage, type AuthPageMode } from './auth/AuthPage';
 import { RoleScopeNotice } from './auth/RoleScopeNotice';
-import { useAuth, type AuthRedirectOptions } from './auth/AuthProvider';
+import { useAuth } from './auth/AuthProvider';
 import { ThemeToggle } from './components/ThemeToggle';
-import { ErrorState } from './components/ErrorState';
-import { LoadingState } from './components/LoadingState';
 import { AllocationConsole } from './features/allocation/AllocationConsole';
 import { BillingAgentConsole } from './features/billing-agent/BillingAgentConsole';
 import { ExecutiveConsole } from './features/executive/ExecutiveConsole';
@@ -115,12 +114,12 @@ export function App() {
   const route = routeForPath(window.location.pathname);
   const client = useMemo(() => createCostalyxClient({ getAccessToken: auth.getAccessToken }), [auth.getAccessToken]);
 
-  if (route === 'login' || route === 'signup') {
-    return <AuthPage mode={route} />;
+  if (isAuthRoute(route)) {
+    return <AuthPage mode={route} defaultPath={defaultProductPath} />;
   }
 
   if (auth.status !== 'authenticated') {
-    return <AuthPage mode="login" protectedPath={route?.path ?? defaultProductPath} />;
+    return <AuthPage mode="signin" protectedPath={route?.path ?? defaultProductPath} defaultPath={defaultProductPath} />;
   }
 
   return <ProductShell route={route} client={client} />;
@@ -199,90 +198,13 @@ function ProductPage({ route, client }: { route: ProductRoute; client: CostalyxC
   }
 }
 
-function AuthPage({ mode, protectedPath }: { mode: 'login' | 'signup'; protectedPath?: string }) {
-  const auth = useAuth();
-  const [emailHint, setEmailHint] = useState('');
-  const nextPath = protectedPath ?? requestedNextPath() ?? defaultProductPath;
-  const isSignup = mode === 'signup';
-  const submitLabel = isSignup ? 'Create account' : 'Sign in';
-  const alternateHref = isSignup ? `/login?next=${encodeURIComponent(nextPath)}` : `/signup?next=${encodeURIComponent(nextPath)}`;
-
-  async function submitAuth() {
-    const options: AuthRedirectOptions = {
-      redirectPath: nextPath,
-      loginHint: emailHint
-    };
-    if (isSignup) {
-      await auth.signup(options);
-    } else {
-      await auth.login(options);
-    }
-  }
-
-  return (
-    <main className="auth-page">
-      <header className="auth-header">
-        <div>
-          <p>Costalyx</p>
-          <h1>{isSignup ? 'Create your Costalyx account' : 'Sign in to Costalyx'}</h1>
-        </div>
-        <ThemeToggle />
-      </header>
-      <section className="auth-panel" aria-label={isSignup ? 'Signup' : 'Login'}>
-        {auth.status === 'loading' ? (
-          <LoadingState title="Checking sign in" variant="cards" rows={2} />
-        ) : null}
-        {auth.status === 'error' ? (
-          <ErrorState title="Could not initialize sign in" detail={auth.error} onRetry={submitAuth} actionLabel={submitLabel} />
-        ) : null}
-        {auth.status === 'authenticated' ? (
-          <div className="state">
-            <h2>You are signed in</h2>
-            <p>Continue to your Costalyx workspace.</p>
-            <a className="button-link" href={nextPath}>
-              Open workspace
-            </a>
-          </div>
-        ) : null}
-        {auth.status === 'unauthenticated' ? (
-          <>
-            <div>
-              <p className="section-kicker">{isSignup ? 'Secure signup' : 'Secure login'}</p>
-              <h2>{isSignup ? 'Start with your work email' : 'Use your Costalyx identity'}</h2>
-              <p>
-                {isSignup
-                  ? 'Costalyx sends account creation to the identity provider so passwords and MFA never live in the app.'
-                  : 'Sign in through the configured identity provider to reach your cloud cost workspace.'}
-              </p>
-            </div>
-            <label className="field-row">
-              <span>Email</span>
-              <input
-                type="email"
-                autoComplete="email"
-                value={emailHint}
-                onChange={(event) => setEmailHint(event.target.value)}
-                placeholder="name@company.com"
-              />
-            </label>
-            {auth.error ? <p className="inline-alert">{auth.error}</p> : null}
-            <div className="auth-actions">
-              <button type="button" onClick={submitAuth}>
-                {submitLabel}
-              </button>
-              <a href={alternateHref}>{isSignup ? 'Already have an account?' : 'Create account'}</a>
-            </div>
-          </>
-        ) : null}
-      </section>
-    </main>
-  );
-}
-
-function routeForPath(pathname: string): ProductRoute | 'login' | 'signup' | null {
+function routeForPath(pathname: string): ProductRoute | AuthPageMode | null {
   const normalizedPath = normalizePath(pathname);
   if (normalizedPath === '/login') {
     return 'login';
+  }
+  if (normalizedPath === '/signin') {
+    return 'signin';
   }
   if (normalizedPath === '/signup') {
     return 'signup';
@@ -298,10 +220,6 @@ function normalizePath(pathname: string): string {
   return normalizedPath || '/';
 }
 
-function requestedNextPath(): string | null {
-  const next = new URLSearchParams(window.location.search).get('next');
-  if (!next || !next.startsWith('/') || next.startsWith('//') || next === '/login' || next === '/signup') {
-    return null;
-  }
-  return next;
+function isAuthRoute(route: ProductRoute | AuthPageMode | null): route is AuthPageMode {
+  return route === 'login' || route === 'signin' || route === 'signup';
 }

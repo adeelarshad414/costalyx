@@ -1,6 +1,6 @@
 # Costalyx Production Readiness Report
 
-Generated: 2026-07-07 20:36 PKT
+Generated: 2026-07-07 20:46 PKT
 Branch: `feature/costalyx-ultimate-master-run-2026-07-07`
 Entry point: `16-ULTIMATE-MASTER-RUN.md`
 
@@ -93,9 +93,11 @@ Latest non-Docker regression after the Ultimate fixes:
   hash-navigated dashboard: `/portfolio`, `/costs`, `/executive`,
   `/insights`, `/optimization`, `/billing-agent`, `/reporting`, `/allocation`,
   `/governance`, `/settings`, and admin-only `/operator`.
-- Public `/login` and `/signup` screens are implemented. Login preserves the
-  requested protected route through Keycloak; signup launches Keycloak
-  registration with `action: register` and an optional email hint.
+- Public `/login`, `/signin`, and `/signup` screens are implemented.
+  Login/signin preserve the requested protected route through Keycloak; signup
+  launches Keycloak registration with `action: register` and an optional email
+  hint. The screens live in `frontend/src/auth/AuthPage.tsx` as a dedicated
+  auth module.
 - Runtime color values now live in `frontend/src/tokens.css`.
 - Components and non-token source are guarded by
   `scripts/check-no-raw-frontend-colors.mjs`.
@@ -108,7 +110,7 @@ Latest non-Docker regression after the Ultimate fixes:
   full-page screenshots across dark/light, default/terracotta, and
   desktop/tablet/mobile.
 - Route/auth verification after this update: focused auth/routing tests passed
-  3 files / 13 tests; full frontend suite passed 24 files / 71 tests;
+  4 files / 16 tests; full frontend suite passed 24 files / 72 tests;
   frontend production build, theme color guard, and `git diff --check` passed.
 
 ## Backend And Deployment
