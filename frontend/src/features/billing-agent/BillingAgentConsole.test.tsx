@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import type { CostalyxClient } from '../../api/client';
@@ -169,6 +169,30 @@ describe('BillingAgentConsole', () => {
     expect(screen.queryByRole('button', { name: /Run scan/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /False positive/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Agent Runs' })).not.toBeInTheDocument();
+  });
+
+  it('opens a readable anomaly evidence story with computed impact and action guidance', async () => {
+    const user = userEvent.setup();
+    renderWithRole(<BillingAgentConsole client={createClient()} />, ['viewer']);
+
+    await user.click(await screen.findByRole('button', { name: 'Review evidence for Usage' }));
+
+    const story = screen.getByRole('region', { name: 'Anomaly evidence story' });
+    expect(within(story).getByText('What changed')).toBeInTheDocument();
+    expect(within(story).getByText(/Usage reached 50.0000 hours/)).toBeInTheDocument();
+    expect(within(story).getByText('Since when')).toBeInTheDocument();
+    expect(within(story).getByText('2026-07-01')).toHaveClass('font-mono-data');
+    for (const dateToken of within(story).getAllByText('2026-07-06')) {
+      expect(dateToken).toHaveClass('font-mono-data');
+    }
+    expect(within(story).getByText('Impact')).toBeInTheDocument();
+    expect(within(story).getByText('$0.50')).toHaveClass('font-mono-data');
+    expect(within(story).getByText('s3-usage-001')).toHaveClass('font-mono-data');
+    expect(within(story).getByText('Recommended action')).toBeInTheDocument();
+    expect(within(story).getByText(/Investigate the affected resource/)).toBeInTheDocument();
+
+    await user.click(within(story).getByRole('button', { name: 'Close anomaly detail' }));
+    expect(screen.queryByRole('region', { name: 'Anomaly evidence story' })).not.toBeInTheDocument();
   });
 
   it('lets analysts scan and mark anomalies as false positive with a reason code', async () => {

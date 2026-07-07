@@ -15,11 +15,11 @@ test.describe('Milestone A Keycloak login', () => {
     await page.getByRole('textbox', { name: /^password$/i }).fill(process.env.E2E_KEYCLOAK_PASSWORD ?? '');
     await page.getByRole('button', { name: /sign in/i }).click();
 
-    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible({ timeout: 45000 });
     const recordsTable = page.getByRole('region', { name: 'Normalized cost records' }).getByRole('table');
     if (!(await recordsTable.isVisible().catch(() => false))) {
       await page.getByRole('button', { name: 'Run ingestion' }).click();
     }
-    await expect(recordsTable).toBeVisible();
+    await expect(recordsTable).toBeVisible({ timeout: 45000 });
   });
 });

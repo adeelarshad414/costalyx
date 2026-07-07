@@ -24,6 +24,7 @@ export class OidcTokenVerifier implements TokenVerifier {
   private readonly jwksUrl: string | undefined;
   private readonly audience: string;
   private readonly clientId: string;
+  private remoteJwks: unknown;
 
   constructor(config: ConfigService) {
     this.issuerUrl = config.get<string>('KEYCLOAK_ISSUER_URL');
@@ -39,8 +40,8 @@ export class OidcTokenVerifier implements TokenVerifier {
 
     try {
       const { createRemoteJWKSet, jwtVerify } = await import('jose');
-      const jwks = createRemoteJWKSet(resolveJwksUrl(this.issuerUrl, this.jwksUrl));
-      const verified = await jwtVerify(token, jwks, {
+      this.remoteJwks ??= createRemoteJWKSet(resolveJwksUrl(this.issuerUrl, this.jwksUrl));
+      const verified = await jwtVerify(token, this.remoteJwks as Parameters<typeof jwtVerify>[1], {
         issuer: this.issuerUrl,
         audience: this.audience
       });

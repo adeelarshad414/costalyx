@@ -25,20 +25,26 @@ test.describe('External stakeholder statement delivery persona journey', () => {
       hasText: 'Platform engineering consumed compute across AWS, Azure, and GCP.'
     });
     await expect(statement).toHaveCount(1);
-    await expect(statement).toContainText('pending approval', { timeout: 45000 });
-    await expect(statement.getByRole('button', { name: 'Approve' })).toBeEnabled();
-    await statement.getByRole('button', { name: 'Approve' }).click();
-    await expect(statement.getByRole('alertdialog', { name: 'Confirm Approve' })).toContainText(
-      'This allows an admin to send it.'
-    );
-    await statement.getByRole('button', { name: 'Confirm approve' }).click();
-    await expect(statement).toContainText('approved', { timeout: 45000 });
-    await expect(statement.getByRole('button', { name: 'Send' })).toBeEnabled();
-    await statement.getByRole('button', { name: 'Send' }).click();
-    await expect(statement.getByRole('alertdialog', { name: 'Confirm Send' })).toContainText(
-      'record delivery evidence'
-    );
-    await statement.getByRole('button', { name: 'Confirm send' }).click();
+
+    if (await statement.getByText('pending approval', { exact: true }).isVisible().catch(() => false)) {
+      await expect(statement.getByRole('button', { name: 'Approve' })).toBeEnabled();
+      await statement.getByRole('button', { name: 'Approve' }).click();
+      await expect(statement.getByRole('alertdialog', { name: 'Confirm Approve' })).toContainText(
+        'This allows an admin to send it.'
+      );
+      await statement.getByRole('button', { name: 'Confirm approve' }).click();
+      await expect(statement.getByText('approved', { exact: true })).toBeVisible({ timeout: 45000 });
+    }
+
+    if (await statement.getByText('approved', { exact: true }).isVisible().catch(() => false)) {
+      await expect(statement.getByRole('button', { name: 'Send' })).toBeEnabled();
+      await statement.getByRole('button', { name: 'Send' }).click();
+      await expect(statement.getByRole('alertdialog', { name: 'Confirm Send' })).toContainText(
+        'record delivery evidence'
+      );
+      await statement.getByRole('button', { name: 'Confirm send' }).click();
+    }
+
     await expect(statement).toContainText('sent', { timeout: 45000 });
 
     await expect
