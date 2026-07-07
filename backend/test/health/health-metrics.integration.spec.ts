@@ -45,6 +45,14 @@ describe('Health and metrics endpoints', () => {
 
   it('keeps liveness public while requiring Admin for operational metrics', async () => {
     await request(app.getHttpAdapter().getInstance()).get('/healthz').expect(200).expect({ status: 'ok' });
+    await request(app.getHttpAdapter().getInstance()).get('/health/live').expect(200).expect({ status: 'ok' });
+    await request(app.getHttpAdapter().getInstance())
+      .get('/health/ready')
+      .expect(200)
+      .expect({
+        status: 'ready',
+        checks: [{ name: 'governance-repository', status: 'ok' }]
+      });
     await request(app.getHttpAdapter().getInstance()).get('/metrics').expect(401);
     await request(app.getHttpAdapter().getInstance()).get('/metrics').set('x-costalyx-role', 'viewer').expect(403);
   });

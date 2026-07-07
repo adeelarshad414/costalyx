@@ -21,6 +21,17 @@ describeIfLive('Milestone A live backend contract', () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ status: 'ok' });
+
+    const live = await request('/health/live');
+    expect(live.status).toBe(200);
+    await expect(live.json()).resolves.toEqual({ status: 'ok' });
+
+    const ready = await request('/health/ready');
+    expect(ready.status).toBe(200);
+    await expect(ready.json()).resolves.toEqual({
+      status: 'ready',
+      checks: [{ name: 'governance-repository', status: 'ok' }]
+    });
   });
 
   it('serves admin-gated Prometheus metrics from a real backend instance', async () => {

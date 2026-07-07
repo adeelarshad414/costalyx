@@ -5,11 +5,11 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-07 17:08:42 PKT_
+_Last updated: 2026-07-07 17:14:53 PKT_
 
 ## Production Readiness Orchestrator v2 Run — 2026-07-07
 
-Status: P0, P1, and P2 completed; P3 through P6 remain in progress.
+Status: P0 through P3 completed; P4 through P6 remain in progress.
 
 Evidence added in this run:
 - Created `STATE-SYNC.md` before application changes, per v2 section 1. It records product detection as Costalyx, open PR status as none, latest `main` GitHub Actions run as successful, the current milestone classifications, the real-cloud blocker, and the HUMAN_DECISION_GATE register.
@@ -25,10 +25,11 @@ Evidence added in this run:
 - P1 regression floor passed: `npm test` passed backend 41 suites / 152 tests with 6 suites / 8 tests skipped, frontend 23 files / 66 tests, contract 13 files / 39 tests with 8 files / 15 tests skipped, additive migration check for 13 files, and `lint:theme-colors`. `npm run ci:live-contract` passed 9 files / 20 tests. `npm --workspace backend run build` passed. `npm --workspace frontend run build` passed.
 - Completed P2 frontend audit and visual evidence. Fixed the CEO persona timing finding by narrowing `e2e/ceo-executive-summary.spec.ts` to the executive journey rather than unrelated shell regions; focused rerun passed 1 Chromium test in 2.0s. Broad browser floor then passed 23 Chromium tests with 1 expected viewer-only skip in 43.1s; the CEO journey passed inside that parallel run in 8.6s.
 - Added repeatable screenshot capture via `npm run capture:theme-screenshots`, generated `SCREENSHOT-INDEX.md`, and captured 12 full-page screenshots under `artifacts/theme-audit/2026-07-07/` covering dark/light, default/terracotta, and desktop/tablet/mobile.
+- Completed P3 backend production-bar audit. Added explicit public `/health/live` and `/health/ready` endpoints while retaining `/healthz`, documented them in `openapi.yaml`, regenerated `frontend/src/api/schema.ts`, extended backend integration coverage, static contract coverage, and live-contract coverage, and recorded the mapping in `BACKEND-PRODUCTION-AUDIT.md`.
+- P3 verification passed: targeted `npm --workspace backend test -- --runTestsByPath test/health/health-metrics.integration.spec.ts` passed 1 suite / 2 tests. `npm test` passed backend 41 suites / 152 tests with 6 suites / 8 tests skipped, frontend 23 files / 66 tests, contract 13 files / 39 tests with 8 files / 15 tests skipped, additive migration check for 13 files, and `lint:theme-colors`. `npm run ci:live-contract` passed 9 live files / 20 tests. Backend and frontend builds passed.
 
 Blocked/remaining for this v2 run:
 - Live AWS/Azure/GCP customer-cloud probes remain blocked pending real readonly customer roles/federated identities/export references and Costalyx broker identities.
-- P3 must map the backend to v2 section 6 explicitly.
 - P4 through P6 must produce screenshots, regression evidence, PR/merge evidence, and `PRODUCTION-READINESS-REPORT.md`.
 
 ## Gap Audit / UIUX Elevation Run — 2026-07-07
