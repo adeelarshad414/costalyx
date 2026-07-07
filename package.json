@@ -19,6 +19,7 @@
     "test:contract:live": "vitest run contract/live",
     "test:load": "npm --workspace backend test -- --runTestsByPath test/cost-model/cost-explorer-load.spec.ts",
     "ci:live-contract": "node scripts/run-live-contract.mjs",
+    "ops:backup-restore-smoke": "node scripts/backup-restore-smoke.mjs",
     "probe:live-readiness": "node scripts/live-cloud-readiness.mjs",
     "probe:aws-live": "npm --workspace backend run probe:aws-live",
     "probe:azure-live": "npm --workspace backend run probe:azure-live",

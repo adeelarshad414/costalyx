@@ -100,6 +100,7 @@ The API liveness probe is `/health/live`; readiness is `/health/ready`.
 - `npm --workspace frontend run build`
 - `npm audit --audit-level=high`
 - `npm run security:secrets`
+- `npm run ops:backup-restore-smoke`
 - `npm run probe:live-readiness`
 - Production Compose config render
 - Helm lint and template render
@@ -135,5 +136,12 @@ Restore into a staging database before relying on the backup:
 pg_restore --dbname "$STAGING_DATABASE_URL" --clean --if-exists costalyx-predeploy.dump
 ```
 
-This repository still tracks the runnable backup/restore smoke as `GAP-040`
-until it is exercised end-to-end in the target environment.
+The local Docker smoke uses the running `postgres` service:
+
+```bash
+npm run ops:backup-restore-smoke
+```
+
+It creates a logical dump from `costalyx_dev`, restores it into a temporary
+database, verifies restored public tables plus cost records, and drops the
+temporary database.
