@@ -5,6 +5,14 @@ export const hasKeycloakCredentials = Boolean(process.env.E2E_KEYCLOAK_USERNAME 
 const defaultRegions = ['Cloud portfolio', 'Executive summary', 'Billing anomalies'];
 
 export async function signInAsAdmin(page: Page) {
+  await signInAsSeededUser(page);
+
+  for (const region of defaultRegions) {
+    await expect(page.getByRole('region', { name: region })).toBeVisible({ timeout: 45000 });
+  }
+}
+
+export async function signInAsSeededUser(page: Page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL(/protocol\/openid-connect\/auth|\/realms\/costalyx-dev/, { timeout: 90000 });
@@ -13,9 +21,6 @@ export async function signInAsAdmin(page: Page) {
   await page.getByRole('button', { name: /sign in/i }).click();
 
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible({ timeout: 45000 });
-  for (const region of defaultRegions) {
-    await expect(page.getByRole('region', { name: region })).toBeVisible({ timeout: 45000 });
-  }
 }
 
 export async function capturePersonaEvidence(page: Page, testInfo: TestInfo, name: string) {

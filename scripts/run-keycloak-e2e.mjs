@@ -10,6 +10,7 @@ const adminUsername = process.env.KEYCLOAK_ADMIN ?? 'admin';
 const adminPassword = process.env.KEYCLOAK_ADMIN_PASSWORD ?? 'CHANGE_ME_DEV_ONLY';
 const username = process.env.E2E_KEYCLOAK_USERNAME ?? 'costalyx-e2e-admin';
 const password = process.env.E2E_KEYCLOAK_PASSWORD ?? `E2E-${randomUUID()}aA1`;
+const roleNames = parseRoleNames(process.env.E2E_KEYCLOAK_ROLE ?? 'admin');
 const requestTimeoutMs = Number(process.env.E2E_REQUEST_TIMEOUT_MS ?? 30000);
 
 await waitForUrl(`${keycloakUrl}/realms/${realm}/.well-known/openid-configuration`, 120000);
@@ -56,8 +57,8 @@ async function upsertAdminUser(token) {
   const userId = existing?.id ?? (await createUser(token));
   await updateUserProfile(token, userId);
   await resetPassword(token, userId);
-  await assignRealmRole(token, userId, 'admin');
-  console.log(`Seeded Keycloak E2E user ${username} with admin role.`);
+  await replaceRealmRoles(token, userId, roleNames);
+  console.log(`Seeded Keycloak E2E user ${username} with ${roleNames.join(', ')} role${roleNames.length === 1 ? '' : 's'}.`);
 }
 
 async function upsertAudienceMapper(token) {
@@ -146,15 +147,47 @@ async function resetPassword(token, userId) {
   });
 }
 
-async function assignRealmRole(token, userId, roleName) {
-  const role = await requestJson(`${keycloakUrl}/admin/realms/${realm}/roles/${roleName}`, {
+async function replaceRealmRoles(token, userId, names) {
+  const currentRoles = await requestJson(`${keycloakUrl}/admin/realms/${realm}/users/${userId}/role-mappings/realm`, {
     headers: authHeaders(token)
   });
+  const managedCurrentRoles = Array.isArray(currentRoles)
+    ? currentRoles.filter((role) => role?.name === 'viewer' || role?.name === 'analyst' || role?.name === 'admin')
+    : [];
+
+  if (managedCurrentRoles.length > 0) {
+    await requestNoContent(`${keycloakUrl}/admin/realms/${realm}/users/${userId}/role-mappings/realm`, {
+      method: 'DELETE',
+      headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify(managedCurrentRoles)
+    });
+  }
+
+  const desiredRoles = [];
+  for (const name of names) {
+    desiredRoles.push(
+      await requestJson(`${keycloakUrl}/admin/realms/${realm}/roles/${name}`, {
+        headers: authHeaders(token)
+      })
+    );
+  }
+
   await requestNoContent(`${keycloakUrl}/admin/realms/${realm}/users/${userId}/role-mappings/realm`, {
     method: 'POST',
     headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
-    body: JSON.stringify([role])
+    body: JSON.stringify(desiredRoles)
   });
+}
+
+function parseRoleNames(value) {
+  const names = value
+    .split(',')
+    .map((role) => role.trim())
+    .filter(Boolean);
+  if (names.length === 0 || names.some((role) => !['viewer', 'analyst', 'admin'].includes(role))) {
+    throw new Error('E2E_KEYCLOAK_ROLE must be one or more of viewer, analyst, admin.');
+  }
+  return [...new Set(names)];
 }
 
 function authHeaders(token) {

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { createCostalyxClient } from './api/client';
 import { AuthBoundary } from './auth/AuthBoundary';
+import { RoleScopeNotice } from './auth/RoleScopeNotice';
 import { useAuth } from './auth/AuthProvider';
 import { PermissionGate } from './auth/PermissionGate';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -52,6 +53,7 @@ export function App() {
         </div>
       </header>
       <AuthBoundary>
+        <RoleScopeNotice />
         <nav className="section-nav" aria-label="Product sections">
           {productSections
             .filter((section) => !('adminOnly' in section) || auth.role === 'admin')
