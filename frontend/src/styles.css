@@ -451,11 +451,13 @@ td {
 .anomaly-body {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .anomaly-body p {
   color: var(--text-secondary);
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .anomaly-title-row,
@@ -469,6 +471,7 @@ td {
 
 .anomaly-actions {
   justify-content: flex-end;
+  min-width: 0;
 }
 
 .anomaly-actions select {
@@ -478,6 +481,7 @@ td {
   color: var(--text-primary);
   font: inherit;
   min-width: 150px;
+  max-width: 100%;
   padding: 0.62rem 0.7rem;
 }
 
@@ -505,13 +509,27 @@ td {
 .anomaly-evidence {
   color: var(--text-secondary);
   font-size: 0.92rem;
+  min-width: 0;
 }
 
 .status-chip {
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
   font-size: 0.82rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   padding: 0.25rem 0.45rem;
+  white-space: normal;
+}
+
+.anomaly-title-row {
+  min-width: 0;
+}
+
+.anomaly-title-row > *,
+.anomaly-evidence > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .severity-high {
@@ -714,5 +732,10 @@ td {
   .report-list li,
   .run-list li {
     grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .anomaly-actions {
+    grid-column: 2;
+    justify-content: flex-start;
   }
 }

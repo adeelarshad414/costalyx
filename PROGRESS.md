@@ -5,11 +5,11 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-07 12:55:00 PKT_
+_Last updated: 2026-07-07 13:01:07 PKT_
 
 ## Gap Audit / UIUX Elevation Run — 2026-07-07
 
-Status: partially completed; code fixes implemented and live verification partly blocked by local Docker/Vite/Keycloak instability.
+Status: completed for local seeded full-stack UI verification; real customer-cloud probes remain blocked pending live AWS/Azure/GCP inputs.
 
 Evidence added in this run:
 - Fixed local dev Docker stack structure: backend/frontend dev images now build from repo root, run workspace scripts from `/workspace`, and mount the repo root so `tsconfig.base.json` and workspace dependencies resolve correctly.
@@ -18,11 +18,15 @@ Evidence added in this run:
 - Fixed auth API fan-out: fresh Keycloak tokens are returned without forced refresh, and refresh calls are de-duplicated. `npm --workspace frontend test -- AuthProvider.test.tsx` passed 7 tests.
 - Added `e2e/costalyx-full-stack-walkthrough.spec.ts`; desktop authenticated full-stack walkthrough passed against seeded data, including all main product regions plus TCO/report actions.
 - Added responsive viewport checks and CSS containment fixes for tablet/mobile: border-box sizing, fixed-layout wrapping tables, wrapped toolbars, panel `min-width: 0`, and 900px grid breakpoint.
+- Recovered live verification after the Docker-hosted app runtime wedged by keeping Docker for infra only and running backend/frontend on the host. Evidence: Keycloak discovery returned `200` in `0.049476s`, backend `/healthz` returned `200` in `0.015536s`, frontend `/` returned `200` in `0.019851s`, and `npm run seed:demo` verified 2 tenants, 4 users, 4 cloud connections, 4 accounts, 12 cost records, 2 anomalies, 3 statements, and 3 agent runs.
+- Fixed the remaining mobile overflow in Stakeholder Statements by constraining billing-agent row content/actions/evidence and allowing status/evidence text to wrap inside narrow cells.
+- Final live seeded walkthrough passed: `npm run test:e2e:keycloak -- e2e/costalyx-full-stack-walkthrough.spec.ts` seeded `costalyx-e2e-admin` and Playwright reported 3 Chromium tests passed in 10.5s across desktop, tablet, and mobile, with no viewport overflow or clipped buttons.
+- Post-fix regression verification passed: `npm --workspace frontend test -- --run src/features/billing-agent/BillingAgentConsole.test.tsx` passed 1 file / 4 tests; `npm test` passed backend 40 suites / 150 tests, frontend 15 files / 52 tests, contract 12 files / 37 tests, and additive migration check 13 files; backend and frontend production builds passed; `git diff --check` passed.
 - Final non-live verification passed after the fixes: `npm --workspace frontend test -- AuthProvider.test.tsx` passed 7 tests; `npm run test:contract -- --run contract/dev-stack.spec.ts` passed contract totals 12 files / 37 tests with 8 files / 15 tests skipped; `npm test` passed backend 40 suites / 150 tests, frontend 15 files / 52 tests, contract 12 files / 37 tests, and additive migration check 13 files; backend and frontend builds passed; `git diff --check` passed.
 
 Blocked/remaining:
-- Repeated live E2E eventually wedged the local Docker runtime: frontend/backend curls timed out, `docker compose restart frontend` hung, Keycloak discovery intermittently exceeded the prior 10s request timeout, and logs showed a blocked Vert.x event-loop warning. Colima restart recovered once, but instability recurred. See `GAP-REGISTER.md` GAP-009.
-- Final tablet/mobile responsive proof should be rerun on a fresh Docker VM/CI runner. The last stable evidence after CSS reload reduced tablet overflow from 310px to a non-visible 28px document-scroll artifact with no element-bound offenders, but mobile/tablet completion was blocked before a clean pass.
+- Docker-hosted frontend/backend remain unreliable for repeated local browser-audit loops in this environment; the verified local mode is Docker infra plus host-run app tiers. See `GAP-REGISTER.md` GAP-009.
+- Live AWS/Azure/GCP customer-cloud probes and provider-native ingestion remain pending real read-only role/federated identity/export references and Costalyx broker credentials.
 
 ## Milestone status
 
@@ -307,6 +311,10 @@ and was not verifiable given the constraint._
 - **Live customer-cloud probe execution is pending real cloud inputs.** Multi-cloud onboarding templates, AWS STS `AssumeRole` + CUR S3 read/probe code, AWS S3 CUR ingestion, Azure Cost Management + Blob export probes and Blob ingestion, GCP BigQuery export probes and standard/detailed export ingestion, scheduler worker validation, `npm run probe:live-readiness`, and the `npm run probe:aws-live`, `npm run probe:azure-live`, and `npm run probe:gcp-live` operator preflights are implemented and covered with fake-client/unit, API, contract, UI, deployment-render, and real-Postgres tests, but validation and ingestion have not been executed against real AWS/Azure/GCP customer accounts because no Costalyx broker principal/credentials plus customer role/principal/export references were supplied. The next production gate is to run live readiness, live provider validation, and a small provider-native ingestion with real read-only role/federated identity values.
 
 ## Resolved blockers
+
+- **Resolved blocker:** Full seeded browser walkthrough now passes across desktop, tablet, and mobile.
+  **Evidence:** With Docker running Postgres, Keycloak, Redpanda, Vault, and Mailpit while backend/frontend ran on the host, `npm run test:e2e:keycloak -- e2e/costalyx-full-stack-walkthrough.spec.ts` seeded `costalyx-e2e-admin` and Playwright reported 3 Chromium tests passed in 10.5s. The walkthrough authenticated through Keycloak, loaded every main milestone region against seeded data, exercised TCO/report actions, and completed viewport-overflow/clipped-button checks at desktop, tablet, and mobile sizes.
+  **Fixes made:** host-run recovery path for local audit loops; billing-agent statement/anomaly row CSS now uses `min-width: 0`, wrapping evidence/status text, constrained controls, and mobile action placement to prevent narrow-cell overflow.
 
 - **Resolved blocker:** Live browser E2E with frontend + backend + Keycloak auth stack now executes to completion.
   **Evidence:** `env E2E_KEYCLOAK_URL=http://127.0.0.1:55880 E2E_API_BASE_URL=http://127.0.0.1:43101/api/v1 E2E_BASE_URL=http://localhost:5173 npm run test:e2e:keycloak` seeded `costalyx-e2e-admin`, authenticated through the live Keycloak redirect, loaded the authenticated app through the backend, and Playwright reported 1 Chromium test passed in 2.1s.
