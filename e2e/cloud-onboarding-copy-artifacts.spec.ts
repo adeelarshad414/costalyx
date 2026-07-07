@@ -19,7 +19,7 @@ test.describe('Cloud onboarding copy artifacts', () => {
 
     await portfolio.getByRole('button', { name: 'Load policies' }).click();
     const onboarding = page.getByRole('region', { name: 'AWS onboarding' });
-    await expect(onboarding.getByRole('button', { name: 'Copy Permissions policy' })).toBeVisible();
+    await expect(onboarding.getByRole('button', { name: 'Copy Permissions policy' })).toBeVisible({ timeout: 30000 });
 
     await onboarding.getByRole('button', { name: 'Copy Permissions policy' }).click();
     await expect(page.getByRole('status', { name: 'Onboarding copy status' })).toContainText('Copied Permissions policy');

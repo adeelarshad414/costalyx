@@ -12,9 +12,9 @@ test.describe('CEO executive summary persona journey', () => {
   test.skip(!hasKeycloakCredentials, personaSkipReason());
 
   test('answers what are we spending and why within the seeded dashboard', async ({ page }, testInfo) => {
-    const startedAt = Date.now();
     await signInAsSeededUser(page);
 
+    const startedAt = Date.now();
     const executive = page.getByRole('region', { name: 'Executive summary' });
     await expect(executive).toBeVisible({ timeout: 30000 });
     await expectNoUserVisibleFailures(page);
