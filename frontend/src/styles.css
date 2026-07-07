@@ -30,6 +30,12 @@
   --status-info: #4EA8DE;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -48,7 +54,14 @@ button {
   padding: 0.65rem 0.9rem;
 }
 
+button,
+input,
+select {
+  max-width: 100%;
+}
+
 table {
+  table-layout: fixed;
   width: 100%;
   border-collapse: collapse;
 }
@@ -56,8 +69,10 @@ table {
 th,
 td {
   border-bottom: 1px solid var(--border-subtle);
+  overflow-wrap: anywhere;
   padding: 0.75rem;
   text-align: left;
+  word-break: break-word;
 }
 
 .app-shell {
@@ -69,6 +84,7 @@ td {
 .app-header {
   align-items: start;
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   justify-content: space-between;
   margin-bottom: 24px;
@@ -91,12 +107,14 @@ td {
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   margin-bottom: 16px;
+  min-width: 0;
   padding: 20px;
 }
 
 .panel-toolbar {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   justify-content: flex-end;
   margin-bottom: 12px;
@@ -127,6 +145,8 @@ td {
 
 .font-mono-data {
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .governance-grid {
@@ -192,6 +212,7 @@ td {
 .connection-list li {
   border-bottom: 1px solid var(--border-subtle);
   justify-content: space-between;
+  min-width: 0;
   padding: 10px 0;
 }
 
@@ -665,15 +686,19 @@ td {
 .metric-list div {
   align-items: baseline;
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   justify-content: space-between;
 }
 
 .metric-list dt,
 .metric-list dd {
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .allocation-grid,
   .executive-grid,
   .insights-grid,

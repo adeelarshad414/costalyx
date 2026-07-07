@@ -10,7 +10,7 @@ const adminUsername = process.env.KEYCLOAK_ADMIN ?? 'admin';
 const adminPassword = process.env.KEYCLOAK_ADMIN_PASSWORD ?? 'CHANGE_ME_DEV_ONLY';
 const username = process.env.E2E_KEYCLOAK_USERNAME ?? 'costalyx-e2e-admin';
 const password = process.env.E2E_KEYCLOAK_PASSWORD ?? `E2E-${randomUUID()}aA1`;
-const requestTimeoutMs = Number(process.env.E2E_REQUEST_TIMEOUT_MS ?? 10000);
+const requestTimeoutMs = Number(process.env.E2E_REQUEST_TIMEOUT_MS ?? 30000);
 
 await waitForUrl(`${keycloakUrl}/realms/${realm}/.well-known/openid-configuration`, 120000);
 await waitForUrl(`${apiBaseUrl.replace(/\/api\/v1$/, '')}/healthz`, 120000);
@@ -20,7 +20,8 @@ const adminToken = await getAdminToken();
 await upsertAudienceMapper(adminToken);
 await upsertAdminUser(adminToken);
 
-const e2e = spawn('npm', ['run', 'test:e2e', '--', 'e2e/milestone-a-keycloak-login.spec.ts'], {
+const specs = process.argv.slice(2);
+const e2e = spawn('npm', ['run', 'test:e2e', '--', ...(specs.length > 0 ? specs : ['e2e/milestone-a-keycloak-login.spec.ts'])], {
   env: {
     ...process.env,
     E2E_BASE_URL: frontendUrl,
