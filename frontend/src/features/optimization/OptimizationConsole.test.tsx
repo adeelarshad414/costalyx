@@ -151,7 +151,7 @@ describe('OptimizationConsole', () => {
     await user.click(await screen.findByRole('button', { name: 'Apply recommendation' }));
 
     expect(updateRecommendation).not.toHaveBeenCalled();
-    expect(screen.getByRole('alertdialog', { name: 'Confirm Apply recommendation' })).toHaveTextContent(
+    expect(screen.getByRole('dialog', { name: 'Confirm Apply recommendation' })).toHaveTextContent(
       'Apply the rightsizing recommendation for i-aws-prod-001 and record verified savings after the next reload.'
     );
     await user.click(screen.getByRole('button', { name: 'Confirm apply recommendation' }));

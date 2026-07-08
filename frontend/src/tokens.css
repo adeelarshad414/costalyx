@@ -10,6 +10,7 @@
   --text-on-primary: #FFFFFF;
   --surface-1: #12151C;
   --surface-2: #1B1F29;
+  --browser-theme-color: #12151C;
   --border-subtle: #262B36;
   --text-primary: #E6E9F0;
   --text-secondary: #8A90A2;
@@ -30,6 +31,7 @@
   --text-on-primary: #FFFFFF;
   --surface-1: #F4F5F8;
   --surface-2: #E9EBF0;
+  --browser-theme-color: #F4F5F8;
   --border-subtle: #D8DBE3;
   --text-primary: #12151C;
   --text-secondary: #5B6070;

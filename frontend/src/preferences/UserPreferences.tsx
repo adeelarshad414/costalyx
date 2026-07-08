@@ -10,15 +10,19 @@ interface UserPreferencesContextValue {
   resolvedTheme: ResolvedTheme;
   accent: AccentPreference;
   density: DensityPreference;
+  dismissedBanners: Record<string, boolean>;
   setTheme: (theme: ThemeModePreference) => void;
   setAccent: (accent: AccentPreference) => void;
   setDensity: (density: DensityPreference) => void;
+  dismissBanner: (bannerId: string) => void;
+  restoreBanner: (bannerId: string) => void;
 }
 
 const UserPreferencesContext = createContext<UserPreferencesContextValue | null>(null);
 const themeStorageKey = 'costalyx-theme';
 const accentStorageKey = 'costalyx-accent';
 const densityStorageKey = 'costalyx-density';
+const dismissedBannerStorageKey = 'costalyx-dismissed-banners';
 
 interface UserPreferencesProviderProps {
   children: React.ReactNode;
@@ -28,6 +32,7 @@ export function UserPreferencesProvider({ children }: UserPreferencesProviderPro
   const [theme, setTheme] = useState<ThemeModePreference>(() => readInitialTheme());
   const [accent, setAccent] = useState<AccentPreference>(() => readInitialAccent());
   const [density, setDensity] = useState<DensityPreference>(() => readInitialDensity());
+  const [dismissedBanners, setDismissedBanners] = useState<Record<string, boolean>>(() => readDismissedBanners());
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(() => readSystemTheme());
   const resolvedTheme: ResolvedTheme = theme === 'system' ? systemTheme : theme;
 
@@ -60,9 +65,28 @@ export function UserPreferencesProvider({ children }: UserPreferencesProviderPro
     window.localStorage.setItem(densityStorageKey, density);
   }, [density]);
 
+  useEffect(() => {
+    window.localStorage.setItem(dismissedBannerStorageKey, JSON.stringify(dismissedBanners));
+  }, [dismissedBanners]);
+
+  function dismissBanner(bannerId: string) {
+    setDismissedBanners((current) => ({ ...current, [bannerId]: true }));
+  }
+
+  function restoreBanner(bannerId: string) {
+    setDismissedBanners((current) => {
+      if (!current[bannerId]) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[bannerId];
+      return next;
+    });
+  }
+
   const value = useMemo(
-    () => ({ theme, resolvedTheme, accent, density, setTheme, setAccent, setDensity }),
-    [accent, density, resolvedTheme, theme]
+    () => ({ theme, resolvedTheme, accent, density, dismissedBanners, setTheme, setAccent, setDensity, dismissBanner, restoreBanner }),
+    [accent, density, dismissedBanners, resolvedTheme, theme]
   );
 
   return <UserPreferencesContext.Provider value={value}>{children}</UserPreferencesContext.Provider>;
@@ -114,4 +138,20 @@ function readSystemTheme(): ResolvedTheme {
     return 'dark';
   }
   return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
+
+function readDismissedBanners(): Record<string, boolean> {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+  const stored = window.localStorage.getItem(dismissedBannerStorageKey);
+  if (!stored) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(stored) as Record<string, boolean>;
+    return typeof parsed === 'object' && parsed ? parsed : {};
+  } catch {
+    return {};
+  }
 }

@@ -1,5 +1,6 @@
 import { Gauge, Monitor, MonitorCog, Moon, ShieldCheck, Sun } from 'lucide-react';
 import { useAuth } from '../../auth/AuthProvider';
+import { Button } from '../../components/Button';
 import {
   useUserPreferences,
   type AccentPreference,
@@ -50,16 +51,17 @@ export function SettingsConsole() {
               {themes.map((theme) => {
                 const Icon = theme.icon;
                 return (
-                  <button
+                  <Button
                     key={theme.value}
-                    type="button"
+                    variant="ghost"
+                    size="compact"
                     className={preferences.theme === theme.value ? 'is-active' : ''}
                     aria-pressed={preferences.theme === theme.value}
                     onClick={() => preferences.setTheme(theme.value)}
                   >
                     <Icon aria-hidden="true" size={16} />
                     {theme.label}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -69,16 +71,17 @@ export function SettingsConsole() {
             <span className="settings-label">Accent</span>
             <div className="view-toggle" role="group" aria-label="Accent">
               {accents.map((accent) => (
-                <button
+                <Button
                   key={accent.value}
-                  type="button"
+                  variant="ghost"
+                  size="compact"
                   className={preferences.accent === accent.value ? 'is-active' : ''}
                   aria-pressed={preferences.accent === accent.value}
                   onClick={() => preferences.setAccent(accent.value)}
                 >
                   <span className={`accent-swatch accent-swatch-${accent.value}`} aria-hidden="true" />
                   {accent.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -87,16 +90,17 @@ export function SettingsConsole() {
             <span className="settings-label">Density</span>
             <div className="view-toggle" role="group" aria-label="Density">
               {densities.map((density) => (
-                <button
+                <Button
                   key={density.value}
-                  type="button"
+                  variant="ghost"
+                  size="compact"
                   className={preferences.density === density.value ? 'is-active' : ''}
                   aria-pressed={preferences.density === density.value}
                   onClick={() => preferences.setDensity(density.value)}
                 >
                   <Gauge aria-hidden="true" size={16} />
                   {density.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>

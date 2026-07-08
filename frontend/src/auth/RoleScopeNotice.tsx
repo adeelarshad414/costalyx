@@ -1,3 +1,5 @@
+import { Banner } from '../components/Overlays';
+import { useUserPreferences } from '../preferences/UserPreferences';
 import { useAuth } from './AuthProvider';
 
 const roleCopy = {
@@ -17,21 +19,26 @@ const roleCopy = {
 
 export function RoleScopeNotice() {
   const auth = useAuth();
+  const preferences = useUserPreferences();
 
   if (auth.status !== 'authenticated' || auth.role === 'admin' || !auth.role) {
     return null;
   }
 
   const copy = roleCopy[auth.role];
+  const bannerId = `role-scope-${auth.role}`;
+  if (preferences.dismissedBanners[bannerId]) {
+    return null;
+  }
 
   return (
-    <section className="role-scope-notice" aria-label="Access scope">
-      <div>
-        <p className="section-kicker">{copy.badge}</p>
-        <h2>{copy.title}</h2>
-        <p>{copy.detail}</p>
-      </div>
-      <p>{copy.guardrail}</p>
-    </section>
+    <Banner
+      title={copy.title}
+      badge={copy.badge}
+      detail={`${copy.detail} ${copy.guardrail}`}
+      tone="info"
+      ariaLabel="Access scope"
+      onDismiss={() => preferences.dismissBanner(bannerId)}
+    />
   );
 }

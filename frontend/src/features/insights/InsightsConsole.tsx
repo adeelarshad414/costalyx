@@ -1,8 +1,11 @@
 import { Download, GitBranch, SlidersHorizontal, Table2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
+import { bootstrapKeys, takeBootstrapValue } from '../../bootstrapCache';
+import { Button } from '../../components/Button';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { ProgressButton } from '../../components/LoadingExperience';
 import { LoadingState } from '../../components/LoadingState';
 import { toUserFacingError } from '../../utils/userFacingError';
 
@@ -16,6 +19,13 @@ type CostRecord = Awaited<ReturnType<CostalyxClient['listCostRecords']>>['data']
 type CostSummary = Awaited<ReturnType<CostalyxClient['getCostSummary']>>;
 type CostExplorerFlow = Awaited<ReturnType<CostalyxClient['getCostExplorerFlow']>>;
 type FlowView = 'flow' | 'table';
+interface InsightsBootstrap {
+  provider: CloudProvider;
+  costFloorUsd: string;
+  summary: CostSummary;
+  records: CostRecord[];
+  flow: CostExplorerFlow;
+}
 
 const providers: CloudProvider[] = ['aws', 'azure', 'gcp'];
 const defaultDimensions = ['service', 'leaseType'];
@@ -27,15 +37,20 @@ const dimensionOptions = [
 ];
 
 export function InsightsConsole({ client }: InsightsConsoleProps) {
-  const [state, setState] = useState<LoadState>('loading');
-  const [provider, setProvider] = useState<CloudProvider>('aws');
-  const [costFloorUsd, setCostFloorUsd] = useState('0.00000000');
-  const [summary, setSummary] = useState<CostSummary | null>(null);
-  const [records, setRecords] = useState<CostRecord[]>([]);
-  const [flow, setFlow] = useState<CostExplorerFlow | null>(null);
+  const [bootstrappedInsights] = useState<InsightsBootstrap | null>(
+    () => takeBootstrapValue<InsightsBootstrap>(bootstrapKeys.insights) ?? null
+  );
+  const [skipInitialLoad, setSkipInitialLoad] = useState(Boolean(bootstrappedInsights));
+  const [state, setState] = useState<LoadState>(bootstrappedInsights ? 'loaded' : 'loading');
+  const [provider, setProvider] = useState<CloudProvider>(bootstrappedInsights?.provider ?? 'aws');
+  const [costFloorUsd, setCostFloorUsd] = useState(bootstrappedInsights?.costFloorUsd ?? '0.00000000');
+  const [summary, setSummary] = useState<CostSummary | null>(bootstrappedInsights?.summary ?? null);
+  const [records, setRecords] = useState<CostRecord[]>(bootstrappedInsights?.records ?? []);
+  const [flow, setFlow] = useState<CostExplorerFlow | null>(bootstrappedInsights?.flow ?? null);
   const [flowView, setFlowView] = useState<FlowView>('flow');
   const [error, setError] = useState('');
   const [exportStatus, setExportStatus] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   const loadInsights = useCallback(async () => {
     setState('loading');
@@ -58,16 +73,23 @@ export function InsightsConsole({ client }: InsightsConsoleProps) {
   }, [client, costFloorUsd, provider]);
 
   useEffect(() => {
+    if (skipInitialLoad) {
+      setSkipInitialLoad(false);
+      return;
+    }
     void loadInsights();
-  }, [loadInsights]);
+  }, [loadInsights, skipInitialLoad]);
 
   const exportInventory = useCallback(async () => {
+    setIsExporting(true);
     try {
       const csv = await client.exportCostRecords();
       setExportStatus(`${csvRows(csv)} CSV rows ready`);
     } catch (exportError) {
       setError(toUserFacingError(exportError, 'Export inventory CSV'));
       setState('error');
+    } finally {
+      setIsExporting(false);
     }
   }, [client]);
 
@@ -96,22 +118,26 @@ export function InsightsConsole({ client }: InsightsConsoleProps) {
       <div className="panel-toolbar insights-toolbar">
         <div className="provider-tabs" role="tablist" aria-label="Provider">
           {providers.map((option) => (
-            <button
+            <Button
               key={option}
-              type="button"
               role="tab"
               aria-selected={provider === option}
-              className={provider === option ? 'is-active' : undefined}
+              variant={provider === option ? 'primary' : 'secondary'}
+              size="compact"
               onClick={() => setProvider(option)}
             >
               {option.toUpperCase()}
-            </button>
+            </Button>
           ))}
         </div>
-        <button type="button" onClick={exportInventory}>
+        <ProgressButton
+          idleLabel="Export inventory CSV"
+          runningLabel="Exporting CSV..."
+          isRunning={isExporting}
+          onClick={exportInventory}
+        >
           <Download aria-hidden="true" size={16} />
-          Export inventory CSV
-        </button>
+        </ProgressButton>
       </div>
 
       {summary ? (
@@ -191,14 +217,22 @@ export function InsightsConsole({ client }: InsightsConsoleProps) {
             {flow && flow.links.length > 0 ? (
               <>
                 <div className="view-toggle" role="group" aria-label="Cost Explorer view">
-                  <button type="button" className={flowView === 'table' ? 'is-active' : undefined} onClick={() => setFlowView('table')}>
-                    <Table2 aria-hidden="true" size={16} />
+                  <Button
+                    variant={flowView === 'table' ? 'primary' : 'secondary'}
+                    size="compact"
+                    leadingIcon={<Table2 aria-hidden="true" size={16} />}
+                    onClick={() => setFlowView('table')}
+                  >
                     View as table
-                  </button>
-                  <button type="button" className={flowView === 'flow' ? 'is-active' : undefined} onClick={() => setFlowView('flow')}>
-                    <GitBranch aria-hidden="true" size={16} />
+                  </Button>
+                  <Button
+                    variant={flowView === 'flow' ? 'primary' : 'secondary'}
+                    size="compact"
+                    leadingIcon={<GitBranch aria-hidden="true" size={16} />}
+                    onClick={() => setFlowView('flow')}
+                  >
                     View as flow
-                  </button>
+                  </Button>
                 </div>
                 {flowView === 'flow' ? (
                   <ul className="flow-list">

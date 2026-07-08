@@ -2,6 +2,7 @@ import { CheckCircle2, PiggyBank } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
+import { bootstrapKeys, takeBootstrapValue } from '../../bootstrapCache';
 import { ConfirmAction } from '../../components/ConfirmAction';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
@@ -15,11 +16,18 @@ interface OptimizationConsoleProps {
 type LoadState = 'loading' | 'loaded' | 'error';
 type Recommendation = Awaited<ReturnType<CostalyxClient['listRecommendations']>>['data'][number];
 type RealizedSaving = Awaited<ReturnType<CostalyxClient['listRealizedSavings']>>['data'][number];
+interface OptimizationBootstrap {
+  recommendations: Recommendation[];
+  savings: RealizedSaving[];
+}
 
 export function OptimizationConsole({ client }: OptimizationConsoleProps) {
-  const [state, setState] = useState<LoadState>('loading');
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [savings, setSavings] = useState<RealizedSaving[]>([]);
+  const [bootstrappedOptimization] = useState<OptimizationBootstrap | null>(
+    () => takeBootstrapValue<OptimizationBootstrap>(bootstrapKeys.optimization) ?? null
+  );
+  const [state, setState] = useState<LoadState>(bootstrappedOptimization ? 'loaded' : 'loading');
+  const [recommendations, setRecommendations] = useState<Recommendation[]>(() => bootstrappedOptimization?.recommendations ?? []);
+  const [savings, setSavings] = useState<RealizedSaving[]>(() => bootstrappedOptimization?.savings ?? []);
   const [error, setError] = useState('');
   const [isApplying, setIsApplying] = useState(false);
 
@@ -40,8 +48,11 @@ export function OptimizationConsole({ client }: OptimizationConsoleProps) {
   }, [client]);
 
   useEffect(() => {
+    if (bootstrappedOptimization) {
+      return;
+    }
     void loadOptimization();
-  }, [loadOptimization]);
+  }, [bootstrappedOptimization, loadOptimization]);
 
   const applyRecommendation = useCallback(
     async (recommendation: Recommendation) => {

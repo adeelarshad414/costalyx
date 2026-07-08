@@ -1,8 +1,10 @@
 import { Download, TrendingUp } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
+import { bootstrapKeys, takeBootstrapValue } from '../../bootstrapCache';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { ProgressButton } from '../../components/LoadingExperience';
 import { LoadingState } from '../../components/LoadingState';
 import { toUserFacingError } from '../../utils/userFacingError';
 
@@ -24,11 +26,15 @@ const defaultTcoWorkload = {
 };
 
 export function ExecutiveConsole({ client }: ExecutiveConsoleProps) {
-  const [state, setState] = useState<LoadState>('loading');
-  const [summary, setSummary] = useState<ExecutiveSummary | null>(null);
+  const [bootstrappedSummary] = useState<ExecutiveSummary | null>(
+    () => takeBootstrapValue<ExecutiveSummary>(bootstrapKeys.executive) ?? null
+  );
+  const [state, setState] = useState<LoadState>(bootstrappedSummary ? 'loaded' : 'loading');
+  const [summary, setSummary] = useState<ExecutiveSummary | null>(bootstrappedSummary);
   const [estimate, setEstimate] = useState<TcoEstimate | null>(null);
   const [error, setError] = useState('');
   const [exportStatus, setExportStatus] = useState('');
+  const [busyAction, setBusyAction] = useState<'export' | 'estimate' | null>(null);
 
   const loadSummary = useCallback(async () => {
     setState('loading');
@@ -47,20 +53,27 @@ export function ExecutiveConsole({ client }: ExecutiveConsoleProps) {
   }, [client]);
 
   useEffect(() => {
+    if (bootstrappedSummary) {
+      return;
+    }
     void loadSummary();
-  }, [loadSummary]);
+  }, [bootstrappedSummary, loadSummary]);
 
   const exportPdf = useCallback(async () => {
+    setBusyAction('export');
     try {
       await client.exportExecutiveSummaryPdf();
       setExportStatus('PDF ready');
     } catch (exportError) {
       setError(toUserFacingError(exportError, 'Export executive PDF'));
       setState('error');
+    } finally {
+      setBusyAction(null);
     }
   }, [client]);
 
   const estimateTco = useCallback(async () => {
+    setBusyAction('estimate');
     try {
       setEstimate(
         await client.estimateTco({
@@ -71,6 +84,8 @@ export function ExecutiveConsole({ client }: ExecutiveConsoleProps) {
     } catch (estimateError) {
       setError(toUserFacingError(estimateError, 'Estimate TCO'));
       setState('error');
+    } finally {
+      setBusyAction(null);
     }
   }, [client]);
 
@@ -95,14 +110,24 @@ export function ExecutiveConsole({ client }: ExecutiveConsoleProps) {
       <div className="panel-toolbar executive-toolbar">
         <h2>Executive Summary</h2>
         <div className="action-row">
-          <button type="button" onClick={exportPdf}>
+          <ProgressButton
+            idleLabel="Export executive PDF"
+            runningLabel="Exporting PDF..."
+            isRunning={busyAction === 'export'}
+            disabled={busyAction !== null && busyAction !== 'export'}
+            onClick={exportPdf}
+          >
             <Download aria-hidden="true" size={16} />
-            Export executive PDF
-          </button>
-          <button type="button" onClick={estimateTco}>
+          </ProgressButton>
+          <ProgressButton
+            idleLabel="Estimate TCO"
+            runningLabel="Estimating TCO..."
+            isRunning={busyAction === 'estimate'}
+            disabled={busyAction !== null && busyAction !== 'estimate'}
+            onClick={estimateTco}
+          >
             <TrendingUp aria-hidden="true" size={16} />
-            Estimate TCO
-          </button>
+          </ProgressButton>
         </div>
       </div>
 

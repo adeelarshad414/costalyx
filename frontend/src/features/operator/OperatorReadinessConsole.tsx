@@ -1,7 +1,9 @@
 import { RefreshCw, ServerCog } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
+import { bootstrapKeys, takeBootstrapValue } from '../../bootstrapCache';
 import { ErrorState } from '../../components/ErrorState';
+import { ProgressButton } from '../../components/LoadingExperience';
 import { LoadingState } from '../../components/LoadingState';
 import { toUserFacingError } from '../../utils/userFacingError';
 
@@ -22,12 +24,17 @@ const categoryLabels: Record<OperatorCheck['category'], string> = {
 const categoryOrder: OperatorCheck['category'][] = ['runtime', 'cloud', 'supporting-service'];
 
 export function OperatorReadinessConsole({ client }: OperatorReadinessConsoleProps) {
-  const [readiness, setReadiness] = useState<OperatorReadiness | null>(null);
-  const [state, setState] = useState<LoadState>('idle');
+  const [bootstrappedReadiness] = useState<OperatorReadiness | null>(
+    () => takeBootstrapValue<OperatorReadiness>(bootstrapKeys.operator) ?? null
+  );
+  const [readiness, setReadiness] = useState<OperatorReadiness | null>(bootstrappedReadiness);
+  const [state, setState] = useState<LoadState>(bootstrappedReadiness ? 'loaded' : 'idle');
   const [error, setError] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadReadiness = useCallback(async () => {
     setState('loading');
+    setIsRefreshing(true);
     try {
       if (!client.getOperatorReadiness) {
         throw new Error('Operator readiness client method is unavailable.');
@@ -38,12 +45,17 @@ export function OperatorReadinessConsole({ client }: OperatorReadinessConsolePro
     } catch (loadError) {
       setError(toUserFacingError(loadError, 'Load operator readiness'));
       setState('error');
+    } finally {
+      setIsRefreshing(false);
     }
   }, [client]);
 
   useEffect(() => {
+    if (bootstrappedReadiness) {
+      return;
+    }
     void loadReadiness();
-  }, [loadReadiness]);
+  }, [bootstrappedReadiness, loadReadiness]);
 
   const checksByCategory = useMemo(() => {
     const grouped = new Map<OperatorCheck['category'], OperatorCheck[]>();
@@ -63,10 +75,9 @@ export function OperatorReadinessConsole({ client }: OperatorReadinessConsolePro
           <p className="section-kicker">Operator</p>
           <h2>Operational readiness</h2>
         </div>
-        <button type="button" onClick={loadReadiness}>
+        <ProgressButton idleLabel="Refresh" runningLabel="Refreshing..." isRunning={isRefreshing} onClick={loadReadiness}>
           <RefreshCw aria-hidden="true" size={16} />
-          Refresh
-        </button>
+        </ProgressButton>
       </div>
 
       {state === 'loading' || state === 'idle' ? (

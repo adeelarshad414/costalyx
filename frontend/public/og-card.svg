@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Costalyx social card">
+  <defs>
+    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#0b1220" />
+      <stop offset="100%" stop-color="#141c31" />
+    </linearGradient>
+    <linearGradient id="band" x1="0%" x2="100%" y1="0%" y2="0%">
+      <stop offset="0%" stop-color="#13a392" />
+      <stop offset="100%" stop-color="#5b6cff" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)" rx="36" />
+  <rect x="78" y="86" width="1044" height="458" rx="28" fill="#11192b" stroke="#2a3654" />
+  <rect x="78" y="86" width="1044" height="14" rx="7" fill="url(#band)" />
+  <text x="120" y="198" fill="#13a392" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700">COSTALYX</text>
+  <text x="120" y="278" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="64" font-weight="700">Cloud cost operations</text>
+  <text x="120" y="336" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="64" font-weight="700">with buyer-ready clarity</text>
+  <text x="120" y="414" fill="#97a5c5" font-family="Inter, Arial, sans-serif" font-size="28">
+    Portfolio visibility. Billing intelligence. Governance. Executive reporting.
+  </text>
+  <rect x="120" y="462" width="232" height="54" rx="14" fill="#5b6cff" />
+  <text x="148" y="497" fill="#f4f7fb" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700">Readonly by practice</text>
+  <circle cx="986" cy="196" r="76" fill="#141c31" stroke="#26304a" />
+  <path d="M920 250c30-74 74-110 131-110 19 0 39 6 57 18" fill="none" stroke="#5b6cff" stroke-linecap="round" stroke-width="16" />
+  <path d="M948 308c30-55 68-80 114-80 27 0 52 10 79 30" fill="none" stroke="#13a392" stroke-linecap="round" stroke-width="16" />
+  <circle cx="1080" cy="142" r="18" fill="#d96f4a" />
+</svg>

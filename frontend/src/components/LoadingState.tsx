@@ -1,17 +1,28 @@
-type LoadingVariant = 'cards' | 'table' | 'list' | 'form';
+export type LoadingVariant = 'cards' | 'table' | 'list' | 'form';
 
 interface LoadingStateProps {
   title: string;
   variant?: LoadingVariant;
   rows?: number;
+  detail?: string;
 }
 
-export function LoadingState({ title, variant = 'cards', rows }: LoadingStateProps) {
+export const Skeleton = {
+  Table: TableSkeleton,
+  Cards: CardSkeleton,
+  List: ListSkeleton,
+  Form: FormSkeleton
+};
+
+export function LoadingState({ title, variant = 'cards', rows, detail }: LoadingStateProps) {
   const rowCount = rows ?? (variant === 'table' ? 5 : 3);
 
   return (
-    <section className={`loading-state loading-state-${variant}`} role="status" aria-busy="true" aria-label={title}>
-      <p>{title}</p>
+    <section className={`loading-state loading-state-${variant}`} role="status" aria-busy="true" aria-label={title} aria-live="polite">
+      <div className="loading-state-copy">
+        <p>{title}</p>
+        {detail ? <span>{detail}</span> : null}
+      </div>
       <div className="skeleton-layout" data-testid="loading-skeleton" data-variant={variant} aria-hidden="true">
         {variant === 'table' ? <TableSkeleton rows={rowCount} /> : null}
         {variant === 'cards' ? <CardSkeleton rows={rowCount} /> : null}
