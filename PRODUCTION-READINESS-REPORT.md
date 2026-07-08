@@ -1,8 +1,8 @@
 # Costalyx Production Readiness Report
 
-Generated: 2026-07-07 20:46 PKT
-Branch: `feature/costalyx-ultimate-master-run-2026-07-07`
-Entry point: `16-ULTIMATE-MASTER-RUN.md`
+Generated: 2026-07-08 12:10 PKT
+Branch: `codex/customer-handover-competitive-run`
+Entry point: `17-CUSTOMER-HANDOVER-COMPETITIVE-RUN.md`
 
 ## Executive Status
 
@@ -21,6 +21,37 @@ Full Docker Compose app-tier browser proof is also environment-blocked on this
 workstation because Colima stopped during full-suite execution. The app-tier
 Compose path was hardened and focused-smoked, but the production-ready claim
 should rely on CI or a stable Docker daemon for full Compose browser evidence.
+
+## Customer Handover Addendum
+
+The final-mile handover run added the customer-facing package and market
+evidence layer requested by `17-CUSTOMER-HANDOVER-COMPETITIVE-RUN.md`.
+
+| Workstream | Status | Evidence |
+| --- | --- | --- |
+| Competitive matrix | Complete with accepted roadmap gaps | `COMPETITIVE-MATRIX.md` covers IBM Cloudability, CloudZero, Kubecost, Vantage, Flexera One, and native AWS/Azure/GCP cost tools. Costalyx behind-cells are logged as GAP-045 commitment management, GAP-046 unit economics, and GAP-047 formal FOCUS export. |
+| Conformance register | Complete with accepted gaps/blockers | `CONFORMANCE.md` maps FinOps FOCUS/Framework, AWS/Azure/GCP cost pillars, SRE SLOs, OWASP ASVS Level 2 target controls, 12-factor/container posture, and WCAG 2.1 AA evidence. |
+| Handover package | Written and locally verified where executable | `handover/` contains the package index, operations runbook, installation guide, onboarding checklist, security overview, SLO/support guide, demo script, demo seed profile, and go-live checklist. |
+| Alert wiring | Fixed | Added `deploy/prometheus/costalyx-alerts.yml` and runbook anchors; `contract/handover-package.spec.ts` verifies alert rules reference metrics exported by `backend/src/health.controller.ts`. |
+| Demo seed profile | Verified(mock) | `npm run seed:demo` rerun with local Postgres permission applied 14 migrations and verified 2 tenants, 4 users, 4 cloud connections, 4 accounts, 12 cost records, 2 anomalies, 3 statements, and 3 agent runs. |
+
+Latest verification for this addendum:
+
+- `npm run test:contract -- --run contract/handover-package.spec.ts`: passed
+  with contract totals 14 files / 44 tests passed and 8 files / 15 tests
+  skipped.
+- `npm test`: backend 45 suites / 200 tests passed with 6 suites / 8 tests
+  skipped; frontend 24 files / 72 tests passed; contract 14 files / 44 tests
+  passed with 8 files / 15 tests skipped; additive migration check passed for
+  14 files; theme-color guard passed.
+- Backend and frontend production builds passed.
+- `npm run security:secrets` passed current-tree and 92-commit git-history
+  scans with no leaks.
+- `npm audit --audit-level=high` found 0 vulnerabilities.
+- `docker compose config` and production Compose config render passed.
+- Helm lint and two Helm template renders passed.
+- `npm run ci:live-contract` passed 9 live files / 20 tests after rerunning
+  with permission to bind the local loopback harness port.
 
 ## Ultimate Addendum
 
@@ -132,6 +163,10 @@ Latest non-Docker regression after the Ultimate fixes:
 | BLOCKED-003 | GCP real probe | Missing customer billing resource/WIF/export references and Costalyx GCP broker identity. | Billing resource ID, Workload Identity Federation provider, BigQuery export URI, optional location, and broker identity. |
 | BLOCKED-004 | Production claim | Dummy data is verified(mock), not production cloud evidence. | At least one real readonly customer cloud account per provider or an explicit scoped launch decision. |
 | BLOCKED-005 | Full Compose app-tier browser proof | Local Colima stopped during the full Compose browser suite and Docker became unavailable. | Rerun on CI or a stable Docker daemon; current supported local browser path is Docker infra plus host-run backend/frontend. |
+| BLOCKED-006 | Handover installation execution | The installation guide is written and config/render verified, but full clean-environment app-tier Compose browser proof is still written-but-unverified locally because of the Colima blocker. | Rerun the installation guide end-to-end on CI or a stable Docker daemon. |
+| ROADMAP-001 | Commitment management | Costalyx is behind mature market tools for RI/Savings Plan/CUD portfolio planning. | Add commitment inventory, coverage/expiration forecasts, and purchase-planning workflow after real provider probes. |
+| ROADMAP-002 | Unit economics | Costalyx does not yet ingest arbitrary business metrics for cost-per-unit KPIs. | Add business metric ingestion, metric-to-cost formulas, dashboard/API/export coverage. |
+| ROADMAP-003 | Formal FOCUS export | Costalyx maps to FOCUS-style fields but has no formal export endpoint/file generator. | Add FOCUS contract, endpoint, golden fixture, and customer mapping guide. |
 
 ## HUMAN_DECISION_GATE Register
 
@@ -174,10 +209,19 @@ Latest non-Docker regression after the Ultimate fixes:
   matrix, and clean-checkout proof.
 - Hardened local dev Compose app-tier images and documented the remaining
   Colima blocker.
+- Added final-mile prompt `17-CUSTOMER-HANDOVER-COMPETITIVE-RUN.md`.
+- Added `COMPETITIVE-MATRIX.md`, `CONFORMANCE.md`, and the `handover/`
+  customer package.
+- Added Prometheus alert rules in `deploy/prometheus/costalyx-alerts.yml` and
+  a contract guard for the handover package.
 
 ## PR Summary
 
-PR merged: https://github.com/adeelarshad414/costalyx/pull/44
+Latest merged baseline: https://github.com/adeelarshad414/costalyx/pull/47
+
+This handover addendum is on branch
+`codex/customer-handover-competitive-run` and should be opened as a new PR
+after push.
 
 PR #44 merged into `main` at 2026-07-07 19:15:58 PKT with merge commit
 `bc8bf58eb1f48055582449e1f8e5f8817b27530d`. No CI bypass was used. The first

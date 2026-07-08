@@ -1,0 +1,53 @@
+groups:
+  - name: costalyx.slo
+    rules:
+      - alert: CostalyxMetricsStale
+        expr: time() - costalyx_metrics_generated_timestamp_seconds > 300
+        for: 5m
+        labels:
+          severity: warning
+          service: costalyx
+        annotations:
+          summary: Costalyx metrics scrape is stale
+          runbook: handover/OPERATIONS-RUNBOOK.md#alert-costalyxmetricsstale
+
+      - alert: CostalyxSchedulerDisabled
+        expr: costalyx_cloud_scheduler_enabled == 0
+        for: 30m
+        labels:
+          severity: warning
+          service: costalyx
+        annotations:
+          summary: Costalyx cloud scheduler is disabled
+          runbook: handover/OPERATIONS-RUNBOOK.md#alert-costalyxschedulerdisabled
+
+      - alert: CostalyxIngestionSchedulerDisabled
+        expr: costalyx_cloud_scheduler_ingestion_enabled == 0
+        for: 30m
+        labels:
+          severity: warning
+          service: costalyx
+        annotations:
+          summary: Costalyx scheduled ingestion is disabled
+          runbook: handover/OPERATIONS-RUNBOOK.md#alert-costalyxingestionschedulerdisabled
+
+      - alert: CostalyxCloudValidationFailures
+        expr: sum by (provider) (costalyx_cloud_connections_total{status="validation_failed"}) > 0
+        for: 15m
+        labels:
+          severity: critical
+          service: costalyx
+        annotations:
+          summary: Costalyx cloud connection validation failures are present
+          runbook: handover/OPERATIONS-RUNBOOK.md#alert-costalyxcloudvalidationfailures
+
+      - alert: CostalyxNoCloudConnections
+        expr: costalyx_cloud_connection_tenants_total == 0
+        for: 1h
+        labels:
+          severity: info
+          service: costalyx
+        annotations:
+          summary: Costalyx has no tenants with cloud connections
+          runbook: handover/OPERATIONS-RUNBOOK.md#alert-costalyxnocloudconnections
+
