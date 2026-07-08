@@ -1,0 +1,51 @@
+{
+  "name": "costalyx-demo-handover",
+  "verificationMode": "verified(mock)",
+  "seedCommand": "npm run seed:demo",
+  "databaseSafety": {
+    "allowedByDefault": ["localhost", "127.0.0.1", "postgres"],
+    "productionGuard": "Refuses production-looking databases unless COSTALYX_ALLOW_DEMO_SEED=true and the database name is demo/sandbox-shaped."
+  },
+  "expectedCounts": {
+    "tenants": 2,
+    "users": 4,
+    "cloudConnections": 4,
+    "accounts": 4,
+    "costRecords": 12,
+    "anomalies": 2,
+    "statements": 3,
+    "agentRuns": 3
+  },
+  "providers": ["aws", "azure", "gcp"],
+  "personas": [
+    "CEO",
+    "CFO",
+    "FinOps practitioner",
+    "DevOps/SRE consumer",
+    "IT manager",
+    "Solution architect",
+    "External stakeholder"
+  ],
+  "flagshipRoutes": [
+    "/login",
+    "/signin",
+    "/signup",
+    "/portfolio",
+    "/costs",
+    "/executive",
+    "/insights",
+    "/optimization",
+    "/billing-agent",
+    "/reporting",
+    "/allocation",
+    "/governance",
+    "/settings",
+    "/operator"
+  ],
+  "proof": {
+    "contract": "contract/demo-seed.spec.ts",
+    "walkthrough": "e2e/costalyx-full-stack-walkthrough.spec.ts",
+    "screenshots": "SCREENSHOT-INDEX.md"
+  },
+  "boundary": "This profile demonstrates workflow quality and seeded multi-cloud shape only. It is not production cloud validation."
+}

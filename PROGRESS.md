@@ -5,7 +5,71 @@
 > output or a verifiable artifact — not an aspirational checklist. If a
 > surface isn't built, it is listed under Unbuilt, not omitted.
 
-_Last updated: 2026-07-07 20:46:53 PKT_
+_Last updated: 2026-07-08 12:10:00 PKT_
+
+## Customer Handover & Competitive Excellence Run — 2026-07-08
+
+Status: complete honest pass for the current environment. Customer handover
+artifacts, competitive matrix, conformance register, demo seed profile, and
+Prometheus alert rules are added and locally verified where executable. The run
+does not claim production cloud readiness: real AWS/Azure/GCP probes remain
+blocked pending customer read-only references and Costalyx broker identities.
+
+Evidence added in this run:
+- Added `17-CUSTOMER-HANDOVER-COMPETITIVE-RUN.md` as the final-mile prompt.
+- Added `COMPETITIVE-MATRIX.md` with public-source market comparison for IBM
+  Cloudability, CloudZero, Kubecost, Vantage, Flexera One, and native
+  AWS/Azure/GCP cost tools. Costalyx behind-cells are logged as GAP-045
+  commitment management, GAP-046 unit economics, and GAP-047 formal FOCUS
+  export.
+- Added `CONFORMANCE.md` covering FinOps FOCUS/Framework, AWS/Azure/GCP
+  Well-Architected cost guidance, SRE SLOs, DevSecOps/OWASP ASVS Level 2
+  target controls, 12-factor/container posture, and WCAG 2.1 AA evidence.
+- Added customer package under `handover/`: index, operations runbook,
+  installation guide, onboarding checklist, security overview, SLO/support
+  guide, demo script, demo seed profile, and go-live checklist.
+- Added `deploy/prometheus/costalyx-alerts.yml` for metrics freshness,
+  scheduler disabled, ingestion scheduler disabled, cloud validation failures,
+  and no-cloud-connections alerts; every alert links to the operations runbook.
+- Added `contract/handover-package.spec.ts` to guard the package, the demo seed
+  profile, competitive/conformance honesty language, and Prometheus metric
+  references. `npm run test:contract -- --run contract/handover-package.spec.ts`
+  passed with the repo contract runner totals: 14 files passed / 8 skipped, 44
+  tests passed / 15 skipped.
+- `npm test` passed: backend 45 suites / 200 tests with 6 suites / 8 tests
+  skipped; frontend 24 files / 72 tests; contract 14 files / 44 tests with 8
+  files / 15 tests skipped; additive migration check passed for 14 files; raw
+  frontend color guard passed.
+- `npm --workspace backend run build` passed; `npm --workspace frontend run
+  build` passed.
+- `npm run security:secrets` passed current-tree and 92-commit history scans
+  with no leaks; `npm audit --audit-level=high` found 0 vulnerabilities.
+- `docker compose config` passed; `docker compose -f docker-compose.prod.yml
+  config` passed with non-secret placeholder values.
+- `helm lint deploy/helm/costalyx` passed with 1 chart / 0 failures; `helm
+  template costalyx deploy/helm/costalyx --namespace costalyx` rendered; worker
+  override render also passed with AWS/GCP ingestion-location values.
+- `npm run ci:live-contract` first hit sandbox `listen EPERM` on
+  `127.0.0.1:3211`; rerun with local listener permission passed 9 live files /
+  20 tests.
+- `npm run seed:demo` first hit sandbox DB socket `EPERM`; rerun with local
+  Postgres permission applied 14 migrations and verified 2 tenants, 4 users, 4
+  cloud connections, 4 accounts, 12 cost records, 2 anomalies, 3 statements,
+  and 3 agent runs. This is `verified(mock)`.
+- `npm run probe:live-readiness` exited 2 as expected and printed sanitized
+  missing-reference evidence for `COSTALYX_TENANT_ID`, AWS readonly
+  role/CUR/broker identity, Azure billing scope/delegated principal/export and
+  broker identity, and GCP billing resource/WIF/BigQuery export and broker
+  identity. No customer secrets were printed.
+
+Blocked/remaining for this handover run:
+- GAP-044 / Milestone H: production cloud proof remains blocked pending real
+  customer AWS/Azure/GCP read-only references and Costalyx broker identities.
+- GAP-049: the installation guide is written and static/render verified, but
+  full clean-environment app-tier Compose browser proof remains
+  written-but-unverified on this workstation because the prior Colima blocker
+  still stands. Rerun on CI or a stable Docker daemon before calling the
+  handover package fully execution-verified.
 
 ## Routed Pages And Auth — 2026-07-07
 

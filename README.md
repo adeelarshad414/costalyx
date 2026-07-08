@@ -108,6 +108,10 @@ Full environment matrix and production deployment: see
 | [`13-BILLING-AGENT-SPEC.md`](./13-BILLING-AGENT-SPEC.md) | Agentic billing intelligence and statement workflow |
 | [`14-MASTER-GOAL-PROMPT.md`](./14-MASTER-GOAL-PROMPT.md) | Unified autonomous production run prompt |
 | [`16-ULTIMATE-MASTER-RUN.md`](./16-ULTIMATE-MASTER-RUN.md) | Current single-entry autonomous audit/fix/document/ship prompt |
+| [`17-CUSTOMER-HANDOVER-COMPETITIVE-RUN.md`](./17-CUSTOMER-HANDOVER-COMPETITIVE-RUN.md) | Final-mile customer handover, competitive benchmark, and conformance prompt |
+| [`COMPETITIVE-MATRIX.md`](./COMPETITIVE-MATRIX.md) | Public-source market benchmark and Costalyx gap feed |
+| [`CONFORMANCE.md`](./CONFORMANCE.md) | FinOps, Well-Architected, SRE, ASVS, 12-factor, and WCAG conformance register |
+| [`handover/`](./handover/HANDOVER-README.md) | Customer handover package: runbooks, install, onboarding, security, SLO, demo, go-live |
 | [`HOW-TO-USE.md`](./HOW-TO-USE.md) | Task-oriented guide for operators and personas |
 | [`DEPLOY-GUIDE.md`](./DEPLOY-GUIDE.md) | Concise verified local, Compose, Helm, and go-live guide |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Conventional-commit release summary |
