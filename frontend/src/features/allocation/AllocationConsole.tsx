@@ -2,8 +2,10 @@ import { Tags } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
+import { bootstrapKeys, takeBootstrapValue } from '../../bootstrapCache';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { ProgressButton } from '../../components/LoadingExperience';
 import { LoadingState } from '../../components/LoadingState';
 import { toUserFacingError } from '../../utils/userFacingError';
 
@@ -14,6 +16,10 @@ interface AllocationConsoleProps {
 type LoadState = 'loading' | 'loaded' | 'error';
 type Dimension = Awaited<ReturnType<CostalyxClient['listDimensions']>>['data'][number];
 type CostSummary = Awaited<ReturnType<CostalyxClient['getCostSummary']>>;
+interface AllocationBootstrap {
+  dimensions: Dimension[];
+  summary: CostSummary | null;
+}
 
 const defaultDimensionName = 'Team';
 const defaultResourceId = 'i-aws-prod-001';
@@ -21,12 +27,16 @@ const defaultTagKey = 'owner';
 const defaultTagValue = 'platform';
 
 export function AllocationConsole({ client }: AllocationConsoleProps) {
-  const [state, setState] = useState<LoadState>('loading');
-  const [dimensions, setDimensions] = useState<Dimension[]>([]);
-  const [selectedDimensionId, setSelectedDimensionId] = useState('');
-  const [summary, setSummary] = useState<CostSummary | null>(null);
+  const [bootstrappedAllocation] = useState<AllocationBootstrap | null>(
+    () => takeBootstrapValue<AllocationBootstrap>(bootstrapKeys.allocation) ?? null
+  );
+  const [state, setState] = useState<LoadState>(bootstrappedAllocation ? 'loaded' : 'loading');
+  const [dimensions, setDimensions] = useState<Dimension[]>(() => bootstrappedAllocation?.dimensions ?? []);
+  const [selectedDimensionId, setSelectedDimensionId] = useState(() => bootstrappedAllocation?.dimensions[0]?.id ?? '');
+  const [summary, setSummary] = useState<CostSummary | null>(() => bootstrappedAllocation?.summary ?? null);
   const [error, setError] = useState('');
-  const [isMutating, setIsMutating] = useState(false);
+  const [busyAction, setBusyAction] = useState<'create' | 'retag' | null>(null);
+  const isMutating = busyAction !== null;
 
   const loadDimensions = useCallback(async () => {
     setState('loading');
@@ -44,11 +54,14 @@ export function AllocationConsole({ client }: AllocationConsoleProps) {
   }, [client]);
 
   useEffect(() => {
+    if (bootstrappedAllocation) {
+      return;
+    }
     void loadDimensions();
-  }, [loadDimensions]);
+  }, [bootstrappedAllocation, loadDimensions]);
 
   const createDimension = useCallback(async () => {
-    setIsMutating(true);
+    setBusyAction('create');
     try {
       const dimension = await client.createDimension({
         name: defaultDimensionName,
@@ -68,12 +81,12 @@ export function AllocationConsole({ client }: AllocationConsoleProps) {
       setError(toUserFacingError(mutationError, 'Create allocation dimension'));
       setState('error');
     } finally {
-      setIsMutating(false);
+      setBusyAction(null);
     }
   }, [client]);
 
   const retagResource = useCallback(async () => {
-    setIsMutating(true);
+    setBusyAction('retag');
     try {
       await client.upsertResourceTag({
         resourceId: defaultResourceId,
@@ -89,7 +102,7 @@ export function AllocationConsole({ client }: AllocationConsoleProps) {
       setError(toUserFacingError(mutationError, 'Retag resource'));
       setState('error');
     } finally {
-      setIsMutating(false);
+      setBusyAction(null);
     }
   }, [client, selectedDimensionId]);
 
@@ -113,13 +126,22 @@ export function AllocationConsole({ client }: AllocationConsoleProps) {
     <section className="panel" aria-label="Allocation and dynamic tagging">
       <div className="panel-toolbar">
         <PermissionGate requiredRole="analyst" mode="hide">
-          <button type="button" onClick={createDimension} disabled={isMutating}>
+          <ProgressButton
+            idleLabel="Create dimension"
+            runningLabel="Creating dimension..."
+            isRunning={busyAction === 'create'}
+            disabled={isMutating && busyAction !== 'create'}
+            onClick={createDimension}
+          >
             <Tags aria-hidden="true" size={16} />
-            Create dimension
-          </button>
-          <button type="button" onClick={retagResource} disabled={isMutating || !selectedDimensionId}>
-            Retag resource
-          </button>
+          </ProgressButton>
+          <ProgressButton
+            idleLabel="Retag resource"
+            runningLabel="Retagging..."
+            isRunning={busyAction === 'retag'}
+            disabled={!selectedDimensionId || (isMutating && busyAction !== 'retag')}
+            onClick={retagResource}
+          />
         </PermissionGate>
       </div>
 

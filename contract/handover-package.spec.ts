@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 const requiredDocs = [
   'COMPETITIVE-MATRIX.md',
   'CONFORMANCE.md',
+  'HANDOVER-CENSUS.md',
+  'HANDOVER-EXCELLENCE-REPORT.md',
   'handover/HANDOVER-README.md',
   'handover/OPERATIONS-RUNBOOK.md',
   'handover/INSTALLATION-GUIDE.md',
@@ -12,7 +14,11 @@ const requiredDocs = [
   'handover/SECURITY-OVERVIEW.md',
   'handover/SLO-AND-SUPPORT.md',
   'handover/DEMO-SCRIPT.md',
-  'handover/GO-LIVE-CHECKLIST.md'
+  'handover/GO-LIVE-CHECKLIST.md',
+  'handover/DESIGN-SYSTEM.md',
+  'handover/JOURNEYS.md',
+  'handover/KNOWN-LIMITS.md',
+  'handover/SCREENSHOT-GALLERY.md'
 ];
 
 describe('customer handover package', () => {
@@ -29,13 +35,17 @@ describe('customer handover package', () => {
     const competitive = fs.readFileSync('COMPETITIVE-MATRIX.md', 'utf8');
     const conformance = fs.readFileSync('CONFORMANCE.md', 'utf8');
     const handoverReadme = fs.readFileSync('handover/HANDOVER-README.md', 'utf8');
+    const knownLimits = fs.readFileSync('handover/KNOWN-LIMITS.md', 'utf8');
+    const report = fs.readFileSync('HANDOVER-EXCELLENCE-REPORT.md', 'utf8');
 
     expect(competitive).toContain('GAP-045');
     expect(competitive).toContain('GAP-046');
     expect(competitive).toContain('GAP-047');
     expect(conformance).toContain('Milestone H live probes require real customer references');
     expect(handoverReadme).toContain('verified locally with deterministic demo data');
-    expect(`${competitive}\n${conformance}\n${handoverReadme}`).toMatch(/verified\(mock\)|dummy data/i);
+    expect(knownLimits).toContain('verified(mock)');
+    expect(report).toContain('Real AWS/Azure/GCP proof still needs customer readonly references');
+    expect(`${competitive}\n${conformance}\n${handoverReadme}\n${knownLimits}\n${report}`).toMatch(/verified\(mock\)|dummy data/i);
   });
 
   it('keeps the demo seed profile aligned with the canonical seed contract', () => {
@@ -88,5 +98,18 @@ describe('customer handover package', () => {
       expect(exportedMetrics).toContain(metric);
     }
   });
-});
 
+  it('keeps the new handover census and screenshot package aligned with the current shell evidence', () => {
+    const census = fs.readFileSync('HANDOVER-CENSUS.md', 'utf8');
+    const journeys = fs.readFileSync('handover/JOURNEYS.md', 'utf8');
+    const screenshots = fs.readFileSync('handover/SCREENSHOT-GALLERY.md', 'utf8');
+
+    expect(census).toContain('/maintenance');
+    expect(census).toContain('/error');
+    expect(census).toContain('frontend/src/App.test.tsx');
+    expect(journeys).toContain('e2e/ceo-executive-summary.spec.ts');
+    expect(journeys).toContain('verified(mock)');
+    expect(screenshots).toContain('SCREENSHOT-INDEX.md');
+    expect(screenshots).toContain('costalyx-dark-default-desktop.png');
+  });
+});

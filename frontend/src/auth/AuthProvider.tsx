@@ -3,13 +3,20 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { toUserFacingError } from '../utils/userFacingError';
 import { highestRole, type Role } from './roles';
 
-type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'error';
+export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'error';
 
 const sessionExpiredMessage = 'Sign in again to continue.';
 
 interface KeycloakClaims {
   sub?: string;
   exp?: number;
+  name?: string;
+  email?: string;
+  preferred_username?: string;
+  given_name?: string;
+  costalyx_tenant_id?: string;
+  tenant_id?: string;
+  org_id?: string;
   realm_access?: { roles?: unknown[] };
   resource_access?: Record<string, { roles?: unknown[] }>;
 }
@@ -29,6 +36,8 @@ interface AuthContextValue {
   role: Role | null;
   token: string | null;
   error: string;
+  displayName: string | null;
+  identityLine: string | null;
   login: (options?: AuthRedirectOptions) => Promise<void>;
   signup: (options?: AuthRedirectOptions) => Promise<void>;
   logout: () => Promise<void>;
@@ -57,10 +66,14 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
   const [role, setRole] = useState<Role | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [identityLine, setIdentityLine] = useState<string | null>(null);
 
   const captureAuthenticatedSession = useCallback(() => {
     setRole(extractRoleFromToken(keycloakAdapter.tokenParsed));
     setToken(keycloakAdapter.token ?? null);
+    setDisplayName(displayNameFromClaims(keycloakAdapter.tokenParsed));
+    setIdentityLine(identityLineFromClaims(keycloakAdapter.tokenParsed));
     setStatus('authenticated');
   }, [keycloakAdapter]);
 
@@ -87,6 +100,8 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
         } else {
           setRole(null);
           setToken(null);
+          setDisplayName(null);
+          setIdentityLine(null);
           setStatus('unauthenticated');
         }
       } catch (initError) {
@@ -117,6 +132,8 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
     setRole(null);
     setToken(null);
     setError('');
+    setDisplayName(null);
+    setIdentityLine(null);
     setStatus('unauthenticated');
     await keycloakAdapter.logout({ redirectUri: redirectUriForPath('/login') });
   }, [keycloakAdapter]);
@@ -135,6 +152,8 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
       } catch {
         setRole(null);
         setToken(null);
+        setDisplayName(null);
+        setIdentityLine(null);
         setError(sessionExpiredMessage);
         setStatus('unauthenticated');
         return null;
@@ -146,8 +165,8 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
   }, [keycloakAdapter, status, token]);
 
   const value = useMemo(
-    () => ({ status, role, token, error, login, signup, logout, getAccessToken }),
-    [error, getAccessToken, login, logout, role, signup, status, token]
+    () => ({ status, role, token, error, displayName, identityLine, login, signup, logout, getAccessToken }),
+    [displayName, error, getAccessToken, identityLine, login, logout, role, signup, status, token]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -193,6 +212,20 @@ function buildLoginOptions(options: AuthRedirectOptions): Record<string, unknown
     redirectUri: redirectUriForPath(options.redirectPath ?? currentPath()),
     ...(loginHint ? { loginHint } : {})
   };
+}
+
+function displayNameFromClaims(claims: KeycloakClaims | undefined): string | null {
+  if (!claims) {
+    return null;
+  }
+  return claims.given_name ?? claims.name ?? claims.preferred_username ?? claims.email ?? claims.sub ?? null;
+}
+
+function identityLineFromClaims(claims: KeycloakClaims | undefined): string | null {
+  if (!claims) {
+    return null;
+  }
+  return claims.costalyx_tenant_id ?? claims.tenant_id ?? claims.org_id ?? claims.email ?? claims.preferred_username ?? null;
 }
 
 function currentPath(): string {

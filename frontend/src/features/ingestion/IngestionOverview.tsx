@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { costalyxClient, type CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
+import { bootstrapKeys, takeBootstrapValue } from '../../bootstrapCache';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
+import { ProgressButton } from '../../components/LoadingExperience';
 import { toUserFacingError } from '../../utils/userFacingError';
 
 interface IngestionOverviewProps {
@@ -16,8 +18,9 @@ const demoIngestionSourceUri =
   import.meta.env.VITE_DEMO_INGESTION_SOURCE_URI ?? 'backend/test/fixtures/aws-cur-sample.csv';
 
 export function IngestionOverview({ client = costalyxClient }: IngestionOverviewProps) {
-  const [state, setState] = useState<LoadState>('loading');
-  const [records, setRecords] = useState<CostRecord[]>([]);
+  const [bootstrappedRecords] = useState<CostRecord[]>(() => takeBootstrapValue<CostRecord[]>(bootstrapKeys.costs) ?? []);
+  const [state, setState] = useState<LoadState>(bootstrappedRecords.length > 0 ? 'loaded' : 'loading');
+  const [records, setRecords] = useState<CostRecord[]>(bootstrappedRecords);
   const [error, setError] = useState('');
   const [isIngesting, setIsIngesting] = useState(false);
 
@@ -51,14 +54,15 @@ export function IngestionOverview({ client = costalyxClient }: IngestionOverview
   }, [client, loadRecords]);
 
   useEffect(() => {
+    if (bootstrappedRecords.length > 0) {
+      return;
+    }
     void loadRecords();
-  }, [loadRecords]);
+  }, [bootstrappedRecords.length, loadRecords]);
 
   const ingestionButton = (
     <PermissionGate requiredRole="admin" mode="hide">
-      <button type="button" onClick={runIngestion} disabled={isIngesting}>
-        {isIngesting ? 'Running ingestion' : 'Run ingestion'}
-      </button>
+      <ProgressButton idleLabel="Run ingestion" runningLabel="Running ingestion..." isRunning={isIngesting} onClick={runIngestion} />
     </PermissionGate>
   );
 

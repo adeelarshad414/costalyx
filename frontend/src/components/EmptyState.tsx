@@ -1,5 +1,6 @@
 import { Inbox } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { Button } from './Button';
 
 interface EmptyStateProps {
   title: string;
@@ -17,9 +18,9 @@ export function EmptyState({ title, detail = 'Run an ingestion to populate this 
       <p>{detail}</p>
       {action ??
         (actionLabel ? (
-          <button type="button" onClick={onAction}>
+          <Button onClick={onAction}>
             {actionLabel}
-          </button>
+          </Button>
         ) : null)}
     </section>
   );

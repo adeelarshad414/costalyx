@@ -1,13 +1,17 @@
-import { Activity, AlertTriangle, CheckCircle2, FileDown, FileSearch, Radar, Send, ShieldCheck, X } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, FileDown, FileSearch, Radar, Send, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
 import { useAuth } from '../../auth/AuthProvider';
 import { PermissionGate } from '../../auth/PermissionGate';
 import { hasRequiredRole } from '../../auth/roles';
+import { bootstrapKeys, takeBootstrapValue } from '../../bootstrapCache';
+import { Button } from '../../components/Button';
 import { ConfirmAction } from '../../components/ConfirmAction';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { JobToast, ProgressButton, TaskQueue, type TaskQueueItem } from '../../components/LoadingExperience';
 import { LoadingState } from '../../components/LoadingState';
+import { Drawer } from '../../components/Overlays';
 import { toUserFacingError } from '../../utils/userFacingError';
 
 interface BillingAgentConsoleProps {
@@ -21,21 +25,44 @@ type AgentRun = Awaited<ReturnType<NonNullable<CostalyxClient['listAgentRuns']>>
 type FalsePositiveReason = NonNullable<
   Parameters<NonNullable<CostalyxClient['updateAnomalyStatus']>>[0]['falsePositiveReason']
 >;
+interface BillingBootstrap {
+  anomalies: Anomaly[];
+  statements: BillingStatement[];
+  agentRuns: AgentRun[];
+}
 
 const falsePositiveReasons: FalsePositiveReason[] = ['seasonal', 'planned_change', 'known_migration', 'other'];
 
 export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
   const auth = useAuth();
-  const [state, setState] = useState<LoadState>('loading');
-  const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
-  const [statements, setStatements] = useState<BillingStatement[]>([]);
-  const [agentRuns, setAgentRuns] = useState<AgentRun[]>([]);
+  const [bootstrappedBilling] = useState<BillingBootstrap | null>(
+    () => takeBootstrapValue<BillingBootstrap>(bootstrapKeys.billingAgent) ?? null
+  );
+  const [state, setState] = useState<LoadState>(bootstrappedBilling ? 'loaded' : 'loading');
+  const [anomalies, setAnomalies] = useState<Anomaly[]>(() => bootstrappedBilling?.anomalies ?? []);
+  const [statements, setStatements] = useState<BillingStatement[]>(() => bootstrappedBilling?.statements ?? []);
+  const [agentRuns, setAgentRuns] = useState<AgentRun[]>(() => bootstrappedBilling?.agentRuns ?? []);
   const [error, setError] = useState('');
-  const [isMutating, setIsMutating] = useState(false);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<TaskQueueItem[]>([]);
   const [reasonById, setReasonById] = useState<Record<string, FalsePositiveReason>>({});
   const [selectedAnomalyId, setSelectedAnomalyId] = useState<string | null>(null);
   const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
   const [period, setPeriod] = useState(defaultStatementPeriod);
+  const isMutating = busyAction !== null;
+
+  const pushTask = useCallback((task: TaskQueueItem) => {
+    setTasks((current) => {
+      const nextTasks = [...current.filter((candidate) => candidate.id !== task.id), task];
+      return nextTasks.slice(-6);
+    });
+  }, []);
+
+  const updateTask = useCallback((taskId: string, updates: Partial<TaskQueueItem>) => {
+    setTasks((current) =>
+      current.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
+    );
+  }, []);
 
   const loadConsole = useCallback(async () => {
     if (auth.status === 'loading') {
@@ -70,25 +97,55 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
   }, [auth.role, auth.status, client]);
 
   useEffect(() => {
+    if (bootstrappedBilling) {
+      return;
+    }
     void loadConsole();
-  }, [loadConsole]);
+  }, [bootstrappedBilling, loadConsole]);
 
   const runScan = useCallback(async () => {
-    setIsMutating(true);
+    const taskId = createTaskId('billing-scan');
+    setBusyAction('scan');
+    pushTask({
+      id: taskId,
+      title: 'Billing anomaly scan',
+      status: 'running',
+      phaseLabel: 'Scanning spend variance',
+      detail: 'Reviewing fresh cost evidence across open billing windows.'
+    });
     try {
       await requireScanBillingAnomalies(client)();
+      updateTask(taskId, {
+        phaseLabel: 'Refreshing anomaly queue',
+        detail: 'Reconciling fresh findings with the current review list.'
+      });
       await loadConsole();
+      updateTask(taskId, {
+        status: 'done',
+        phaseLabel: 'Completed',
+        detail: 'Open anomaly queue refreshed.'
+      });
     } catch (scanError) {
-      setError(toUserFacingError(scanError, 'Run anomaly scan'));
+      const errorMessage = toUserFacingError(scanError, 'Run anomaly scan');
+      updateTask(taskId, { status: 'failed', phaseLabel: 'Failed', detail: errorMessage });
+      setError(errorMessage);
       setState('error');
     } finally {
-      setIsMutating(false);
+      setBusyAction(null);
     }
-  }, [client, loadConsole]);
+  }, [client, loadConsole, pushTask, updateTask]);
 
   const markFalsePositive = useCallback(
     async (anomaly: Anomaly) => {
-      setIsMutating(true);
+      const taskId = createTaskId(`anomaly-${anomaly.id}`);
+      setBusyAction(`false-positive:${anomaly.id}`);
+      pushTask({
+        id: taskId,
+        title: `False positive review · ${labelForType(anomaly.type)}`,
+        status: 'running',
+        phaseLabel: 'Recording disposition',
+        detail: `Applying ${reasonLabel(reasonById[anomaly.id] ?? 'seasonal')} to suppress this pattern.`
+      });
       try {
         await requireUpdateAnomalyStatus(client)({
           id: anomaly.id,
@@ -96,109 +153,211 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
           falsePositiveReason: reasonById[anomaly.id] ?? 'seasonal',
           idempotencyKey: createIdempotencyKey('anomaly-false-positive')
         });
+        updateTask(taskId, {
+          phaseLabel: 'Refreshing anomaly queue',
+          detail: 'Removing the dismissed anomaly from the open review list.'
+        });
         await loadConsole();
+        updateTask(taskId, {
+          status: 'done',
+          phaseLabel: 'Completed',
+          detail: 'False positive disposition saved.'
+        });
       } catch (updateError) {
-        setError(toUserFacingError(updateError, 'Mark anomaly false positive'));
+        const errorMessage = toUserFacingError(updateError, 'Mark anomaly false positive');
+        updateTask(taskId, { status: 'failed', phaseLabel: 'Failed', detail: errorMessage });
+        setError(errorMessage);
         setState('error');
       } finally {
-        setIsMutating(false);
+        setBusyAction(null);
       }
     },
-    [client, loadConsole, reasonById]
+    [client, loadConsole, pushTask, reasonById, updateTask]
   );
 
   const generateStatements = useCallback(async () => {
-    setIsMutating(true);
+    const taskId = createTaskId('statement-generate');
+    setBusyAction('generate-statements');
+    pushTask({
+      id: taskId,
+      title: 'Stakeholder statements',
+      status: 'running',
+      phaseLabel: 'Generating statements',
+      detail: `Building forwardable billing summaries for ${period.periodStart} to ${period.periodEnd}.`
+    });
     try {
       await requireGenerateBillingStatements(client)({
         periodStart: `${period.periodStart}T00:00:00.000Z`,
         periodEnd: `${period.periodEnd}T23:59:59.000Z`,
         idempotencyKey: createIdempotencyKey('statement-generate')
       });
+      updateTask(taskId, {
+        phaseLabel: 'Refreshing statement ledger',
+        detail: 'Loading the latest generated statements and reconciliations.'
+      });
       await loadConsole();
+      updateTask(taskId, {
+        status: 'done',
+        phaseLabel: 'Completed',
+        detail: 'Stakeholder statements are ready for review.'
+      });
     } catch (generateError) {
-      setError(toUserFacingError(generateError, 'Generate statements'));
+      const errorMessage = toUserFacingError(generateError, 'Generate statements');
+      updateTask(taskId, { status: 'failed', phaseLabel: 'Failed', detail: errorMessage });
+      setError(errorMessage);
       setState('error');
     } finally {
-      setIsMutating(false);
+      setBusyAction(null);
     }
-  }, [client, loadConsole, period]);
+  }, [client, loadConsole, period, pushTask, updateTask]);
 
   const approveStatement = useCallback(
     async (statement: BillingStatement) => {
-      setIsMutating(true);
+      const taskId = createTaskId(`statement-approve-${statement.id}`);
+      setBusyAction(`approve:${statement.id}`);
+      pushTask({
+        id: taskId,
+        title: `Approve statement · ${statement.stakeholderName}`,
+        status: 'running',
+        phaseLabel: 'Recording approval',
+        detail: `Finalizing approval for the statement ending ${statement.periodEnd.slice(0, 10)}.`
+      });
       try {
         await requireApproveBillingStatement(client)({
           id: statement.id,
           idempotencyKey: createIdempotencyKey('statement-approve')
         });
+        updateTask(taskId, {
+          phaseLabel: 'Refreshing statement ledger',
+          detail: 'Confirming approval state in the shared statement list.'
+        });
         await loadConsole();
+        updateTask(taskId, {
+          status: 'done',
+          phaseLabel: 'Completed',
+          detail: 'Statement approved and ready to send.'
+        });
       } catch (approveError) {
-        setError(toUserFacingError(approveError, 'Approve statement'));
+        const errorMessage = toUserFacingError(approveError, 'Approve statement');
+        updateTask(taskId, { status: 'failed', phaseLabel: 'Failed', detail: errorMessage });
+        setError(errorMessage);
         setState('error');
       } finally {
-        setIsMutating(false);
+        setBusyAction(null);
       }
     },
-    [client, loadConsole]
+    [client, loadConsole, pushTask, updateTask]
   );
 
   const sendStatement = useCallback(
     async (statement: BillingStatement) => {
-      setIsMutating(true);
+      const taskId = createTaskId(`statement-send-${statement.id}`);
+      setBusyAction(`send:${statement.id}`);
+      pushTask({
+        id: taskId,
+        title: `Send statement · ${statement.stakeholderName}`,
+        status: 'running',
+        phaseLabel: 'Delivering statement',
+        detail: `Sending the statement ending ${statement.periodEnd.slice(0, 10)} to the stakeholder inbox.`
+      });
       try {
         await requireSendBillingStatement(client)({
           id: statement.id,
           idempotencyKey: createIdempotencyKey('statement-send')
         });
+        updateTask(taskId, {
+          phaseLabel: 'Refreshing delivery evidence',
+          detail: 'Confirming send evidence on the latest statement record.'
+        });
         await loadConsole();
+        updateTask(taskId, {
+          status: 'done',
+          phaseLabel: 'Completed',
+          detail: 'Statement delivery was recorded.'
+        });
       } catch (sendError) {
-        setError(toUserFacingError(sendError, 'Send statement'));
+        const errorMessage = toUserFacingError(sendError, 'Send statement');
+        updateTask(taskId, { status: 'failed', phaseLabel: 'Failed', detail: errorMessage });
+        setError(errorMessage);
         setState('error');
       } finally {
-        setIsMutating(false);
+        setBusyAction(null);
       }
     },
-    [client, loadConsole]
+    [client, loadConsole, pushTask, updateTask]
   );
 
   const disputeStatement = useCallback(
     async (statement: BillingStatement) => {
-      setIsMutating(true);
+      const taskId = createTaskId(`statement-dispute-${statement.id}`);
+      setBusyAction(`dispute:${statement.id}`);
+      pushTask({
+        id: taskId,
+        title: `Dispute statement · ${statement.stakeholderName}`,
+        status: 'running',
+        phaseLabel: 'Opening dispute',
+        detail: 'Recording an allocation review request against this statement.'
+      });
       try {
         await requireDisputeBillingStatement(client)({
           id: statement.id,
           note: 'Stakeholder requested allocation review.',
           idempotencyKey: createIdempotencyKey('statement-dispute')
         });
+        updateTask(taskId, {
+          phaseLabel: 'Refreshing statement ledger',
+          detail: 'Loading the updated dispute status and note trail.'
+        });
         await loadConsole();
+        updateTask(taskId, {
+          status: 'done',
+          phaseLabel: 'Completed',
+          detail: 'Statement dispute recorded.'
+        });
       } catch (disputeError) {
-        setError(toUserFacingError(disputeError, 'Dispute statement'));
+        const errorMessage = toUserFacingError(disputeError, 'Dispute statement');
+        updateTask(taskId, { status: 'failed', phaseLabel: 'Failed', detail: errorMessage });
+        setError(errorMessage);
         setState('error');
       } finally {
-        setIsMutating(false);
+        setBusyAction(null);
       }
     },
-    [client, loadConsole]
+    [client, loadConsole, pushTask, updateTask]
   );
 
   const exportStatement = useCallback(
     async (statement: BillingStatement, format: 'csv' | 'pdf') => {
-      setIsMutating(true);
+      const taskId = createTaskId(`statement-export-${format}-${statement.id}`);
+      setBusyAction(`export:${format}:${statement.id}`);
+      pushTask({
+        id: taskId,
+        title: `Export ${format.toUpperCase()} · ${statement.stakeholderName}`,
+        status: 'running',
+        phaseLabel: `Building ${format.toUpperCase()} export`,
+        detail: `Preparing the ${format.toUpperCase()} statement artifact for ${statement.stakeholderName}.`
+      });
       try {
         if (format === 'csv') {
           await requireExportBillingStatementCsv(client)({ id: statement.id });
         } else {
           await requireExportBillingStatementPdf(client)({ id: statement.id });
         }
+        updateTask(taskId, {
+          status: 'done',
+          phaseLabel: 'Completed',
+          detail: `${format.toUpperCase()} export prepared.`
+        });
       } catch (exportError) {
-        setError(toUserFacingError(exportError, `Export statement ${format.toUpperCase()}`));
+        const errorMessage = toUserFacingError(exportError, `Export statement ${format.toUpperCase()}`);
+        updateTask(taskId, { status: 'failed', phaseLabel: 'Failed', detail: errorMessage });
+        setError(errorMessage);
         setState('error');
       } finally {
-        setIsMutating(false);
+        setBusyAction(null);
       }
     },
-    [client]
+    [client, pushTask, updateTask]
   );
 
   if (state === 'loading') {
@@ -225,12 +384,19 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
       <div className="panel-toolbar anomaly-toolbar">
         <h2>Billing Agent</h2>
         <PermissionGate requiredRole="analyst" mode="hide">
-          <button type="button" onClick={runScan} disabled={isMutating}>
+          <ProgressButton
+            idleLabel="Run scan"
+            runningLabel="Scanning..."
+            isRunning={busyAction === 'scan'}
+            disabled={isMutating && busyAction !== 'scan'}
+            onClick={runScan}
+          >
             <Radar aria-hidden="true" size={16} />
-            Run scan
-          </button>
+          </ProgressButton>
         </PermissionGate>
       </div>
+
+      <TaskQueue title="Billing activity" tasks={tasks} emptyMessage="No billing jobs are running in this session." />
 
       {anomalies.length === 0 ? (
         <EmptyState title="No open anomalies" detail="Fresh scans will appear here when billing evidence crosses a threshold." />
@@ -256,8 +422,9 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
                 </div>
               </div>
               <div className="anomaly-actions">
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="compact"
                   aria-controls="anomaly-evidence-story"
                   aria-expanded={selectedAnomalyId === anomaly.id}
                   aria-label={`Review evidence for ${labelForType(anomaly.type)}`}
@@ -265,7 +432,7 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
                 >
                   <FileSearch aria-hidden="true" size={16} />
                   Review evidence
-                </button>
+                </Button>
                 <PermissionGate requiredRole="analyst" mode="hide">
                   <select
                     aria-label={`False positive reason for ${labelForType(anomaly.type)}`}
@@ -316,10 +483,15 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
               value={period.periodEnd}
               onChange={(event) => setPeriod((current) => ({ ...current, periodEnd: event.target.value }))}
             />
-            <button type="button" onClick={generateStatements} disabled={isMutating}>
+            <ProgressButton
+              idleLabel="Generate"
+              runningLabel="Generating..."
+              isRunning={busyAction === 'generate-statements'}
+              disabled={isMutating && busyAction !== 'generate-statements'}
+              onClick={generateStatements}
+            >
               <FileDown aria-hidden="true" size={16} />
-              Generate
-            </button>
+            </ProgressButton>
           </div>
         </PermissionGate>
       </div>
@@ -351,8 +523,9 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
                 </div>
               </div>
               <div className="anomaly-actions statement-actions">
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="compact"
                   aria-controls="statement-detail-document"
                   aria-expanded={selectedStatementId === statement.id}
                   aria-label={`Review statement for ${statement.stakeholderName}`}
@@ -360,15 +533,29 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
                 >
                   <FileSearch aria-hidden="true" size={16} />
                   Review
-                </button>
-                <button type="button" onClick={() => exportStatement(statement, 'csv')} disabled={isMutating}>
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="compact"
+                  isLoading={busyAction === `export:csv:${statement.id}`}
+                  loadingLabel="Exporting CSV..."
+                  onClick={() => exportStatement(statement, 'csv')}
+                  disabled={isMutating && busyAction !== `export:csv:${statement.id}`}
+                >
                   <FileDown aria-hidden="true" size={16} />
                   CSV
-                </button>
-                <button type="button" onClick={() => exportStatement(statement, 'pdf')} disabled={isMutating}>
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="compact"
+                  isLoading={busyAction === `export:pdf:${statement.id}`}
+                  loadingLabel="Exporting PDF..."
+                  onClick={() => exportStatement(statement, 'pdf')}
+                  disabled={isMutating && busyAction !== `export:pdf:${statement.id}`}
+                >
                   <FileDown aria-hidden="true" size={16} />
                   PDF
-                </button>
+                </Button>
                 <PermissionGate requiredRole="admin" mode="hide">
                   <ConfirmAction
                     actionLabel="Approve"
@@ -377,6 +564,7 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
                       10
                     )}. This allows an admin to send it.`}
                     disabled={isMutating}
+                    progressLabel="Approving..."
                     onConfirm={() => approveStatement(statement)}
                   >
                     <CheckCircle2 aria-hidden="true" size={16} />
@@ -389,6 +577,7 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
                       10
                     )} to its stakeholder and record delivery evidence.`}
                     disabled={isMutating}
+                    progressLabel="Sending..."
                     onConfirm={() => sendStatement(statement)}
                   >
                     <Send aria-hidden="true" size={16} />
@@ -400,6 +589,7 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
                     actionLabel="Dispute"
                     consequence={`Open a stakeholder dispute on the ${statement.stakeholderName} statement and record an allocation review note.`}
                     disabled={isMutating}
+                    progressLabel="Opening dispute..."
                     onConfirm={() => disputeStatement(statement)}
                   >
                     <AlertTriangle aria-hidden="true" size={16} />
@@ -458,6 +648,8 @@ export function BillingAgentConsole({ client }: BillingAgentConsoleProps) {
           </ul>
         )}
       </PermissionGate>
+
+      <JobToast tasks={tasks} />
     </section>
   );
 }
@@ -467,71 +659,69 @@ function AnomalyEvidenceStory({ anomaly, onClose }: { anomaly: Anomaly; onClose:
   const impactedSpendUsd = formatComputedSpendUsd(anomaly.evidence.pricingRows);
 
   return (
-    <section id="anomaly-evidence-story" className="anomaly-detail-story" aria-label="Anomaly evidence story">
-      <div className="anomaly-detail-header">
-        <div>
-          <p className="section-kicker">Evidence story</p>
-          <h3>{labelForType(anomaly.type)}</h3>
-        </div>
-        <button type="button" className="icon-button" aria-label="Close anomaly detail" onClick={onClose}>
-          <X aria-hidden="true" size={18} />
-        </button>
-      </div>
+    <Drawer
+      open
+      onClose={onClose}
+      title={labelForType(anomaly.type)}
+      description="Trace the pricing evidence before you dismiss or escalate the anomaly."
+      width="wide"
+    >
+      <section id="anomaly-evidence-story" className="anomaly-detail-story" aria-label="Anomaly evidence story">
+        <dl className="anomaly-story-grid">
+          <div>
+            <dt>What changed</dt>
+            <dd>{anomaly.explanationMd}</dd>
+          </div>
+          <div>
+            <dt>Since when</dt>
+            <dd>
+              <span className="font-mono-data">{formatDate(anomaly.windowStart)}</span>
+              <span aria-hidden="true"> to </span>
+              <span className="font-mono-data">{formatDate(anomaly.windowEnd)}</span>
+            </dd>
+          </div>
+          <div>
+            <dt>Impact</dt>
+            <dd>
+              <span className="font-mono-data">{impactedSpendUsd}</span> affected spend computed from hourly rate and usage.
+            </dd>
+          </div>
+          <div>
+            <dt>Recommended action</dt>
+            <dd>{recommendedActionForType(anomaly.type)}</dd>
+          </div>
+        </dl>
 
-      <dl className="anomaly-story-grid">
-        <div>
-          <dt>What changed</dt>
-          <dd>{anomaly.explanationMd}</dd>
+        <div className="anomaly-story-evidence">
+          <h4>Evidence chain</h4>
+          <ul>
+            {anomaly.evidence.pricingRows.map((row) => (
+              <li key={`${row.costRecordId}-${row.resourceId}-${row.validFrom}`}>
+                <span className="font-mono-data">{row.resourceId}</span>
+                <span>
+                  Rate <strong className="font-mono-data">${row.hourlyRateUsd}</strong>
+                </span>
+                <span>
+                  Usage <strong className="font-mono-data">{row.usageHours} h</strong>
+                </span>
+                <span>
+                  Valid from <strong className="font-mono-data">{formatDate(row.validFrom)}</strong>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p>
+            Fingerprint <span className="font-mono-data">{anomaly.evidence.fingerprint}</span>
+            {primaryRow ? (
+              <>
+                {' '}
+                links back to cost record <span className="font-mono-data">{primaryRow.costRecordId}</span>.
+              </>
+            ) : null}
+          </p>
         </div>
-        <div>
-          <dt>Since when</dt>
-          <dd>
-            <span className="font-mono-data">{formatDate(anomaly.windowStart)}</span>
-            <span aria-hidden="true"> to </span>
-            <span className="font-mono-data">{formatDate(anomaly.windowEnd)}</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Impact</dt>
-          <dd>
-            <span className="font-mono-data">{impactedSpendUsd}</span> affected spend computed from hourly rate and usage.
-          </dd>
-        </div>
-        <div>
-          <dt>Recommended action</dt>
-          <dd>{recommendedActionForType(anomaly.type)}</dd>
-        </div>
-      </dl>
-
-      <div className="anomaly-story-evidence">
-        <h4>Evidence chain</h4>
-        <ul>
-          {anomaly.evidence.pricingRows.map((row) => (
-            <li key={`${row.costRecordId}-${row.resourceId}-${row.validFrom}`}>
-              <span className="font-mono-data">{row.resourceId}</span>
-              <span>
-                Rate <strong className="font-mono-data">${row.hourlyRateUsd}</strong>
-              </span>
-              <span>
-                Usage <strong className="font-mono-data">{row.usageHours} h</strong>
-              </span>
-              <span>
-                Valid from <strong className="font-mono-data">{formatDate(row.validFrom)}</strong>
-              </span>
-            </li>
-          ))}
-        </ul>
-        <p>
-          Fingerprint <span className="font-mono-data">{anomaly.evidence.fingerprint}</span>
-          {primaryRow ? (
-            <>
-              {' '}
-              links back to cost record <span className="font-mono-data">{primaryRow.costRecordId}</span>.
-            </>
-          ) : null}
-        </p>
-      </div>
-    </section>
+      </section>
+    </Drawer>
   );
 }
 
@@ -554,152 +744,161 @@ function StatementDetailDocument({
   ];
 
   return (
-    <section id="statement-detail-document" className="statement-detail-document" aria-label="Forwardable statement">
-      <div className="statement-document-header">
-        <div>
-          <p className="section-kicker">Statement detail</p>
-          <h3>{statement.stakeholderName}</h3>
-          <p>{statement.stakeholderEmail}</p>
-        </div>
-        <div className="statement-document-actions">
-          <button type="button" onClick={() => void onExport(statement, 'csv')} disabled={isMutating}>
+    <Drawer
+      open
+      onClose={onClose}
+      title={statement.stakeholderName}
+      description={statement.stakeholderEmail}
+      width="wide"
+      footer={
+        <>
+          <Button variant="secondary" onClick={() => void onExport(statement, 'csv')} disabled={isMutating}>
             <FileDown aria-hidden="true" size={16} />
             Export CSV
-          </button>
-          <button type="button" onClick={() => void onExport(statement, 'pdf')} disabled={isMutating}>
+          </Button>
+          <Button variant="secondary" onClick={() => void onExport(statement, 'pdf')} disabled={isMutating}>
             <FileDown aria-hidden="true" size={16} />
             Export PDF
-          </button>
-          <button type="button" className="icon-button" aria-label="Close statement detail" onClick={onClose}>
-            <X aria-hidden="true" size={18} />
-          </button>
-        </div>
-      </div>
-
-      <dl className="statement-document-summary">
-        <div>
-          <dt>Total</dt>
-          <dd className="font-mono-data">${statement.totalUsd}</dd>
-        </div>
-        <div>
-          <dt>Period</dt>
-          <dd>
-            <span className="font-mono-data">{formatDate(statement.periodStart)}</span>
-            <span aria-hidden="true"> to </span>
-            <span className="font-mono-data">{formatDate(statement.periodEnd)}</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Status</dt>
-          <dd>{labelForToken(statement.status)}</dd>
-        </div>
-        <div>
-          <dt>Open anomalies</dt>
-          <dd className="font-mono-data">{statement.openAnomalyCount}</dd>
-        </div>
-      </dl>
-
-      <div className="statement-document-narrative">
-        <h4>Narrative</h4>
-        <p>{statement.narrativeMd}</p>
-      </div>
-
-      <div className="statement-document-grid">
-        <section className="statement-document-section statement-document-section-wide">
-          <h4>Line items</h4>
-          <div className="table-wrap">
-            <table className="statement-document-table" aria-label="Statement line items">
-              <thead>
-                <tr>
-                  <th scope="col">Type</th>
-                  <th scope="col">Description</th>
-                  <th scope="col">Evidence</th>
-                  <th scope="col">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {statement.lineItems.map((lineItem) => (
-                  <tr key={lineItem.id}>
-                    <td>{labelForToken(lineItem.lineType)}</td>
-                    <td>{lineItem.description}</td>
-                    <td>{statementLineEvidence(lineItem)}</td>
-                    <td className="font-mono-data numeric-cell">${lineItem.amountUsd}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          </Button>
+        </>
+      }
+    >
+      <section id="statement-detail-document" className="statement-detail-document" aria-label="Forwardable statement">
+        <div className="statement-document-header">
+          <div>
+            <h3>{statement.stakeholderName}</h3>
+            <p>{statement.stakeholderEmail}</p>
           </div>
-        </section>
-
-        <section className="statement-document-section">
-          <h4>Reconciliation</h4>
-          <div className="table-wrap">
-            <table className="statement-document-table" aria-label="Statement reconciliation">
-              <tbody>
-                {reconciliationRows.map((row) => (
-                  <tr key={row.label}>
-                    <th scope="row">{row.label}</th>
-                    <td className="font-mono-data numeric-cell">${row.amountUsd}</td>
-                  </tr>
-                ))}
-                <tr>
-                  <th scope="row">Status</th>
-                  <td>{statement.reconciliation.reconcilesToTenantTotal ? 'Reconciles to tenant total' : 'Needs allocation review'}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="statement-document-actions">
+            <span className={`status-chip status-${statement.status}`}>{statement.status.replace('_', ' ')}</span>
           </div>
-        </section>
+        </div>
 
-        <section className="statement-document-section">
-          <h4>Scope warnings</h4>
-          {statement.scopeWarnings.length === 0 ? (
-            <p>No scope warnings detected.</p>
-          ) : (
-            <ul className="statement-document-list" aria-label="Statement warnings">
-              {statement.scopeWarnings.map((warning) => (
-                <li key={`${warning.code}-${warning.amountUsd}-${warning.costRecordIds.join('-')}`}>
-                  <strong>{labelForToken(warning.code)}</strong>
-                  <span>{warning.message}</span>
-                  <span className="font-mono-data">${warning.amountUsd}</span>
-                  <span>{warning.costRecordIds.length} cost records</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <dl className="statement-document-summary">
+          <div>
+            <dt>Total</dt>
+            <dd className="font-mono-data">${statement.totalUsd}</dd>
+          </div>
+          <div>
+            <dt>Period</dt>
+            <dd>
+              <span className="font-mono-data">{formatDate(statement.periodStart)}</span>
+              <span aria-hidden="true"> to </span>
+              <span className="font-mono-data">{formatDate(statement.periodEnd)}</span>
+            </dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd>{labelForToken(statement.status)}</dd>
+          </div>
+          <div>
+            <dt>Open anomalies</dt>
+            <dd className="font-mono-data">{statement.openAnomalyCount}</dd>
+          </div>
+        </dl>
 
-        <section className="statement-document-section">
-          <h4>Variance movers</h4>
-          {statement.varianceTopMovers.length === 0 ? (
-            <p>No variance movers for this period.</p>
-          ) : (
+        <div className="statement-document-narrative">
+          <h4>Narrative</h4>
+          <p>{statement.narrativeMd}</p>
+        </div>
+
+        <div className="statement-document-grid">
+          <section className="statement-document-section statement-document-section-wide">
+            <h4>Line items</h4>
             <div className="table-wrap">
-              <table className="statement-document-table" aria-label="Statement variance movers">
+              <table className="statement-document-table" aria-label="Statement line items">
                 <thead>
                   <tr>
-                    <th scope="col">Driver</th>
-                    <th scope="col">Current</th>
-                    <th scope="col">Prior</th>
-                    <th scope="col">Delta</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Description</th>
+                    <th scope="col">Evidence</th>
+                    <th scope="col">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {statement.varianceTopMovers.map((mover) => (
-                    <tr key={`${mover.label}-${mover.deltaUsd}`}>
-                      <td>{mover.label}</td>
-                      <td className="font-mono-data numeric-cell">${mover.currentUsd}</td>
-                      <td className="font-mono-data numeric-cell">${mover.priorUsd}</td>
-                      <td className="font-mono-data numeric-cell">${mover.deltaUsd}</td>
+                  {statement.lineItems.map((lineItem) => (
+                    <tr key={lineItem.id}>
+                      <td>{labelForToken(lineItem.lineType)}</td>
+                      <td>{lineItem.description}</td>
+                      <td>{statementLineEvidence(lineItem)}</td>
+                      <td className="font-mono-data numeric-cell">${lineItem.amountUsd}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
-        </section>
-      </div>
-    </section>
+          </section>
+
+          <section className="statement-document-section">
+            <h4>Reconciliation</h4>
+            <div className="table-wrap">
+              <table className="statement-document-table" aria-label="Statement reconciliation">
+                <tbody>
+                  {reconciliationRows.map((row) => (
+                    <tr key={row.label}>
+                      <th scope="row">{row.label}</th>
+                      <td className="font-mono-data numeric-cell">${row.amountUsd}</td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <th scope="row">Status</th>
+                    <td>{statement.reconciliation.reconcilesToTenantTotal ? 'Reconciles to tenant total' : 'Needs allocation review'}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="statement-document-section">
+            <h4>Scope warnings</h4>
+            {statement.scopeWarnings.length === 0 ? (
+              <p>No scope warnings detected.</p>
+            ) : (
+              <ul className="statement-document-list" aria-label="Statement warnings">
+                {statement.scopeWarnings.map((warning) => (
+                  <li key={`${warning.code}-${warning.amountUsd}-${warning.costRecordIds.join('-')}`}>
+                    <strong>{labelForToken(warning.code)}</strong>
+                    <span>{warning.message}</span>
+                    <span className="font-mono-data">${warning.amountUsd}</span>
+                    <span>{warning.costRecordIds.length} cost records</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="statement-document-section">
+            <h4>Variance movers</h4>
+            {statement.varianceTopMovers.length === 0 ? (
+              <p>No variance movers for this period.</p>
+            ) : (
+              <div className="table-wrap">
+                <table className="statement-document-table" aria-label="Statement variance movers">
+                  <thead>
+                    <tr>
+                      <th scope="col">Driver</th>
+                      <th scope="col">Current</th>
+                      <th scope="col">Prior</th>
+                      <th scope="col">Delta</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {statement.varianceTopMovers.map((mover) => (
+                      <tr key={`${mover.label}-${mover.deltaUsd}`}>
+                        <td>{mover.label}</td>
+                        <td className="font-mono-data numeric-cell">${mover.currentUsd}</td>
+                        <td className="font-mono-data numeric-cell">${mover.priorUsd}</td>
+                        <td className="font-mono-data numeric-cell">${mover.deltaUsd}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </div>
+      </section>
+    </Drawer>
   );
 }
 
@@ -816,6 +1015,13 @@ function sumActionCounts(actions: AgentRun['actionsTaken']): number {
 }
 
 function createIdempotencyKey(scope: string): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return `${scope}-${crypto.randomUUID()}`;
+  }
+  return `${scope}-${Date.now()}`;
+}
+
+function createTaskId(scope: string): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return `${scope}-${crypto.randomUUID()}`;
   }

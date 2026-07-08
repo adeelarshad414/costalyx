@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { UserPreferencesProvider } from '../preferences/UserPreferences';
 import { AuthProvider, type KeycloakAdapter } from './AuthProvider';
 import { RoleScopeNotice } from './RoleScopeNotice';
 
@@ -15,12 +16,18 @@ function renderWithRole(role: string) {
 
   return render(
     <AuthProvider adapter={adapter}>
-      <RoleScopeNotice />
+      <UserPreferencesProvider>
+        <RoleScopeNotice />
+      </UserPreferencesProvider>
     </AuthProvider>
   );
 }
 
 describe('RoleScopeNotice', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
   it('explains a viewer session without surfacing raw authorization errors', async () => {
     renderWithRole('viewer');
 

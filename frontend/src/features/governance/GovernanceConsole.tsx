@@ -2,8 +2,11 @@ import { Download } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
 import { useAuth } from '../../auth/AuthProvider';
+import { Button } from '../../components/Button';
 import { PermissionGate } from '../../auth/PermissionGate';
+import { bootstrapKeys, takeBootstrapValue } from '../../bootstrapCache';
 import { ErrorState } from '../../components/ErrorState';
+import { ProgressButton } from '../../components/LoadingExperience';
 import { LoadingState } from '../../components/LoadingState';
 import { toUserFacingError } from '../../utils/userFacingError';
 
@@ -13,13 +16,22 @@ interface GovernanceConsoleProps {
 
 type LoadState = 'idle' | 'loading' | 'loaded' | 'error';
 type RoleRecord = Awaited<ReturnType<CostalyxClient['listRoles']>>['data'][number];
+interface GovernanceBootstrap {
+  roles: RoleRecord[];
+}
 
 export function GovernanceConsole({ client }: GovernanceConsoleProps) {
   const auth = useAuth();
-  const [roles, setRoles] = useState<RoleRecord[]>([]);
-  const [state, setState] = useState<LoadState>('idle');
+  const [bootstrappedGovernance] = useState<GovernanceBootstrap | null>(
+    () => takeBootstrapValue<GovernanceBootstrap>(bootstrapKeys.governance) ?? null
+  );
+  const [roles, setRoles] = useState<RoleRecord[]>(() => bootstrappedGovernance?.roles ?? []);
+  const [state, setState] = useState<LoadState>(() =>
+    auth.role === 'admin' && bootstrappedGovernance ? 'loaded' : 'idle'
+  );
   const [error, setError] = useState('');
   const [exportState, setExportState] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   const loadRoles = useCallback(async () => {
     if (auth.role !== 'admin') {
@@ -37,21 +49,28 @@ export function GovernanceConsole({ client }: GovernanceConsoleProps) {
   }, [auth.role, client]);
 
   useEffect(() => {
+    if (bootstrappedGovernance) {
+      return;
+    }
     void loadRoles();
-  }, [loadRoles]);
+  }, [bootstrappedGovernance, loadRoles]);
 
   const exportCsv = useCallback(async () => {
-    const csv = await client.exportCostRecords();
-    setExportState(`${csv.split('\n').filter(Boolean).length} CSV rows ready`);
+    setIsExporting(true);
+    try {
+      const csv = await client.exportCostRecords();
+      setExportState(`${csv.split('\n').filter(Boolean).length} CSV rows ready`);
+    } finally {
+      setIsExporting(false);
+    }
   }, [client]);
 
   return (
     <section className="panel" aria-label="Access and trust controls">
       <div className="panel-toolbar">
-        <button type="button" onClick={exportCsv}>
+        <ProgressButton idleLabel="Export CSV" runningLabel="Exporting CSV..." isRunning={isExporting} onClick={exportCsv}>
           <Download aria-hidden="true" size={16} />
-          Export CSV
-        </button>
+        </ProgressButton>
         {exportState ? <span className="session-pill">{exportState}</span> : null}
       </div>
 
@@ -78,9 +97,15 @@ export function GovernanceConsole({ client }: GovernanceConsoleProps) {
           <section aria-label="Privileged actions">
             <h2>Privileged actions</h2>
             <div className="action-row">
-              <button type="button">Register credential</button>
-              <button type="button">Create account group</button>
-              <button type="button">Invite user</button>
+              <Button variant="secondary" size="compact" disabled>
+                Register credential
+              </Button>
+              <Button variant="secondary" size="compact" disabled>
+                Create account group
+              </Button>
+              <Button variant="secondary" size="compact" disabled>
+                Invite user
+              </Button>
             </div>
           </section>
         </div>

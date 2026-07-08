@@ -2,8 +2,11 @@ import { Activity, Check, Clipboard, Cloud, KeyRound, Plus, RefreshCw, ShieldChe
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import type { CostalyxClient } from '../../api/client';
 import { PermissionGate } from '../../auth/PermissionGate';
+import { bootstrapKeys, takeBootstrapValue } from '../../bootstrapCache';
+import { Button } from '../../components/Button';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { ProgressButton } from '../../components/LoadingExperience';
 import { LoadingState } from '../../components/LoadingState';
 import { toUserFacingError } from '../../utils/userFacingError';
 
@@ -21,6 +24,13 @@ type CloudConnectionOnboarding = Awaited<ReturnType<GetCloudConnectionOnboarding
 type ListCloudConnectionRuns = NonNullable<CostalyxClient['listCloudConnectionRuns']>;
 type CloudConnectionRun = Awaited<ReturnType<ListCloudConnectionRuns>>['data'][number];
 type AccessMode = 'aws_assume_role' | 'azure_delegated_app' | 'gcp_workload_identity';
+interface PortfolioBootstrap {
+  tenants: Awaited<ReturnType<ListTenants>>['data'];
+  connections: CloudConnection[];
+  accountCount: number;
+  groupCount: number;
+  totalCostUsd: string;
+}
 
 interface CloudConnectionForm {
   provider: Exclude<CloudProvider, 'all'>;
@@ -61,21 +71,26 @@ const connectionDefaults: Record<Exclude<CloudProvider, 'all'>, CloudConnectionF
 };
 
 export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
-  const [state, setState] = useState<LoadState>('loading');
+  const [bootstrappedPortfolio] = useState<PortfolioBootstrap | null>(
+    () => takeBootstrapValue<PortfolioBootstrap>(bootstrapKeys.cloudPortfolio) ?? null
+  );
+  const [state, setState] = useState<LoadState>(bootstrappedPortfolio ? 'loaded' : 'loading');
   const [error, setError] = useState('');
-  const [tenants, setTenants] = useState<Awaited<ReturnType<ListTenants>>['data']>([]);
-  const [connections, setConnections] = useState<CloudConnection[]>([]);
-  const [accountCount, setAccountCount] = useState(0);
-  const [groupCount, setGroupCount] = useState(0);
+  const [tenants, setTenants] = useState<Awaited<ReturnType<ListTenants>>['data']>(() => bootstrappedPortfolio?.tenants ?? []);
+  const [connections, setConnections] = useState<CloudConnection[]>(() => bootstrappedPortfolio?.connections ?? []);
+  const [accountCount, setAccountCount] = useState(() => bootstrappedPortfolio?.accountCount ?? 0);
+  const [groupCount, setGroupCount] = useState(() => bootstrappedPortfolio?.groupCount ?? 0);
   const [provider, setProvider] = useState<CloudProvider>('all');
   const [connectionId, setConnectionId] = useState('');
-  const [totalCostUsd, setTotalCostUsd] = useState('0.00000000');
+  const [totalCostUsd, setTotalCostUsd] = useState(() => bootstrappedPortfolio?.totalCostUsd ?? '0.00000000');
   const [form, setForm] = useState<CloudConnectionForm>(connectionDefaults.aws);
   const [onboarding, setOnboarding] = useState<CloudConnectionOnboarding | null>(null);
   const [onboardingError, setOnboardingError] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
   const [connectionRuns, setConnectionRuns] = useState<CloudConnectionRun[]>([]);
   const [runError, setRunError] = useState('');
+  const [busyAction, setBusyAction] = useState<'create' | 'runs' | 'onboarding' | null>(null);
+  const [isRefreshingSummary, setIsRefreshingSummary] = useState(false);
 
   const selectedConnection = useMemo(
     () => connections.find((connection) => connection.id === connectionId) ?? null,
@@ -107,6 +122,7 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
   }, [client]);
 
   const loadSummary = useCallback(async () => {
+    setIsRefreshingSummary(true);
     try {
       const summary = await client.getCostSummary({
         provider: provider === 'all' ? undefined : provider,
@@ -116,12 +132,17 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
     } catch (summaryError) {
       setError(toUserFacingError(summaryError, 'Load portfolio summary'));
       setState('error');
+    } finally {
+      setIsRefreshingSummary(false);
     }
   }, [client, connectionId, provider]);
 
   useEffect(() => {
+    if (bootstrappedPortfolio) {
+      return;
+    }
     void loadPortfolio();
-  }, [loadPortfolio]);
+  }, [bootstrappedPortfolio, loadPortfolio]);
 
   useEffect(() => {
     if (state === 'loaded') {
@@ -136,6 +157,7 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
   }, [connectionId]);
 
   const createConnection = useCallback(async () => {
+    setBusyAction('create');
     try {
       const { createCloudConnection, validateCloudConnection } = client;
       if (!createCloudConnection || !validateCloudConnection) {
@@ -154,6 +176,8 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
     } catch (createError) {
       setError(toUserFacingError(createError, 'Create cloud connection'));
       setState('error');
+    } finally {
+      setBusyAction(null);
     }
   }, [client, form, loadPortfolio]);
 
@@ -161,6 +185,7 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
     if (!selectedConnection) {
       return;
     }
+    setBusyAction('onboarding');
     try {
       const { getCloudConnectionOnboarding } = client;
       if (!getCloudConnectionOnboarding) {
@@ -171,6 +196,8 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
       setOnboardingError('');
     } catch (onboardingLoadError) {
       setOnboardingError(toUserFacingError(onboardingLoadError, 'Load onboarding guidance'));
+    } finally {
+      setBusyAction(null);
     }
   }, [client, selectedConnection]);
 
@@ -192,6 +219,7 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
       setConnectionRuns([]);
       return;
     }
+    setBusyAction('runs');
     try {
       const { listCloudConnectionRuns } = client;
       if (!listCloudConnectionRuns) {
@@ -203,6 +231,8 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
     } catch (runsLoadError) {
       setConnectionRuns([]);
       setRunError(toUserFacingError(runsLoadError, 'Load run evidence'));
+    } finally {
+      setBusyAction(null);
     }
   }, [client, selectedConnection]);
 
@@ -233,10 +263,9 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
           <h2>Cloud portfolio</h2>
           <p className="font-mono-data">{tenants[0]?.slug ?? 'tenant'}</p>
         </div>
-        <button type="button" onClick={loadPortfolio}>
-          <RefreshCw aria-hidden="true" size={16} />
+        <Button variant="secondary" onClick={loadPortfolio} leadingIcon={<RefreshCw aria-hidden="true" size={16} />}>
           Refresh
-        </button>
+        </Button>
       </div>
 
       <div className="portfolio-grid">
@@ -259,19 +288,25 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
               <dd className="font-mono-data">{groupCount}</dd>
             </div>
           </dl>
+          {isRefreshingSummary ? (
+            <p className="copy-status" role="status" aria-live="polite">
+              <RefreshCw aria-hidden="true" size={16} />
+              Refreshing spend summary...
+            </p>
+          ) : null}
 
           <div className="provider-tabs" role="tablist" aria-label="Portfolio provider">
             {providerOptions.map((option) => (
-              <button
+              <Button
                 key={option}
-                type="button"
                 role="tab"
                 aria-selected={provider === option}
-                className={provider === option ? 'is-active' : undefined}
+                variant={provider === option ? 'primary' : 'secondary'}
+                size="compact"
                 onClick={() => setProvider(option)}
               >
                 {option === 'all' ? 'All' : option.toUpperCase()}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -347,10 +382,15 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
                 onChange={(event) => setForm({ ...form, billingExportUri: event.target.value })}
               />
             </label>
-            <button type="button" onClick={createConnection}>
+            <ProgressButton
+              idleLabel="Add connection"
+              runningLabel="Adding connection..."
+              isRunning={busyAction === 'create'}
+              disabled={busyAction !== null && busyAction !== 'create'}
+              onClick={createConnection}
+            >
               <Plus aria-hidden="true" size={16} />
-              Add connection
-            </button>
+            </ProgressButton>
           </section>
         </PermissionGate>
       </div>
@@ -365,15 +405,16 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
               </dt>
               <dd className="copyable-value">
                 <span className="font-mono-data">{selectedConnection.externalId}</span>
-                <button
-                  type="button"
-                  className="secondary-button"
+                <Button
+                  variant="secondary"
+                  size="compact"
+                  className="artifact-copy-button"
                   aria-label="Copy External ID"
+                  leadingIcon={<Clipboard aria-hidden="true" size={16} />}
                   onClick={() => copyOnboardingText('External ID', selectedConnection.externalId)}
                 >
-                  <Clipboard aria-hidden="true" size={16} />
                   Copy
-                </button>
+                </Button>
               </dd>
             </div>
             <div>
@@ -401,10 +442,15 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
               <Activity aria-hidden="true" size={18} />
               <h2>Run evidence</h2>
             </div>
-            <button type="button" onClick={loadConnectionRuns}>
+            <ProgressButton
+              idleLabel="Refresh"
+              runningLabel="Refreshing..."
+              isRunning={busyAction === 'runs'}
+              disabled={busyAction !== null && busyAction !== 'runs'}
+              onClick={loadConnectionRuns}
+            >
               <RefreshCw aria-hidden="true" size={16} />
-              Refresh
-            </button>
+            </ProgressButton>
           </div>
           {runError ? <p role="alert">{runError}</p> : null}
           {connectionRuns.length === 0 && !runError ? (
@@ -429,10 +475,15 @@ export function CloudPortfolioConsole({ client }: CloudPortfolioConsoleProps) {
           <section className="onboarding-panel" aria-label={`${selectedConnection.provider.toUpperCase()} onboarding`}>
             <div className="panel-toolbar portfolio-toolbar">
               <h2>{selectedConnection.provider.toUpperCase()} onboarding</h2>
-              <button type="button" onClick={loadOnboarding}>
+              <ProgressButton
+                idleLabel="Load policies"
+                runningLabel="Loading policies..."
+                isRunning={busyAction === 'onboarding'}
+                disabled={busyAction !== null && busyAction !== 'onboarding'}
+                onClick={loadOnboarding}
+              >
                 <ShieldCheck aria-hidden="true" size={16} />
-                Load policies
-              </button>
+              </ProgressButton>
             </div>
             {onboardingError ? <p role="alert">{onboardingError}</p> : null}
             {onboarding ? (
@@ -497,10 +548,16 @@ function OnboardingArtifact({ title, body, onCopy, children }: OnboardingArtifac
     <section className="onboarding-artifact" aria-label={`${title} artifact`}>
       <div className="artifact-header">
         <h3>{title}</h3>
-        <button type="button" className="secondary-button artifact-copy-button" aria-label={`Copy ${title}`} onClick={() => onCopy(title, body)}>
-          <Clipboard aria-hidden="true" size={16} />
+        <Button
+          variant="secondary"
+          size="compact"
+          className="artifact-copy-button"
+          aria-label={`Copy ${title}`}
+          leadingIcon={<Clipboard aria-hidden="true" size={16} />}
+          onClick={() => onCopy(title, body)}
+        >
           Copy
-        </button>
+        </Button>
       </div>
       {children ?? <pre className="policy-json">{body}</pre>}
     </section>
